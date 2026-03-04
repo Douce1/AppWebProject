@@ -226,7 +226,7 @@ export default function HomeScreen({ navigation }: any) {
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.sidebarContent}>
-              {notifications.map((notif) => (
+              {notifications.map((notif: any) => (
                 <TouchableOpacity
                   key={notif.id}
                   style={styles.notifItem}
