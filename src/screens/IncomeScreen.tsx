@@ -1,8 +1,15 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { TrendingUp, RefreshCcw } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { TrendingUp, RefreshCcw, X, FileText } from 'lucide-react-native';
 
 export default function IncomeScreen() {
+    const [selectedDetail, setSelectedDetail] = useState<any>(null);
+
+    const historyData = [
+        { id: 1, month: '9월', amount: 3080000, date: '10.10 지급완료', hours: 62 },
+        { id: 2, month: '8월', amount: 3150000, date: '09.10 지급완료', hours: 65 }
+    ];
+
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
@@ -10,44 +17,124 @@ export default function IncomeScreen() {
             </View>
 
             <View style={styles.incomeCard}>
-                <Text style={styles.incomeLabel}>이번 달 수입</Text>
+                <Text style={styles.incomeLabel}>이번 달 예상 수입 (세전)</Text>
                 <View style={styles.amountRow}>
                     <Text style={styles.amountText}>3,450,000</Text>
                     <Text style={styles.currencyText}>원</Text>
                 </View>
 
+                <Text style={styles.taxDeductedText}>실수령 예상 (3.3% 공제): 3,336,150원</Text>
+
+                <View style={styles.statsRow}>
+                    <View style={styles.statBox}>
+                        <Text style={styles.statLabel}>이번 달 근무</Text>
+                        <Text style={styles.statValue}>68시간</Text>
+                    </View>
+                    <View style={styles.verticalDivider} />
+                    <View style={styles.statBox}>
+                        <Text style={styles.statLabel}>지난 달 근무</Text>
+                        <Text style={styles.statValue}>62시간</Text>
+                    </View>
+                </View>
+
                 <View style={styles.increaseBadge}>
                     <TrendingUp color="#10B981" size={14} style={{ marginRight: 4 }} />
-                    <Text style={styles.increaseText}>지난달 대비 12% 상승</Text>
+                    <Text style={styles.increaseText}>근무 시간 6시간 증가</Text>
                 </View>
 
                 <View style={styles.divider} />
 
                 <View style={styles.paymentRow}>
-                    <RefreshCcw color="#6B7280" size={14} style={{ marginRight: 6 }} />
-                    <Text style={styles.paymentText}>지급 예정일: 11월 10일</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <RefreshCcw color="#9CA3AF" size={14} style={{ marginRight: 6 }} />
+                        <Text style={styles.paymentText}>지급 예정일: 11월 10일</Text>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.detailButton}
+                        onPress={() => setSelectedDetail({ month: '10월', amount: 3450000, hours: 68 })}
+                    >
+                        <Text style={styles.detailButtonText}>상세보기 {'>'}</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
 
             <View style={styles.historySection}>
                 <Text style={styles.sectionTitle}>정산 내역</Text>
 
-                {/* Mock History Items */}
-                <View style={styles.historyItem}>
-                    <View>
-                        <Text style={styles.historyTitle}>9월 정산금</Text>
-                        <Text style={styles.historyDate}>10.10 지급완료</Text>
-                    </View>
-                    <Text style={styles.historyAmount}>+3,080,000원</Text>
-                </View>
-                <View style={styles.historyItem}>
-                    <View>
-                        <Text style={styles.historyTitle}>8월 정산금</Text>
-                        <Text style={styles.historyDate}>09.10 지급완료</Text>
-                    </View>
-                    <Text style={styles.historyAmount}>+3,150,000원</Text>
-                </View>
+                {historyData.map(item => (
+                    <TouchableOpacity
+                        key={item.id}
+                        style={styles.historyItem}
+                        onPress={() => setSelectedDetail(item)}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={styles.historyIconBox}>
+                                <FileText color="#3b82f6" size={20} />
+                            </View>
+                            <View>
+                                <Text style={styles.historyTitle}>{item.month} 정산금</Text>
+                                <Text style={styles.historyDate}>{item.date}</Text>
+                            </View>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={styles.historyAmount}>+{(item.amount).toLocaleString()}원</Text>
+                            <Text style={styles.historyTaxAmount}>실수령: {(item.amount * 0.967).toLocaleString()}원</Text>
+                        </View>
+                    </TouchableOpacity>
+                ))}
             </View>
+
+            {/* Detail Modal */}
+            <Modal
+                visible={!!selectedDetail}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setSelectedDetail(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>{selectedDetail?.month} 정산 상세 내역</Text>
+                            <TouchableOpacity onPress={() => setSelectedDetail(null)}>
+                                <X size={24} color="#333" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {selectedDetail && (
+                            <View style={styles.receiptBox}>
+                                <View style={styles.receiptRow}>
+                                    <Text style={styles.receiptLabel}>총 근무 시간</Text>
+                                    <Text style={styles.receiptValue}>{selectedDetail.hours}시간</Text>
+                                </View>
+                                <View style={styles.receiptRow}>
+                                    <Text style={styles.receiptLabel}>기본 시급</Text>
+                                    <Text style={styles.receiptValue}>50,000원</Text>
+                                </View>
+                                <View style={[styles.receiptRow, { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#e5e7eb', borderStyle: 'dashed' }]}>
+                                    <Text style={styles.receiptLabel}>총 지급액 (세전)</Text>
+                                    <Text style={styles.receiptValue}>{(selectedDetail.amount).toLocaleString()}원</Text>
+                                </View>
+                                <View style={styles.receiptRow}>
+                                    <Text style={styles.receiptLabel}>사업소득세 (3%)</Text>
+                                    <Text style={styles.receiptValue}>-{Math.floor(selectedDetail.amount * 0.03).toLocaleString()}원</Text>
+                                </View>
+                                <View style={styles.receiptRow}>
+                                    <Text style={styles.receiptLabel}>지방소득세 (0.3%)</Text>
+                                    <Text style={styles.receiptValue}>-{Math.floor(selectedDetail.amount * 0.003).toLocaleString()}원</Text>
+                                </View>
+                                <View style={[styles.receiptRow, { marginTop: 15, paddingTop: 15, borderTopWidth: 2, borderTopColor: '#333' }]}>
+                                    <Text style={styles.receiptTotalLabel}>실수령액 (세후)</Text>
+                                    <Text style={styles.receiptTotalValue}>{(selectedDetail.amount * 0.967).toLocaleString()}원</Text>
+                                </View>
+                            </View>
+                        )}
+
+                        <TouchableOpacity style={styles.closeButton} onPress={() => setSelectedDetail(null)}>
+                            <Text style={styles.closeButtonText}>닫기</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </ScrollView>
     );
 }
@@ -57,19 +144,43 @@ const styles = StyleSheet.create({
     header: { paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20, backgroundColor: 'white' },
     headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
     incomeCard: { backgroundColor: '#1E3A8A', margin: 15, borderRadius: 16, padding: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4 },
-    incomeLabel: { color: '#BFDBFE', fontSize: 14, marginBottom: 8 },
-    amountRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 12 },
+    incomeLabel: { color: '#D1D5DB', fontSize: 14, marginBottom: 4 },
+    amountRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 5 },
     amountText: { color: 'white', fontSize: 32, fontWeight: 'bold' },
     currencyText: { color: 'white', fontSize: 18, marginLeft: 4, fontWeight: '600' },
+    taxDeductedText: { color: '#A7F3D0', fontSize: 14, marginBottom: 20, fontWeight: '500' },
+    statsRow: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: 12, marginBottom: 15 },
+    statBox: { flex: 1, alignItems: 'center' },
+    statLabel: { color: '#D1D5DB', fontSize: 12, marginBottom: 4 },
+    statValue: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+    verticalDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
     increaseBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(16, 185, 129, 0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
     increaseText: { color: '#10B981', fontSize: 13, fontWeight: 'bold' },
     divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 15 },
-    paymentRow: { flexDirection: 'row', alignItems: 'center' },
+    paymentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     paymentText: { color: '#E5E7EB', fontSize: 14 },
-    historySection: { paddingHorizontal: 20, marginTop: 10 },
+    detailButton: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+    detailButtonText: { color: 'white', fontSize: 12, fontWeight: 'bold' },
+    historySection: { paddingHorizontal: 20, marginTop: 10, paddingBottom: 40 },
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 15 },
-    historyItem: { backgroundColor: 'white', padding: 15, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    historyItem: { backgroundColor: 'white', padding: 15, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 5, elevation: 1 },
+    historyIconBox: { backgroundColor: '#EFF6FF', padding: 10, borderRadius: 10, marginRight: 12 },
     historyTitle: { fontSize: 15, fontWeight: '600', color: '#333', marginBottom: 4 },
     historyDate: { fontSize: 12, color: '#6B7280' },
-    historyAmount: { fontSize: 16, fontWeight: 'bold', color: '#10B981' }
+    historyAmount: { fontSize: 16, fontWeight: 'bold', color: '#111827' },
+    historyTaxAmount: { fontSize: 13, color: '#10B981', marginTop: 4, fontWeight: '500' },
+
+    // Modal Styles
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 25, minHeight: 400 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
+    receiptBox: { backgroundColor: '#F9FAFB', padding: 20, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 25 },
+    receiptRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+    receiptLabel: { color: '#6B7280', fontSize: 14 },
+    receiptValue: { color: '#374151', fontSize: 14, fontWeight: '500' },
+    receiptTotalLabel: { color: '#111827', fontSize: 16, fontWeight: 'bold' },
+    receiptTotalValue: { color: '#10B981', fontSize: 18, fontWeight: 'bold' },
+    closeButton: { backgroundColor: '#1E3A8A', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
+    closeButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' }
 });

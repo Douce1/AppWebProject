@@ -1,17 +1,32 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Alert, Dimensions } from 'react-native';
 import { useSchedule } from '../context/ScheduleContext';
-import { Bell, MapPin, Clock, CheckCircle2 } from 'lucide-react-native';
+import { Bell, MapPin, Clock, CalendarIcon as Calendar, CheckCircle2, ChevronLeft, ChevronRight, X, Megaphone } from 'lucide-react-native';
+import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
+
+const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }: any) {
-  const { classes } = useSchedule();
-  const [noticeExpanded, setNoticeExpanded] = useState(true);
-  
+  const router = useRouter();
+  const { classes, notifications, removeNotification } = useSchedule();
+  // Notice & Side panel logic
+  const [sidePanelVisible, setSidePanelVisible] = useState(false);
+  const [calendarModalVisible, setCalendarModalVisible] = useState(false);
+
+  // Calendar selection state
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
+
   // Weekly calendar logic
   const today = new Date();
-  const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday...
-  
-  // Generate current week dates (Sun to Sat)
+  const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const changeMonth = (offset: number) => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1));
+  };
+  const dayOfWeek = today.getDay();
+
+  // Generate current week dates
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today);
     d.setDate(today.getDate() - dayOfWeek + i);
@@ -20,49 +35,97 @@ export default function HomeScreen({ navigation }: any) {
 
   const getWeekDayStr = (d: Date) => ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
 
+  const toLocalISOString = (d: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
   // Today's Date String for Check-in logic
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = toLocalISOString(today);
   const [checkedInIds, setCheckedInIds] = useState<string[]>([]);
-  
-  const handleCheckIn = (id: string) => {
-    if (!checkedInIds.includes(id)) {
-      setCheckedInIds([...checkedInIds, id]);
+  const [reportedIds, setReportedIds] = useState<string[]>([]);
+
+  const handleCheckIn = async (id: string, hasEnded: boolean) => {
+    // If the class has ended and we haven't reported yet, mark as reported.
+    if (hasEnded && checkedInIds.includes(id) && !reportedIds.includes(id)) {
+      setReportedIds([...reportedIds, id]);
+      Alert.alert('보고 완료', '강의 보고서 작성을 위해 관련 폼으로 이동합니다. (현재 모의 동작)');
+      return;
+    }
+
+    // Normal Check-in logic
+    if (!checkedInIds.includes(id) && !hasEnded) {
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('권한 필요', '체크인을 위해 위치 권한이 필요합니다.');
+          return;
+        }
+        let location = await Location.getLastKnownPositionAsync();
+        if (!location) {
+          location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Lowest });
+        }
+        console.log('Checked in at:', location?.coords);
+
+        setCheckedInIds([...checkedInIds, id]);
+        Alert.alert('체크인 완료', '정상적으로 출근 체크인이 완료되었습니다.');
+      } catch (error) {
+        Alert.alert('오류', '위치를 가져오는데 실패했습니다.');
+      }
     }
   };
 
+  // Helper func: Generate current month's calendar grid days
+  const getDaysInMonth = (year: number, month: number) => {
+    const days = [];
+    const date = new Date(year, month, 1);
+    const firstDay = date.getDay();
+
+    // Pad empty slots
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null);
+    }
+
+    // Safely generate all days of the month at noon to prevent timezone shifts
+    const numDays = new Date(year, month + 1, 0).getDate();
+    for (let i = 1; i <= numDays; i++) {
+      days.push(new Date(year, month, i, 12, 0, 0));
+    }
+    return days;
+  };
+
+  const monthGridDays = getDaysInMonth(currentMonth.getFullYear(), currentMonth.getMonth());
+
   return (
     <View style={styles.container}>
-      {/* Urgent Notice */}
-      <View style={styles.noticeContainer}>
-        {noticeExpanded ? (
-          <View style={styles.noticeCard}>
-            <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 5}}>
-              <Bell color="#E53E3E" size={20} />
-              <Text style={styles.noticeTitle}> 긴급 공지사항</Text>
+      {/* Top Bar with Persistent Bell */}
+      <View style={styles.topBar}>
+        <Text style={styles.topBarTitle}>대시보드</Text>
+        <TouchableOpacity onPress={() => setSidePanelVisible(true)} style={styles.bellIconContainer}>
+          <Bell color="#666" size={24} />
+          {notifications.length > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{notifications.length}</Text>
             </View>
-            <Text style={styles.noticeText}>코로나19 관련 학원 방역 지침 안내입니다. 모든 강사님들은 반드시 마스크를 착용해주시기 바랍니다.</Text>
-            <TouchableOpacity onPress={() => setNoticeExpanded(false)} style={styles.noticeMinimize}>
-              <Text style={styles.noticeLink}>최소화</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity onPress={() => setNoticeExpanded(true)} style={styles.noticeCollapsed}>
-            <Bell color="#E53E3E" size={16} />
-            <Text style={styles.noticeCollapsedTitle}> 긴급 공지사항이 있습니다</Text>
-            <Text style={styles.noticeLink}> 다시열기</Text>
-          </TouchableOpacity>
-        )}
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* Weekly Schedule */}
       <View style={styles.calendarContainer}>
-        <Text style={styles.sectionTitle}>📅 주간 일정</Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>📅 주간 일정</Text>
+          <TouchableOpacity onPress={() => { setCalendarModalVisible(true); setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1)); }} style={styles.viewCalendarBtn}>
+            <Calendar size={16} color="#3b82f6" style={{ marginRight: 4 }} />
+            <Text style={styles.viewAllText}>전체 일정 확인</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.weekRow}>
           {weekDates.map((date, idx) => {
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = toLocalISOString(date);
             const isToday = dateStr === todayStr;
             const hasClass = classes.some(c => c.date === dateStr);
-            
+
             return (
               <View key={idx} style={[styles.dayContainer, isToday && styles.todayContainer]}>
                 <Text style={[styles.dayText, isToday && styles.todayText]}>{getWeekDayStr(date)}</Text>
@@ -79,11 +142,24 @@ export default function HomeScreen({ navigation }: any) {
         <Text style={styles.sectionTitle}>오늘의 일정 ({classes.filter(c => c.date === todayStr).length})</Text>
         {classes.filter(c => c.date === todayStr).map((c) => {
           const isCheckedIn = checkedInIds.includes(c.id);
+          const isReported = reportedIds.includes(c.id);
+
+          let hasEnded = false;
+          const endStr = c.time.split('-')[1]?.trim();
+          if (endStr && c.date === todayStr) {
+            const [endH, endM] = endStr.split(':').map(Number);
+            const endTime = new Date(today);
+            endTime.setHours(endH, endM, 0, 0);
+            if (new Date() > endTime) hasEnded = true;
+          } else if (c.date < todayStr) {
+            hasEnded = true;
+          }
+
           return (
-            <TouchableOpacity 
-              key={c.id} 
-              style={styles.classCard} 
-              onPress={() => { /* Navigate to specific schedule details here */ }}
+            <TouchableOpacity
+              key={c.id}
+              style={styles.classCard}
+              onPress={() => router.push({ pathname: '/class-detail' as any, params: { classInfo: JSON.stringify(c) } })}
             >
               <Text style={styles.classTitle}>{c.title}</Text>
               <View style={styles.row}>
@@ -94,20 +170,35 @@ export default function HomeScreen({ navigation }: any) {
                 <Clock size={16} color="gray" />
                 <Text style={styles.classDetails}> {c.time}</Text>
               </View>
-              
-              <TouchableOpacity 
-                style={[styles.checkInButton, isCheckedIn && styles.checkedInButton]}
-                onLongPress={() => handleCheckIn(c.id)}
-                delayLongPress={800}
+
+              <TouchableOpacity
+                style={[
+                  styles.checkInButton,
+                  (isCheckedIn && !hasEnded) && styles.checkedInButton,
+                  (isCheckedIn && hasEnded && !isReported) && styles.reportButtonStyles,
+                  (isReported) && styles.checkedInButton
+                ]}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleCheckIn(c.id, hasEnded);
+                }}
                 activeOpacity={0.7}
+                disabled={isReported}
               >
-                {isCheckedIn ? (
+                {isReported ? (
                   <View style={styles.row}>
                     <CheckCircle2 color="white" size={18} />
-                    <Text style={styles.checkInText}> 체크인 완료</Text>
+                    <Text style={styles.checkInText}> 강의 보고 완료</Text>
+                  </View>
+                ) : (isCheckedIn && hasEnded) ? (
+                  <Text style={styles.checkInText}>보고서 작성</Text>
+                ) : isCheckedIn ? (
+                  <View style={styles.row}>
+                    <CheckCircle2 color="white" size={18} />
+                    <Text style={styles.checkInText}> 출근 완료 (강의 중)</Text>
                   </View>
                 ) : (
-                  <Text style={styles.checkInText}>출근 체크인 (길게 누르기)</Text>
+                  <Text style={styles.checkInText}>출근 체크인</Text>
                 )}
               </TouchableOpacity>
             </TouchableOpacity>
@@ -117,20 +208,120 @@ export default function HomeScreen({ navigation }: any) {
           <Text style={styles.emptyText}>오늘 예정된 강의가 없습니다.</Text>
         )}
       </ScrollView>
-    </View>
+
+      {/* Right Sidebar Notification Panel */}
+      <Modal
+        visible={sidePanelVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSidePanelVisible(false)}
+      >
+        <View style={styles.sidebarOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setSidePanelVisible(false)} />
+          <View style={styles.sidebarPanel}>
+            <View style={styles.sidebarHeader}>
+              <Text style={styles.sidebarTitle}>알림 센터 ({notifications.length})</Text>
+              <TouchableOpacity onPress={() => setSidePanelVisible(false)}>
+                <X size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.sidebarContent}>
+              {notifications.map((notif) => (
+                <TouchableOpacity
+                  key={notif.id}
+                  style={styles.notifItem}
+                  onPress={() => {
+                    setSidePanelVisible(false);
+                    removeNotification(notif.id);
+                    router.push(notif.target);
+                  }}
+                >
+                  <Text style={styles.notifType}>{notif.type}</Text>
+                  <Text style={styles.notifTitle}>{notif.title}</Text>
+                  <Text style={styles.notifTime}>{notif.time}</Text>
+                </TouchableOpacity>
+              ))}
+              {notifications.length === 0 && (
+                <Text style={styles.emptyText}>새로운 알림이 없습니다.</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Monthly Calendar Modal */}
+      <Modal
+        visible={calendarModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setCalendarModalVisible(false);
+          setSelectedCalendarDate(null);
+        }}
+      >
+        <View style={styles.modalOverlayCen}>
+          <View style={styles.calendarModalContent}>
+            <View style={styles.calHeaderRow}>
+              <TouchableOpacity onPress={() => changeMonth(-1)}><ChevronLeft size={24} color="#333" /></TouchableOpacity>
+              <Text style={styles.calMonthText}>{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</Text>
+              <TouchableOpacity onPress={() => changeMonth(1)}><ChevronRight size={24} color="#333" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => { setCalendarModalVisible(false); setSelectedCalendarDate(null); }} style={{ position: 'absolute', right: 0 }}>
+                <X size={24} color="#999" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Grid */}
+            <View style={styles.calGrid}>
+              {['일', '월', '화', '수', '목', '금', '토'].map(d => <Text key={d} style={styles.calDayLabel}>{d}</Text>)}
+              {monthGridDays.map((dateObj, idx) => {
+                if (!dateObj) return <View key={idx} style={styles.calCellEmpty} />;
+                const dStr = toLocalISOString(dateObj);
+                const hasClass = classes.some(c => c.date === dStr);
+                const isSelected = selectedCalendarDate === dStr;
+                const isTodayStr = dStr === todayStr;
+
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[styles.calCell, isSelected && styles.calCellSelected]}
+                    onPress={() => setSelectedCalendarDate(dStr)}
+                  >
+                    <Text style={[styles.calCellText, isTodayStr && { color: '#3b82f6', fontWeight: 'bold' }, isSelected && { color: 'white' }]}>
+                      {dateObj.getDate()}
+                    </Text>
+                    {hasClass && <View style={styles.redDot} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Selected Date Details */}
+            {selectedCalendarDate && (
+              <ScrollView style={styles.selectedDateScroll}>
+                <Text style={styles.selectedDateTitle}>{selectedCalendarDate.split('-')[1]}월 {selectedCalendarDate.split('-')[2]}일 일정</Text>
+                {classes.filter(c => c.date === selectedCalendarDate).length > 0 ? (
+                  classes.filter(c => c.date === selectedCalendarDate).map(cls => (
+                    <View key={cls.id} style={styles.calMiniCard}>
+                      <Text style={styles.calMiniTitle}>{cls.title}</Text>
+                      <Text style={styles.calMiniTime}>{cls.time} | {cls.location}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.emptyText}>해당 날짜에 예정된 강의가 없습니다.</Text>
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </View >
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f7fa', paddingTop: 50 },
-  noticeContainer: { paddingHorizontal: 15, marginBottom: 15 },
-  noticeCard: { backgroundColor: '#FEE2E2', padding: 15, borderRadius: 10, borderWidth: 1, borderColor: '#FECACA' },
-  noticeTitle: { fontSize: 16, fontWeight: 'bold', color: '#B91C1C' },
-  noticeText: { marginTop: 5, color: '#991B1B', lineHeight: 20 },
-  noticeMinimize: { alignSelf: 'flex-end', marginTop: 10 },
-  noticeCollapsed: { flexDirection: 'row', backgroundColor: '#FEE2E2', padding: 12, borderRadius: 10, alignItems: 'center' },
-  noticeCollapsedTitle: { flex: 1, color: '#B91C1C', fontWeight: 'bold', fontSize: 14 },
-  noticeLink: { color: '#DC2626', textDecorationLine: 'underline', fontSize: 13 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 15 },
+  topBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
   calendarContainer: { backgroundColor: 'white', padding: 15, marginHorizontal: 15, borderRadius: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#333' },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
@@ -147,6 +338,43 @@ const styles = StyleSheet.create({
   classDetails: { fontSize: 14, color: '#666' },
   checkInButton: { backgroundColor: '#2f95dc', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
   checkedInButton: { backgroundColor: '#10B981' },
+  reportButtonStyles: { backgroundColor: '#E53E3E' },
   checkInText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  emptyText: { textAlign: 'center', color: '#999', marginTop: 20 }
+  emptyText: { textAlign: 'center', color: '#999', marginTop: 20 },
+  bellIconContainer: { padding: 8, position: 'relative' },
+  badge: { position: 'absolute', top: 4, right: 4, backgroundColor: '#E53E3E', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white' },
+  badgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  viewCalendarBtn: { flexDirection: 'row', alignItems: 'center' },
+  viewAllText: { fontSize: 13, color: '#333', fontWeight: '500' },
+
+  // Right Sidebar Styles
+  sidebarOverlay: { flex: 1, flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.5)' },
+  sidebarPanel: { width: width * 0.75, backgroundColor: 'white', height: '100%' },
+  sidebarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 60, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  sidebarTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  sidebarContent: { padding: 15 },
+  notifItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
+  notifType: { fontSize: 12, color: '#3b82f6', fontWeight: 'bold', marginBottom: 4 },
+  notifTitle: { fontSize: 15, color: '#333', marginBottom: 2 },
+  notifTime: { fontSize: 12, color: '#999' },
+
+  // Calendar Modal Styles
+  modalOverlayCen: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  calendarModalContent: { backgroundColor: 'white', width: '90%', borderRadius: 16, padding: 20, maxHeight: height * 0.8 },
+  calHeaderRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20, position: 'relative' },
+  calMonthText: { fontSize: 18, fontWeight: 'bold', paddingHorizontal: 20 },
+  calDaysRow: { flexDirection: 'row', justifyContent: 'flex-start', marginBottom: 10 },
+  calDayLabel: { color: '#666', fontSize: 13, width: '14.28%', textAlign: 'center', marginBottom: 10 },
+  calGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start' },
+  calCellEmpty: { width: '14.28%', height: 40, marginVertical: 2 },
+  calCell: { width: '14.28%', height: 40, marginVertical: 2, justifyContent: 'center', alignItems: 'center', borderRadius: 20 },
+  calCellSelected: { backgroundColor: '#3b82f6' },
+  calCellText: { fontSize: 15, color: '#333' },
+  redDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#E53E3E', position: 'absolute', bottom: 4 },
+  selectedDateScroll: { marginTop: 15, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 15 },
+  selectedDateTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 10, color: '#333' },
+  calMiniCard: { backgroundColor: '#f9fafb', padding: 12, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: '#f0f0f0' },
+  calMiniTitle: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  calMiniTime: { fontSize: 12, color: '#666', marginTop: 4 }
 });
