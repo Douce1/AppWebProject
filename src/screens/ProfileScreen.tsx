@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Clock, UserCircle, Settings, ChevronRight } from 'lucide-react-native';
 
 export default function ProfileScreen() {
+    const router = useRouter();
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
@@ -18,7 +20,7 @@ export default function ProfileScreen() {
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>설정</Text>
 
-                <TouchableOpacity style={styles.menuItem}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/availability')}>
                     <View style={styles.menuIconContainer}>
                         <Clock color="#4F46E5" size={20} />
                     </View>
@@ -26,7 +28,7 @@ export default function ProfileScreen() {
                     <ChevronRight color="#CBD5E1" size={20} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItem}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/instructor')}>
                     <View style={styles.menuIconContainer}>
                         <UserCircle color="#4F46E5" size={20} />
                     </View>
@@ -34,7 +36,7 @@ export default function ProfileScreen() {
                     <ChevronRight color="#CBD5E1" size={20} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItem}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/settings')}>
                     <View style={styles.menuIconContainer}>
                         <Settings color="#4F46E5" size={20} />
                     </View>

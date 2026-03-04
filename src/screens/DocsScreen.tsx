@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { FileSignature, FileText } from 'lucide-react-native';
+import { FileSignature, FileText, Bell } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 export default function DocsScreen() {
     const [selectedTab, setSelectedTab] = useState('서류');
-    const tabs = ['서류', '계약'];
+    const tabs = ['서류', '계약', '요청/제안'];
+    const router = useRouter();
 
     return (
         <View style={styles.container}>
@@ -36,12 +38,16 @@ export default function DocsScreen() {
                                 <Text style={styles.docTitle}>개인정보 활용 동의서</Text>
                                 <Text style={styles.docDate}>2023.10.20 마감</Text>
                             </View>
-                            <TouchableOpacity style={styles.signButton}>
+                            <TouchableOpacity
+                                style={styles.signButton}
+                                onPress={() => router.push('/(tabs)/docs/sign')}
+                            >
                                 <Text style={styles.signButtonText}>서명하기</Text>
                             </TouchableOpacity>
                         </View>
                     </>
                 )}
+
                 {selectedTab === '계약' && (
                     <View style={styles.docCard}>
                         <View style={styles.docIcon}>
@@ -51,9 +57,46 @@ export default function DocsScreen() {
                             <Text style={styles.docTitle}>강남본원 2023 하반기 계약서</Text>
                             <Text style={styles.docDate}>2023.09.01 체결 완료</Text>
                         </View>
-                        <TouchableOpacity style={styles.viewButton}>
+                        <TouchableOpacity
+                            style={styles.viewButton}
+                            onPress={() => router.push('/(tabs)/docs/contract')}
+                        >
                             <Text style={styles.viewButtonText}>보기</Text>
                         </TouchableOpacity>
+                    </View>
+                )}
+
+                {selectedTab === '요청/제안' && (
+                    <View style={styles.requestCard}>
+                        <View style={styles.requestHeader}>
+                            <View style={styles.requestBadgeRow}>
+                                <View style={styles.ddayBadge}>
+                                    <Text style={styles.ddayText}>D-1</Text>
+                                </View>
+                                <Bell color="#EF4444" size={16} style={{ marginLeft: 6 }} />
+                                <Text style={styles.requestStatusText}>요청 건</Text>
+                            </View>
+                            <Text style={styles.requestMetaText}>발송 전</Text>
+                        </View>
+
+                        <Text style={styles.requestTitle}>강남본원 화요일 신규 강의 배정 제안</Text>
+
+                        <View style={styles.requestBody}>
+                            <Text style={styles.requestBullet}>· 강의명: 고3 EBS 파이널 문풀</Text>
+                            <Text style={styles.requestBullet}>· 날짜: 2026-03-04</Text>
+                            <Text style={styles.requestBullet}>· 시간: 18:00 ~ 20:00</Text>
+                            <Text style={styles.requestBullet}>· 장소: 강남본원 3관 302호</Text>
+                            <Text style={styles.requestBullet}>· 페이: 50,000원 / 1시간</Text>
+                        </View>
+
+                        <View style={styles.requestActions}>
+                            <TouchableOpacity style={styles.acceptButton}>
+                                <Text style={styles.acceptButtonText}>수락</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.rejectButton}>
+                                <Text style={styles.rejectButtonText}>거절</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 )}
             </ScrollView>
@@ -80,4 +123,20 @@ const styles = StyleSheet.create({
     signButtonText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
     viewButton: { backgroundColor: '#f0f0f0', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
     viewButtonText: { color: '#666', fontWeight: 'bold', fontSize: 13 },
+
+    requestCard: { backgroundColor: 'white', padding: 16, borderRadius: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, marginBottom: 16 },
+    requestHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    requestBadgeRow: { flexDirection: 'row', alignItems: 'center' },
+    ddayBadge: { backgroundColor: '#FEE2E2', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
+    ddayText: { color: '#DC2626', fontWeight: '700', fontSize: 12 },
+    requestStatusText: { marginLeft: 6, fontSize: 12, color: '#DC2626', fontWeight: '600' },
+    requestMetaText: { fontSize: 11, color: '#9CA3AF' },
+    requestTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 10 },
+    requestBody: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 12, marginBottom: 12 },
+    requestBullet: { fontSize: 13, color: '#4B5563', marginBottom: 4 },
+    requestActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+    acceptButton: { flex: 1, backgroundColor: '#10B981', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginRight: 8 },
+    acceptButtonText: { color: 'white', fontWeight: '700', fontSize: 14 },
+    rejectButton: { flex: 1, backgroundColor: '#FEE2E2', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginLeft: 8 },
+    rejectButtonText: { color: '#DC2626', fontWeight: '700', fontSize: 14 },
 });
