@@ -1,25 +1,44 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Image } from 'react-native';
-import { Mail, Phone, MapPin, Camera, User } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Image, Modal, Pressable } from 'react-native';
+import { Phone, MapPin, Camera, User, GraduationCap, Plus, Trash2, ChevronDown, Mail } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useProfile } from '../context/ProfileContext';
+import { REGION_SIDO_GU } from '../data/regionData';
 
-// 샘플 데이터
+const SIDO_LIST = REGION_SIDO_GU.map((r) => r.sido);
+
+// 샘플 데이터 (주소는 시·도만)
 const SAMPLE_PROFILE = {
   photoUri: '' as string,
   name: '김태완',
-  email: 'kim.taewan@example.com',
+  email: 'kim.taewan@megastudy.co.kr',
   phone: '010-1234-5678',
-  address: '서울시 강남구 테헤란로 123 메가스터디빌딩 4층',
+  address: '서울',
 };
 type Profile = typeof SAMPLE_PROFILE;
 
 export default function InstructorProfileScreen() {
+  const { education, setEducation, certifications, setCertifications } = useProfile();
+
   const [photoUri, setPhotoUri] = useState(SAMPLE_PROFILE.photoUri);
   const [name, setName] = useState(SAMPLE_PROFILE.name);
   const [email, setEmail] = useState(SAMPLE_PROFILE.email);
   const [phone, setPhone] = useState(SAMPLE_PROFILE.phone);
   const [address, setAddress] = useState(SAMPLE_PROFILE.address);
   const [savedProfile, setSavedProfile] = useState<Profile>(SAMPLE_PROFILE);
+
+  const [schoolName, setSchoolName] = useState(education?.schoolName ?? '');
+  const [major, setMajor] = useState(education?.major ?? '');
+  const [graduationYear, setGraduationYear] = useState(education?.graduationYear ?? '');
+  const [certName, setCertName] = useState('');
+  const [certYear, setCertYear] = useState('');
+  const [addressDropdownOpen, setAddressDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    setSchoolName(education?.schoolName ?? '');
+    setMajor(education?.major ?? '');
+    setGraduationYear(education?.graduationYear ?? '');
+  }, [education]);
 
   const isDirty =
     photoUri !== savedProfile.photoUri ||
@@ -48,7 +67,23 @@ export default function InstructorProfileScreen() {
   const handleSave = () => {
     const nextProfile: Profile = { photoUri, name, email, phone, address };
     setSavedProfile(nextProfile);
+    if (schoolName.trim()) {
+      setEducation({ schoolName: schoolName.trim(), major: major.trim(), graduationYear: graduationYear.trim() });
+    } else {
+      setEducation(null);
+    }
     Alert.alert('저장 완료', '프로필이 저장되었습니다.');
+  };
+
+  const addCertification = () => {
+    if (!certName.trim()) return;
+    setCertifications([...certifications, { id: Date.now().toString(), name: certName.trim(), year: certYear.trim() }]);
+    setCertName('');
+    setCertYear('');
+  };
+
+  const removeCertification = (id: string) => {
+    setCertifications(certifications.filter((c) => c.id !== id));
   };
 
   return (
@@ -91,6 +126,7 @@ export default function InstructorProfileScreen() {
               placeholder="이메일"
               placeholderTextColor="#9CA3AF"
               keyboardType="email-address"
+              autoCapitalize="none"
             />
           </View>
           <View style={styles.fieldRow}>
@@ -106,15 +142,101 @@ export default function InstructorProfileScreen() {
           </View>
           <View style={styles.fieldRow}>
             <MapPin color="#4F46E5" size={20} />
+            <TouchableOpacity
+              style={styles.addressCombo}
+              onPress={() => setAddressDropdownOpen(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.addressComboText, !address && styles.addressComboPlaceholder]}>
+                {address || '시·도 선택'}
+              </Text>
+              <ChevronDown color="#6B7280" size={20} />
+            </TouchableOpacity>
+          </View>
+
+          <Modal
+            visible={addressDropdownOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setAddressDropdownOpen(false)}
+          >
+            <Pressable style={styles.modalBackdrop} onPress={() => setAddressDropdownOpen(false)}>
+              <View style={styles.dropdownList}>
+                {SIDO_LIST.map((sido) => (
+                  <TouchableOpacity
+                    key={sido}
+                    style={[styles.dropdownItem, address === sido && styles.dropdownItemSelected]}
+                    onPress={() => {
+                      setAddress(sido);
+                      setAddressDropdownOpen(false);
+                    }}
+                  >
+                    <Text style={[styles.dropdownItemText, address === sido && styles.dropdownItemTextSelected]}>
+                      {sido}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </Pressable>
+          </Modal>
+
+          <View style={styles.divider} />
+          <Text style={styles.subSectionTitle}>학력</Text>
+          <View style={styles.fieldRow}>
+            <GraduationCap color="#4F46E5" size={20} />
             <TextInput
-              style={[styles.input, styles.inputMultiline]}
-              value={address}
-              onChangeText={setAddress}
-              placeholder="주소"
+              style={[styles.input, styles.schoolInput]}
+              value={schoolName}
+              onChangeText={setSchoolName}
+              placeholder="학교명"
               placeholderTextColor="#9CA3AF"
-              multiline
+            />
+            <TextInput
+              style={[styles.input, styles.majorInput]}
+              value={major}
+              onChangeText={setMajor}
+              placeholder="전공"
+              placeholderTextColor="#9CA3AF"
+            />
+            <TextInput
+              style={[styles.input, styles.yearInput]}
+              value={graduationYear}
+              onChangeText={setGraduationYear}
+              placeholder="졸업연도"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="number-pad"
             />
           </View>
+
+          <Text style={styles.subSectionTitle}>자격증</Text>
+          <View style={styles.certRow}>
+            <TextInput
+              style={[styles.input, styles.certNameInput]}
+              value={certName}
+              onChangeText={setCertName}
+              placeholder="자격증명"
+              placeholderTextColor="#9CA3AF"
+            />
+            <TextInput
+              style={[styles.input, styles.certYearInput]}
+              value={certYear}
+              onChangeText={setCertYear}
+              placeholder="취득연도"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="number-pad"
+            />
+            <TouchableOpacity style={styles.addCertButton} onPress={addCertification}>
+              <Plus color="#fff" size={20} />
+            </TouchableOpacity>
+          </View>
+          {certifications.map((item) => (
+            <View key={item.id} style={styles.tagRow}>
+              <Text style={styles.tagText}>{item.name} ({item.year})</Text>
+              <TouchableOpacity onPress={() => removeCertification(item.id)}>
+                <Trash2 color="#9CA3AF" size={18} />
+              </TouchableOpacity>
+            </View>
+          ))}
 
           <TouchableOpacity
             style={[styles.saveButton, !isDirty && styles.saveButtonDisabled]}
@@ -141,7 +263,26 @@ const styles = StyleSheet.create({
   subLabel: { fontSize: 12, color: '#9CA3AF', marginBottom: 16 },
   divider: { height: 1, backgroundColor: '#F3F4F6', alignSelf: 'stretch', marginVertical: 16 },
   fieldRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 12 },
+  schoolInput: { flex: 2, minWidth: 0 },
+  majorInput: { flex: 1.5, minWidth: 72, marginLeft: 8 },
+  yearInput: { flex: 0.8, minWidth: 56, marginLeft: 8 },
   input: { flex: 1, paddingVertical: 12, paddingLeft: 8, fontSize: 15, color: '#374151' },
+  subSectionTitle: { fontSize: 14, fontWeight: 'bold', color: '#6B7280', alignSelf: 'stretch', marginTop: 8, marginBottom: 8 },
+  certRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 12, marginBottom: 8 },
+  certNameInput: { flex: 1, minWidth: 0 },
+  certYearInput: { width: 72, marginLeft: 8 },
+  addCertButton: { backgroundColor: '#4F46E5', width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  tagRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch', paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#EEF2FF', borderRadius: 8, marginBottom: 6 },
+  tagText: { fontSize: 14, color: '#374151', flex: 1 },
+  addressCombo: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingLeft: 8 },
+  addressComboText: { fontSize: 15, color: '#374151' },
+  addressComboPlaceholder: { color: '#9CA3AF' },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', paddingHorizontal: 24 },
+  dropdownList: { backgroundColor: 'white', borderRadius: 12, overflow: 'hidden', maxHeight: 360 },
+  dropdownItem: { paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  dropdownItemSelected: { backgroundColor: '#EEF2FF' },
+  dropdownItemText: { fontSize: 15, color: '#374151' },
+  dropdownItemTextSelected: { color: '#4F46E5', fontWeight: '700' },
   inputMultiline: { minHeight: 60, textAlignVertical: 'top' },
   saveButton: { backgroundColor: '#4F46E5', alignSelf: 'stretch', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16 },
   saveButtonDisabled: { backgroundColor: '#E5E7EB' },

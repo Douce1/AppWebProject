@@ -48,3 +48,6 @@ app-example
 
 # logs
 *.log
+
+# temp (self-healing / 테스트 전용)
+temp/
