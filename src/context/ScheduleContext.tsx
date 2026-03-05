@@ -13,11 +13,7 @@ export interface AppNotification {
     type: string;
     title: string;
     time: string;
-<<<<<<< Updated upstream
-    target: string;
-=======
     target: any;
->>>>>>> Stashed changes
 }
 
 interface ScheduleContextType {
@@ -26,11 +22,7 @@ interface ScheduleContextType {
     notifications: AppNotification[];
     removeNotification: (id: string) => void;
     isProposalResolved: boolean;
-<<<<<<< Updated upstream
-    setProposalResolved: (resolved: boolean) => void;
-=======
     resolveProposal: () => void;
->>>>>>> Stashed changes
 }
 
 const ScheduleContext = createContext<ScheduleContextType>({
@@ -39,11 +31,7 @@ const ScheduleContext = createContext<ScheduleContextType>({
     notifications: [],
     removeNotification: () => { },
     isProposalResolved: false,
-<<<<<<< Updated upstream
-    setProposalResolved: () => { },
-=======
     resolveProposal: () => { }
->>>>>>> Stashed changes
 });
 
 export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -59,17 +47,6 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const [notifications, setNotifications] = useState<AppNotification[]>([
         {
-<<<<<<< Updated upstream
-            id: 'notif-1',
-            type: '요청/제안',
-            title: '강남본원 회화 신규 강의 배정 제안',
-            time: '방금 전',
-            target: '/(tabs)/docs',
-        }
-    ]);
-
-    const [isProposalResolved, setProposalResolved] = useState(false);
-=======
             id: '1',
             type: '💬 신규메시지',
             title: '관리자님: 네 알겠습니다. 수고하세요.',
@@ -94,31 +71,13 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const resolveProposal = () => {
         setIsProposalResolved(true);
     };
->>>>>>> Stashed changes
 
     const addClass = (newClass: ClassSession) => {
         setClasses(prev => [...prev, newClass]);
     };
 
-    const removeNotification = (id: string) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
-    };
-
     return (
-<<<<<<< Updated upstream
-        <ScheduleContext.Provider
-            value={{
-                classes,
-                addClass,
-                notifications,
-                removeNotification,
-                isProposalResolved,
-                setProposalResolved,
-            }}
-        >
-=======
         <ScheduleContext.Provider value={{ classes, addClass, notifications, removeNotification, isProposalResolved, resolveProposal }}>
->>>>>>> Stashed changes
             {children}
         </ScheduleContext.Provider>
     );
