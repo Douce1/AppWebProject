@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { Filter } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 type LectureRecord = {
   id: string;
@@ -9,6 +10,7 @@ type LectureRecord = {
   museum: string; // 박물관/기관명
   title: string;
   durationHours: number; // 강의 시간(시간 단위)
+  notes?: string; // 특이 사항
 };
 
 const LECTURE_HISTORY: LectureRecord[] = [
@@ -19,6 +21,7 @@ const LECTURE_HISTORY: LectureRecord[] = [
     museum: '국립중앙박물관',
     title: '고대 유물 기초 탐구',
     durationHours: 2,
+    notes: '중학생 대상, 질의응답 시간 많았음',
   },
   {
     id: 'L2',
@@ -27,6 +30,7 @@ const LECTURE_HISTORY: LectureRecord[] = [
     museum: '국립중앙박물관',
     title: '조선시대 회화 이해',
     durationHours: 3,
+    notes: '고3 수험생 대상 집중 강의',
   },
   {
     id: 'L3',
@@ -116,6 +120,7 @@ const LECTURE_HISTORY: LectureRecord[] = [
     museum: '국립중앙박물관',
     title: '삼국시대 유물 집중 탐구',
     durationHours: 2,
+    notes: '첫 방문 학교, OT 성격',
   },
   {
     id: 'M2',
@@ -124,6 +129,7 @@ const LECTURE_HISTORY: LectureRecord[] = [
     museum: '부산시립박물관',
     title: '근현대 부산 항만사 특강',
     durationHours: 1.5,
+    notes: '보호자 참여, 질의응답 30분 진행',
   },
   {
     id: 'M3',
@@ -132,6 +138,7 @@ const LECTURE_HISTORY: LectureRecord[] = [
     museum: '광주역사민속박물관',
     title: '호남 전통 민속문화 이야기',
     durationHours: 2,
+    notes: '체험 위주 수업, 만족도 높음',
   },
 ];
 
@@ -181,6 +188,7 @@ export default function CareerSettingScreen() {
   const [appliedRegion, setAppliedRegion] = useState<string | null>(null);
   const [appliedMuseum, setAppliedMuseum] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState<boolean>(false);
+  const router = useRouter();
 
   const yearMonthOptions = useMemo(() => {
     const set = new Set<string>();
@@ -440,7 +448,17 @@ export default function CareerSettingScreen() {
           </View>
         ) : (
           filtered.map((item) => (
-            <View key={item.id} style={styles.card}>
+            <TouchableOpacity
+              key={item.id}
+              style={styles.card}
+              activeOpacity={0.8}
+              onPress={() =>
+                router.push({
+                  pathname: '/(tabs)/profile/career-detail' as any,
+                  params: { lecture: JSON.stringify(item) },
+                })
+              }
+            >
               <View style={styles.cardHeaderRow}>
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 <Text style={styles.cardHourBadge}>{item.durationHours}시간</Text>
@@ -449,7 +467,7 @@ export default function CareerSettingScreen() {
               <Text style={styles.cardMetaText}>
                 {item.region} · {item.museum}
               </Text>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </View>
