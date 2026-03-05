@@ -11,14 +11,17 @@ export default function ClassDetailScreen() {
     const classInfoString = typeof params.classInfo === 'string' ? params.classInfo : (Array.isArray(params.classInfo) ? params.classInfo[0] : null);
     const classInfo = classInfoString ? JSON.parse(classInfoString) : {};
 
-    const { classes } = useSchedule();
+    const { classes, departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport } = useSchedule();
     const router = useRouter();
     const insets = useSafeAreaInsets();
 
-    // Using local state to track check-in for this demo, 
-    // ideally this would sync with a context or database.
-    const [checkedIn, setCheckedIn] = useState(false);
-    const [reported, setReported] = useState(false);
+    const isReadyToReport = readyToReportIds.includes(classInfo.id);
+    const isEndedClass = endedClassIds.includes(classInfo.id);
+    const isCanEndClass = canEndClassIds.includes(classInfo.id);
+    const isArrived = arrivedIds.includes(classInfo.id);
+    const isCanArrive = canArriveIds.includes(classInfo.id);
+    const isDeparted = departedIds.includes(classInfo.id);
+    const isReported = reportedIds.includes(classInfo.id);
 
     // Modal state for Report
     const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -45,36 +48,14 @@ export default function ClassDetailScreen() {
         }
     }
 
-    const handleCheckIn = async () => {
-        try {
-            let { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert('권한 필요', '체크인을 위해 위치 권한이 필요합니다.');
-                return;
-            }
-            let location = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.Balanced
-            });
-            console.log('Checked in at:', location.coords);
-
-            setCheckedIn(true);
-            Alert.alert('체크인 완료', '정상적으로 출근 체크인이 완료되었습니다.');
-        } catch (error) {
-            Alert.alert('오류', '위치를 가져오는데 실패했습니다.');
-        }
-    };
-
-    const handleReport = () => {
-        setReportModalVisible(true);
-    };
-
     const submitReport = () => {
         if (!reportText.trim()) {
             Alert.alert('알림', '강의 보고서 내용을 입력해주세요.');
             return;
         }
+        submitClassReport(classInfo.id);
         setReportModalVisible(false);
-        setReported(true);
+        setReportText('');
         Alert.alert('보고서 작성 완료', '강의 보고서 작성이 완료되었습니다.');
         router.back();
     };
@@ -110,33 +91,71 @@ export default function ClassDetailScreen() {
 
                     <View style={styles.statusBox}>
                         <Text style={styles.statusLabel}>수업 상태</Text>
-                        <Text style={[styles.statusValue, checkedIn && styles.statusValueActive]}>
-                            {reported ? '보고 완료' : (checkedIn ? '출근 완료' : '진행 예정')}
+                        <Text style={[styles.statusValue, (isDeparted || isReported) && styles.statusValueActive]}>
+                            {isReported ? '보고 완료' :
+                                isReadyToReport ? '보고서 작성 대기' :
+                                    isEndedClass ? '종료 처리 중' :
+                                        isCanEndClass ? '강의 종료 대기' :
+                                            isArrived ? '도착 완료 (강의 중)' :
+                                                isCanArrive ? '도착 대기' :
+                                                    isDeparted ? '이동 중' : '진행 예정'}
                         </Text>
                     </View>
                 </View>
             </ScrollView>
 
             <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-                {!checkedIn ? (
-                    <TouchableOpacity style={styles.checkInButton} onPress={handleCheckIn}>
-                        <Text style={styles.actionText}>출근 체크인</Text>
-                    </TouchableOpacity>
-                ) : (!reported && hasEnded) ? (
-                    <TouchableOpacity style={styles.reportButton} onPress={handleReport}>
+                <TouchableOpacity
+                    style={[
+                        styles.checkInButton,
+                        (isDeparted && !isCanArrive) && styles.checkedInButton,
+                        (isCanArrive && !isArrived) && styles.checkInButton,
+                        (isArrived && !isCanEndClass) && styles.checkedInButton,
+                        (isCanEndClass && !isEndedClass) && styles.checkInButton,
+                        (isEndedClass && !isReadyToReport) && styles.checkedInButton,
+                        (isReadyToReport && !isReported) && styles.reportButtonStyles,
+                        (isReported) && styles.doneButtonStyles
+                    ]}
+                    onPress={() => {
+                        if (isReadyToReport && !isReported) {
+                            setReportModalVisible(true);
+                        } else {
+                            handleClassAction(classInfo.id);
+                        }
+                    }}
+                    activeOpacity={0.7}
+                    disabled={isReported || (isDeparted && !isCanArrive) || (isArrived && !isCanEndClass) || (isEndedClass && !isReadyToReport)}
+                >
+                    {isReported ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <CheckCircle2 color="white" size={20} style={{ marginRight: 8 }} />
+                            <Text style={styles.actionText}>강의 수고하셨습니다!</Text>
+                        </View>
+                    ) : isReadyToReport ? (
                         <Text style={styles.actionText}>강의 보고서 작성</Text>
-                    </TouchableOpacity>
-                ) : (!reported && !hasEnded) ? (
-                    <View style={styles.disabledButton}>
-                        <CheckCircle2 color="white" size={20} style={{ marginRight: 8 }} />
-                        <Text style={styles.actionText}>출근 완료 (강의 중)</Text>
-                    </View>
-                ) : (
-                    <View style={styles.disabledButton}>
-                        <CheckCircle2 color="white" size={20} style={{ marginRight: 8 }} />
-                        <Text style={styles.actionText}>강의 보고 완료</Text>
-                    </View>
-                )}
+                    ) : isEndedClass ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <CheckCircle2 color="white" size={20} style={{ marginRight: 8 }} />
+                            <Text style={styles.actionText}>종료 처리 중...</Text>
+                        </View>
+                    ) : isCanEndClass ? (
+                        <Text style={styles.actionText}>강의 종료</Text>
+                    ) : isArrived ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <CheckCircle2 color="white" size={20} style={{ marginRight: 8 }} />
+                            <Text style={styles.actionText}>도착 완료 (강의 중)</Text>
+                        </View>
+                    ) : isCanArrive ? (
+                        <Text style={styles.actionText}>도착</Text>
+                    ) : isDeparted ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <CheckCircle2 color="white" size={20} style={{ marginRight: 8 }} />
+                            <Text style={styles.actionText}>이동 중...</Text>
+                        </View>
+                    ) : (
+                        <Text style={styles.actionText}>출발</Text>
+                    )}
+                </TouchableOpacity>
             </View>
 
             {/* Report Modal */}
@@ -188,6 +207,9 @@ const styles = StyleSheet.create({
     statusValueActive: { color: '#10B981' },
     footer: { padding: 20, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#eee' },
     checkInButton: { backgroundColor: '#3b82f6', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
+    checkedInButton: { backgroundColor: '#10B981', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
+    reportButtonStyles: { backgroundColor: '#E53E3E', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
+    doneButtonStyles: { backgroundColor: '#9CA3AF', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
     reportButton: { backgroundColor: '#E53E3E', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
     disabledButton: { backgroundColor: '#10B981', paddingVertical: 15, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
     actionText: { color: 'white', fontSize: 16, fontWeight: 'bold' },

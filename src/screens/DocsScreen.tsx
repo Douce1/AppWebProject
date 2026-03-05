@@ -1,12 +1,25 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { FileSignature, FileText, Bell } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSchedule } from '../context/ScheduleContext';
 
 export default function DocsScreen() {
-    const [selectedTab, setSelectedTab] = useState('서류');
-    const tabs = ['서류', '계약', '요청/제안'];
+    const { proposalStatus, resolveProposal } = useSchedule();
     const router = useRouter();
+    const params = useLocalSearchParams();
+    const [selectedTab, setSelectedTab] = useState((params.targetTab as string) || '서류');
+    const tabs = ['서류', '계약', '요청/제안'];
+
+    const [isRejecting, setIsRejecting] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
+
+    const handleRejectSubmit = () => {
+        if (rejectReason.trim()) {
+            resolveProposal('거절');
+            // Mock sending rejectReason to server
+        }
+    };
 
     return (
         <View style={styles.container}>
@@ -70,33 +83,57 @@ export default function DocsScreen() {
                     <View style={styles.requestCard}>
                         <View style={styles.requestHeader}>
                             <View style={styles.requestBadgeRow}>
-                                <View style={styles.ddayBadge}>
-                                    <Text style={styles.ddayText}>D-1</Text>
-                                </View>
-                                <Bell color="#EF4444" size={16} style={{ marginLeft: 6 }} />
+                                {proposalStatus === '미응답' && (
+                                    <View style={styles.ddayBadge}>
+                                        <Text style={styles.ddayText}>D-1</Text>
+                                    </View>
+                                )}
+                                <Bell color="#EF4444" size={16} style={{ marginLeft: proposalStatus === '미응답' ? 6 : 0 }} />
                                 <Text style={styles.requestStatusText}>요청 건</Text>
                             </View>
-                            <Text style={styles.requestMetaText}>발송 전</Text>
+                            <Text style={styles.requestMetaText}>{proposalStatus === '미응답' ? '미응답' : `${proposalStatus} 완료`}</Text>
                         </View>
 
                         <Text style={styles.requestTitle}>강남본원 화요일 신규 강의 배정 제안</Text>
 
                         <View style={styles.requestBody}>
                             <Text style={styles.requestBullet}>· 강의명: 고3 EBS 파이널 문풀</Text>
-                            <Text style={styles.requestBullet}>· 날짜: 2026-03-04</Text>
+                            <Text style={styles.requestBullet}>· 날짜: 2026-03-10</Text>
                             <Text style={styles.requestBullet}>· 시간: 18:00 ~ 20:00</Text>
                             <Text style={styles.requestBullet}>· 장소: 강남본원 3관 302호</Text>
                             <Text style={styles.requestBullet}>· 페이: 50,000원 / 1시간</Text>
                         </View>
 
-                        <View style={styles.requestActions}>
-                            <TouchableOpacity style={styles.acceptButton}>
-                                <Text style={styles.acceptButtonText}>수락</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.rejectButton}>
-                                <Text style={styles.rejectButtonText}>거절</Text>
-                            </TouchableOpacity>
-                        </View>
+                        {proposalStatus === '미응답' && !isRejecting && (
+                            <View style={styles.requestActions}>
+                                <TouchableOpacity style={styles.acceptButton} onPress={() => resolveProposal('수락')}>
+                                    <Text style={styles.acceptButtonText}>수락</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.rejectButton} onPress={() => setIsRejecting(true)}>
+                                    <Text style={styles.rejectButtonText}>거절</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                        {proposalStatus === '미응답' && isRejecting && (
+                            <View style={styles.rejectInputContainer}>
+                                <TextInput
+                                    style={styles.rejectInput}
+                                    placeholder="거절 사유를 입력해주세요..."
+                                    value={rejectReason}
+                                    onChangeText={setRejectReason}
+                                    multiline
+                                    textAlignVertical="top"
+                                />
+                                <View style={styles.requestActions}>
+                                    <TouchableOpacity style={styles.cancelRejectButton} onPress={() => setIsRejecting(false)}>
+                                        <Text style={styles.cancelRejectButtonText}>취소</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.submitRejectButton} onPress={handleRejectSubmit}>
+                                        <Text style={styles.submitRejectButtonText}>거절 완료</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
                     </View>
                 )}
             </ScrollView>
@@ -139,4 +176,11 @@ const styles = StyleSheet.create({
     acceptButtonText: { color: 'white', fontWeight: '700', fontSize: 14 },
     rejectButton: { flex: 1, backgroundColor: '#FEE2E2', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginLeft: 8 },
     rejectButtonText: { color: '#DC2626', fontWeight: '700', fontSize: 14 },
+
+    rejectInputContainer: { marginTop: 10 },
+    rejectInput: { backgroundColor: '#F3F4F6', borderRadius: 8, padding: 12, minHeight: 60, fontSize: 13, marginBottom: 10, textAlignVertical: 'top' },
+    cancelRejectButton: { flex: 1, backgroundColor: '#F3F4F6', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginRight: 8 },
+    cancelRejectButtonText: { color: '#4B5563', fontWeight: '700', fontSize: 14 },
+    submitRejectButton: { flex: 1, backgroundColor: '#DC2626', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginLeft: 8 },
+    submitRejectButtonText: { color: 'white', fontWeight: '700', fontSize: 14 },
 });

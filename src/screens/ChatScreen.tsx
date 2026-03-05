@@ -6,83 +6,98 @@ import { useSchedule } from '../context/ScheduleContext';
 
 export default function ChatScreen({ navigation }: any) {
     const router = useRouter();
-    const { isProposalResolved } = useSchedule();
-    const [selectedTab, setSelectedTab] = useState('관리자 채팅');
+    const { chatMessages } = useSchedule();
+    const [selectedTab, setSelectedTab] = useState('전체 메시지');
 
-    // Chat state
-    const [chatMessages, setChatMessages] = useState([
-        { id: '1', text: '네 알겠습니다. 수고하세요.', isMine: false, time: '10:00 AM' }
-    ]);
-    const [inputText, setInputText] = useState('');
+    const tabs = ['전체 메시지', '안읽은 메시지'];
 
-    const tabs = ['받은 요청 전체', '관리자 채팅'];
+    // Calculate recent messages and unread counts per room
+    const getChatRooms = () => {
+        const roomsMap = new Map();
 
-    const renderChatTab = () => (
-        <View style={styles.chatTabContainer}>
+        // Sort messages chronologically so we can get the latest one easily
+        const sortedMessages = [...chatMessages].sort((a, b) => {
+            // Sort based on numeric id to handle Date.now() properly vs dummy '1', '2'
+            return parseInt(a.id) - parseInt(b.id);
+        });
+
+        sortedMessages.forEach(msg => {
+            if (!roomsMap.has(msg.roomId)) {
+                roomsMap.set(msg.roomId, {
+                    roomId: msg.roomId,
+                    companyName: msg.companyName,
+                    latestMessage: msg.text,
+                    latestTime: msg.time,
+                    latestMsgId: parseInt(msg.id),
+                    unreadCount: (!msg.isMine && !msg.isRead) ? 1 : 0
+                });
+            } else {
+                const room = roomsMap.get(msg.roomId);
+                room.latestMessage = msg.text;
+                room.latestTime = msg.time;
+                room.latestMsgId = parseInt(msg.id);
+                if (!msg.isMine && !msg.isRead) {
+                    room.unreadCount += 1;
+                }
+            }
+        });
+
+        let rooms = Array.from(roomsMap.values());
+        rooms.sort((a, b) => b.latestMsgId - a.latestMsgId); // Sort descending based on latest message id
+
+        if (selectedTab === '안읽은 메시지') {
+            rooms = rooms.filter(room => room.unreadCount > 0);
+        }
+
+        return rooms;
+    };
+
+    const renderChatRooms = () => {
+        const rooms = getChatRooms();
+
+        if (rooms.length === 0) {
+            return (
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>
+                        {selectedTab === '안읽은 메시지' ? '안읽은 메시지가 없습니다.' : '참여 중인 채팅방이 없습니다.'}
+                    </Text>
+                </View>
+            );
+        }
+
+        return (
             <ScrollView style={styles.chatScroll} contentContainerStyle={{ paddingBottom: 20 }}>
-                {/* System notification pointing to DocsScreen */}
-                {!isProposalResolved && (
+                {rooms.map(room => (
                     <TouchableOpacity
-                        style={styles.systemBubble}
-                        onPress={() => {
-                            router.push({
-                                pathname: '/(tabs)/docs',
-                                params: { targetTab: '요청/제안' }
-                            });
-                        }}
+                        key={room.roomId}
+                        style={styles.roomItem}
+                        onPress={() => router.push({ pathname: '/chat-room', params: { roomId: room.roomId } } as any)}
                     >
-                        <View style={styles.systemBubbleHeader}>
-                            <View style={styles.badgeRow}>
-                                <Text style={styles.dDayBadge}>D-1</Text>
-                                <Flame color="#E53E3E" size={14} style={{ marginLeft: 5 }} />
-                            </View>
-                            <Text style={styles.systemTime}>방금 전</Text>
+                        <View style={styles.roomProfilePic}>
+                            <Flame color="#9CA3AF" size={24} />
                         </View>
-                        <Text style={styles.systemBubbleTitle}>강남본원 회화 신규 강의 배정 제안</Text>
-                        <Text style={styles.systemBubbleAction}>탭하여 상세내용 확인 &gt;</Text>
+                        <View style={styles.roomInfo}>
+                            <View style={styles.roomHeaderRow}>
+                                <Text style={styles.roomName}>{room.companyName}</Text>
+                                <Text style={styles.roomTime}>{room.latestTime}</Text>
+                            </View>
+                            <View style={styles.roomMessageRow}>
+                                <Text style={styles.roomLatestMessage} numberOfLines={1}>{room.latestMessage}</Text>
+                                {room.unreadCount > 0 && (
+                                    <View style={styles.unreadBadge}>
+                                        <Text style={styles.unreadText}>{room.unreadCount}</Text>
+                                    </View>
+                                )}
+                            </View>
+                        </View>
                     </TouchableOpacity>
-                )}
-
-                {chatMessages.map(msg => (
-                    <View key={msg.id} style={[styles.chatBubble, msg.isMine ? styles.myBubble : styles.theirBubble]}>
-                        <Text style={[styles.chatText, msg.isMine && styles.myChatText]}>{msg.text}</Text>
-                        <Text style={styles.chatTime}>{msg.time}</Text>
-                    </View>
                 ))}
             </ScrollView>
-            <View style={styles.inputRow}>
-                <TextInput
-                    style={styles.chatInput}
-                    placeholder="메시지를 입력하세요..."
-                    value={inputText}
-                    onChangeText={setInputText}
-                />
-                <TouchableOpacity
-                    style={styles.sendButton}
-                    onPress={() => {
-                        if (inputText.trim()) {
-                            setChatMessages([...chatMessages, {
-                                id: Date.now().toString(),
-                                text: inputText,
-                                isMine: true,
-                                time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-                            }]);
-                            setInputText('');
-                        }
-                    }}
-                >
-                    <Text style={styles.sendButtonText}>전송</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
+        );
+    };
 
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
-        >
+        <View style={styles.container}>
             {/* Top Tabs */}
             <View style={styles.tabContainer}>
                 {tabs.map(tab => (
@@ -97,14 +112,9 @@ export default function ChatScreen({ navigation }: any) {
             </View>
 
             <View style={styles.contentContainer}>
-                {selectedTab === '관리자 채팅' && renderChatTab()}
-                {selectedTab !== '관리자 채팅' && (
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>{selectedTab} 목록이 없습니다.</Text>
-                    </View>
-                )}
+                {renderChatRooms()}
             </View>
-        </KeyboardAvoidingView>
+        </View>
     );
 }
 
@@ -119,24 +129,16 @@ const styles = StyleSheet.create({
     emptyContainer: { alignItems: 'center', marginTop: 50 },
     emptyText: { color: '#999', fontSize: 15 },
 
-    // Chat Styles
-    chatTabContainer: { flex: 1 },
+    // Room List Styles
     chatScroll: { flex: 1 },
-    systemBubble: { backgroundColor: '#F3F4F6', padding: 15, borderRadius: 12, marginBottom: 15, alignSelf: 'center', width: '90%', borderWidth: 1, borderColor: '#E5E7EB' },
-    systemBubbleHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    systemBubbleTitle: { fontSize: 15, fontWeight: 'bold', color: '#111827', marginBottom: 8 },
-    systemBubbleAction: { fontSize: 13, color: '#3b82f6', fontWeight: 'bold' },
-    badgeRow: { flexDirection: 'row', alignItems: 'center' },
-    dDayBadge: { backgroundColor: '#FEE2E2', color: '#DC2626', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 12, fontSize: 11, fontWeight: 'bold' },
-    systemTime: { fontSize: 11, color: '#9CA3AF' },
-    chatBubble: { maxWidth: '80%', padding: 12, borderRadius: 16, marginBottom: 15 },
-    theirBubble: { backgroundColor: 'white', alignSelf: 'flex-start', borderBottomLeftRadius: 4 },
-    myBubble: { backgroundColor: '#3b82f6', alignSelf: 'flex-end', borderBottomRightRadius: 4 },
-    chatText: { fontSize: 14, color: '#333', lineHeight: 20 },
-    myChatText: { color: 'white' },
-    chatTime: { fontSize: 10, color: '#9CA3AF', marginTop: 6, alignSelf: 'flex-end' },
-    inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 10, borderRadius: 25, marginTop: 10 },
-    chatInput: { flex: 1, paddingHorizontal: 15, paddingVertical: 8, fontSize: 14, maxHeight: 100 },
-    sendButton: { backgroundColor: '#3b82f6', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, marginLeft: 10 },
-    sendButtonText: { color: 'white', fontWeight: 'bold', fontSize: 13 }
+    roomItem: { flexDirection: 'row', backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10 },
+    roomProfilePic: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+    roomInfo: { flex: 1, justifyContent: 'center' },
+    roomHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+    roomName: { fontSize: 16, fontWeight: 'bold', color: '#111827' },
+    roomTime: { fontSize: 12, color: '#9CA3AF' },
+    roomMessageRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    roomLatestMessage: { fontSize: 14, color: '#6B7280', flex: 1, paddingRight: 10 },
+    unreadBadge: { backgroundColor: '#E53E3E', borderRadius: 12, minWidth: 24, paddingHorizontal: 6, paddingVertical: 2, justifyContent: 'center', alignItems: 'center' },
+    unreadText: { color: 'white', fontSize: 12, fontWeight: 'bold' }
 });

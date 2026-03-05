@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Alert, Dimensions, TextInput } from 'react-native';
 import { useSchedule } from '../context/ScheduleContext';
-import { Bell, MapPin, Clock, CalendarIcon as Calendar, CheckCircle2, ChevronLeft, ChevronRight, X, Megaphone } from 'lucide-react-native';
+import { Bell, MapPin, Clock, CalendarIcon as Calendar, CheckCircle2, ChevronLeft, ChevronRight, X, Megaphone, Settings } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 
@@ -9,13 +9,14 @@ const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }: any) {
   const router = useRouter();
-  const { classes, notifications, removeNotification } = useSchedule();
+  const { classes, notifications, removeNotification, chatMessages, markChatRoomAsRead,
+    departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport
+  } = useSchedule();
   // Notice & Side panel logic
   const [sidePanelVisible, setSidePanelVisible] = useState(false);
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
 
-  // Calendar selection state
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Weekly calendar logic
   const today = new Date();
@@ -42,37 +43,19 @@ export default function HomeScreen({ navigation }: any) {
 
   // Today's Date String for Check-in logic
   const todayStr = toLocalISOString(today);
-  const [checkedInIds, setCheckedInIds] = useState<string[]>([]);
-  const [reportedIds, setReportedIds] = useState<string[]>([]);
+  const activeDate = selectedDate || todayStr;
 
-  const handleCheckIn = async (id: string, hasEnded: boolean) => {
-    // If the class has ended and we haven't reported yet, mark as reported.
-    if (hasEnded && checkedInIds.includes(id) && !reportedIds.includes(id)) {
-      setReportedIds([...reportedIds, id]);
-      Alert.alert('보고 완료', '강의 보고서 작성을 위해 관련 폼으로 이동합니다. (현재 모의 동작)');
-      return;
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [currentReportId, setCurrentReportId] = useState<string | null>(null);
+  const [reportText, setReportText] = useState('');
+
+  const submitReport = () => {
+    if (currentReportId) {
+      submitClassReport(currentReportId);
     }
-
-    // Normal Check-in logic
-    if (!checkedInIds.includes(id) && !hasEnded) {
-      try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('권한 필요', '체크인을 위해 위치 권한이 필요합니다.');
-          return;
-        }
-        let location = await Location.getLastKnownPositionAsync();
-        if (!location) {
-          location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Lowest });
-        }
-        console.log('Checked in at:', location?.coords);
-
-        setCheckedInIds([...checkedInIds, id]);
-        Alert.alert('체크인 완료', '정상적으로 출근 체크인이 완료되었습니다.');
-      } catch (error) {
-        Alert.alert('오류', '위치를 가져오는데 실패했습니다.');
-      }
-    }
+    setReportModalVisible(false);
+    setReportText('');
+    setCurrentReportId(null);
   };
 
   // Helper func: Generate current month's calendar grid days
@@ -98,23 +81,18 @@ export default function HomeScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Top Bar with Persistent Bell */}
+      {/* Top Bar with Settings */}
       <View style={styles.topBar}>
         <Text style={styles.topBarTitle}>대시보드</Text>
-        <TouchableOpacity onPress={() => setSidePanelVisible(true)} style={styles.bellIconContainer}>
-          <Bell color="#666" size={24} />
-          {notifications.length > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{notifications.length}</Text>
-            </View>
-          )}
+        <TouchableOpacity onPress={() => router.push({ pathname: '/(tabs)/profile/settings', params: { returnTo: '/' } })} style={styles.settingsIconContainer}>
+          <Settings color="#666" size={26} />
         </TouchableOpacity>
       </View>
 
       {/* Weekly Schedule */}
       <View style={styles.calendarContainer}>
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>📅 주간 일정</Text>
+          <Text style={styles.sectionTitle}>📅 주간일정</Text>
           <TouchableOpacity onPress={() => { setCalendarModalVisible(true); setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1)); }} style={styles.viewCalendarBtn}>
             <Calendar size={16} color="#3b82f6" style={{ marginRight: 4 }} />
             <Text style={styles.viewAllText}>전체 일정 확인</Text>
@@ -123,15 +101,19 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.weekRow}>
           {weekDates.map((date, idx) => {
             const dateStr = toLocalISOString(date);
-            const isToday = dateStr === todayStr;
+            const isSelected = dateStr === activeDate;
             const hasClass = classes.some(c => c.date === dateStr);
 
             return (
-              <View key={idx} style={[styles.dayContainer, isToday && styles.todayContainer]}>
-                <Text style={[styles.dayText, isToday && styles.todayText]}>{getWeekDayStr(date)}</Text>
-                <Text style={[styles.dateText, isToday && styles.todayText]}>{date.getDate()}</Text>
+              <TouchableOpacity
+                key={idx}
+                style={[styles.dayContainer, isSelected && styles.todayContainer]}
+                onPress={() => setSelectedDate(dateStr)}
+              >
+                <Text style={[styles.dayText, isSelected && styles.todayText]}>{getWeekDayStr(date)}</Text>
+                <Text style={[styles.dateText, isSelected && styles.todayText]}>{date.getDate()}</Text>
                 {hasClass && <View style={styles.classIndicator} />}
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -139,18 +121,25 @@ export default function HomeScreen({ navigation }: any) {
 
       {/* Today's Schedule List */}
       <ScrollView style={styles.scheduleListContainer}>
-        <Text style={styles.sectionTitle}>오늘의 일정 ({classes.filter(c => c.date === todayStr).length})</Text>
-        {classes.filter(c => c.date === todayStr).map((c) => {
-          const isCheckedIn = checkedInIds.includes(c.id);
+        <Text style={styles.sectionTitle}>
+          {activeDate === todayStr ? '오늘의 일정' : `${activeDate.split('-')[1]}월 ${activeDate.split('-')[2]}일 일정`} ({classes.filter(c => c.date === activeDate).length})
+        </Text>
+        {classes.filter(c => c.date === activeDate).map((c) => {
+          const isReadyToReport = readyToReportIds.includes(c.id);
+          const isEndedClass = endedClassIds.includes(c.id);
+          const isCanEndClass = canEndClassIds.includes(c.id);
+          const isArrived = arrivedIds.includes(c.id);
+          const isCanArrive = canArriveIds.includes(c.id);
+          const isDeparted = departedIds.includes(c.id);
           const isReported = reportedIds.includes(c.id);
 
           let hasEnded = false;
           const endStr = c.time.split('-')[1]?.trim();
-          if (endStr && c.date === todayStr) {
+          if (endStr && c.date === activeDate) {
             const [endH, endM] = endStr.split(':').map(Number);
             const endTime = new Date(today);
             endTime.setHours(endH, endM, 0, 0);
-            if (new Date() > endTime) hasEnded = true;
+            if (new Date() > endTime && activeDate === todayStr) hasEnded = true;
           } else if (c.date < todayStr) {
             hasEnded = true;
           }
@@ -174,40 +163,95 @@ export default function HomeScreen({ navigation }: any) {
               <TouchableOpacity
                 style={[
                   styles.checkInButton,
-                  (isCheckedIn && !hasEnded) && styles.checkedInButton,
-                  (isCheckedIn && hasEnded && !isReported) && styles.reportButtonStyles,
-                  (isReported) && styles.checkedInButton
+                  (isDeparted && !isCanArrive) && styles.checkedInButton,
+                  (isCanArrive && !isArrived) && styles.checkInButton,
+                  (isArrived && !isCanEndClass) && styles.checkedInButton,
+                  (isCanEndClass && !isEndedClass) && styles.checkInButton,
+                  (isEndedClass && !isReadyToReport) && styles.checkedInButton,
+                  (isReadyToReport && !isReported) && styles.reportButtonStyles,
+                  (isReported) && styles.doneButtonStyles
                 ]}
                 onPress={(e) => {
                   e.stopPropagation();
-                  handleCheckIn(c.id, hasEnded);
+                  if (isReadyToReport && !isReported) {
+                    setCurrentReportId(c.id);
+                    setReportModalVisible(true);
+                  } else {
+                    handleClassAction(c.id);
+                  }
                 }}
                 activeOpacity={0.7}
-                disabled={isReported}
+                disabled={isReported || (isDeparted && !isCanArrive) || (isArrived && !isCanEndClass) || (isEndedClass && !isReadyToReport)}
               >
                 {isReported ? (
                   <View style={styles.row}>
                     <CheckCircle2 color="white" size={18} />
-                    <Text style={styles.checkInText}> 강의 보고 완료</Text>
+                    <Text style={[styles.checkInText, { marginLeft: 4 }]}>강의 수고하셨습니다!</Text>
                   </View>
-                ) : (isCheckedIn && hasEnded) ? (
-                  <Text style={styles.checkInText}>보고서 작성</Text>
-                ) : isCheckedIn ? (
+                ) : isReadyToReport ? (
+                  <Text style={styles.checkInText}>강의 보고서 작성</Text>
+                ) : isEndedClass ? (
                   <View style={styles.row}>
                     <CheckCircle2 color="white" size={18} />
-                    <Text style={styles.checkInText}> 출근 완료 (강의 중)</Text>
+                    <Text style={[styles.checkInText, { marginLeft: 4 }]}>종료 처리 중...</Text>
+                  </View>
+                ) : isCanEndClass ? (
+                  <Text style={styles.checkInText}>강의 종료</Text>
+                ) : isArrived ? (
+                  <View style={styles.row}>
+                    <CheckCircle2 color="white" size={18} />
+                    <Text style={[styles.checkInText, { marginLeft: 4 }]}>도착 완료 (강의 중)</Text>
+                  </View>
+                ) : isCanArrive ? (
+                  <Text style={styles.checkInText}>도착</Text>
+                ) : isDeparted ? (
+                  <View style={styles.row}>
+                    <CheckCircle2 color="white" size={18} />
+                    <Text style={[styles.checkInText, { marginLeft: 4 }]}>이동 중...</Text>
                   </View>
                 ) : (
-                  <Text style={styles.checkInText}>출근 체크인</Text>
+                  <Text style={styles.checkInText}>출발</Text>
                 )}
               </TouchableOpacity>
             </TouchableOpacity>
           );
         })}
-        {classes.filter(c => c.date === todayStr).length === 0 && (
-          <Text style={styles.emptyText}>오늘 예정된 강의가 없습니다.</Text>
+        {classes.filter(c => c.date === activeDate).length === 0 && (
+          <Text style={styles.emptyText}>
+            {activeDate === todayStr ? '오늘 예정된 강의가 없습니다.' : '해당 날짜에 예정된 강의가 없습니다.'}
+          </Text>
         )}
       </ScrollView>
+
+      {/* Report Modal */}
+      <Modal
+        visible={reportModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setReportModalVisible(false)}
+      >
+        <View style={styles.modalOverlayCen}>
+          <View style={styles.reportModalContent}>
+            <View style={styles.reportModalHeader}>
+              <Text style={styles.reportModalTitle}>강의 보고서 작성</Text>
+              <TouchableOpacity onPress={() => setReportModalVisible(false)}>
+                <X size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              style={styles.reportInput}
+              placeholder="특이사항 및 강의 내용을 입력해주세요..."
+              value={reportText}
+              onChangeText={setReportText}
+              multiline
+              textAlignVertical="top"
+            />
+            <TouchableOpacity style={styles.submitReportBtn} onPress={submitReport}>
+              <Text style={styles.submitReportText}>작성 완료</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Right Sidebar Notification Panel */}
       <Modal
@@ -220,13 +264,31 @@ export default function HomeScreen({ navigation }: any) {
           <TouchableOpacity style={{ flex: 1 }} onPress={() => setSidePanelVisible(false)} />
           <View style={styles.sidebarPanel}>
             <View style={styles.sidebarHeader}>
-              <Text style={styles.sidebarTitle}>알림 센터 ({notifications.length})</Text>
+              <Text style={styles.sidebarTitle}>
+                알림 센터 ({notifications.filter(n => n.type !== '💬 신규메시지').length + chatMessages.filter(msg => !msg.isMine && !msg.isRead).length})
+              </Text>
               <TouchableOpacity onPress={() => setSidePanelVisible(false)}>
                 <X size={24} color="#333" />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.sidebarContent}>
-              {notifications.map((notif: any) => (
+              {/* Added Dynamic Chat Notifications */}
+              {chatMessages.filter(msg => !msg.isMine && !msg.isRead).map(msg => (
+                <TouchableOpacity
+                  key={`chat-${msg.id}`}
+                  style={styles.notifItem}
+                  onPress={() => {
+                    setSidePanelVisible(false);
+                    markChatRoomAsRead(msg.roomId);
+                    router.push({ pathname: '/chat-room', params: { roomId: msg.roomId } } as any);
+                  }}
+                >
+                  <Text style={styles.notifType}>💬 신규메시지 ({msg.companyName})</Text>
+                  <Text style={styles.notifTitle}>관리자님: {msg.text}</Text>
+                  <Text style={styles.notifTime}>{msg.time}</Text>
+                </TouchableOpacity>
+              ))}
+              {notifications.filter(n => n.type !== '💬 신규메시지').map((notif: any) => (
                 <TouchableOpacity
                   key={notif.id}
                   style={styles.notifItem}
@@ -241,7 +303,7 @@ export default function HomeScreen({ navigation }: any) {
                   <Text style={styles.notifTime}>{notif.time}</Text>
                 </TouchableOpacity>
               ))}
-              {notifications.length === 0 && (
+              {notifications.filter(n => n.type !== '💬 신규메시지').length === 0 && chatMessages.filter(msg => !msg.isMine && !msg.isRead).length === 0 && (
                 <Text style={styles.emptyText}>새로운 알림이 없습니다.</Text>
               )}
             </ScrollView>
@@ -256,7 +318,6 @@ export default function HomeScreen({ navigation }: any) {
         animationType="fade"
         onRequestClose={() => {
           setCalendarModalVisible(false);
-          setSelectedCalendarDate(null);
         }}
       >
         <View style={styles.modalOverlayCen}>
@@ -265,7 +326,7 @@ export default function HomeScreen({ navigation }: any) {
               <TouchableOpacity onPress={() => changeMonth(-1)}><ChevronLeft size={24} color="#333" /></TouchableOpacity>
               <Text style={styles.calMonthText}>{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</Text>
               <TouchableOpacity onPress={() => changeMonth(1)}><ChevronRight size={24} color="#333" /></TouchableOpacity>
-              <TouchableOpacity onPress={() => { setCalendarModalVisible(false); setSelectedCalendarDate(null); }} style={{ position: 'absolute', right: 0 }}>
+              <TouchableOpacity onPress={() => { setCalendarModalVisible(false); }} style={{ position: 'absolute', right: 0 }}>
                 <X size={24} color="#999" />
               </TouchableOpacity>
             </View>
@@ -277,14 +338,17 @@ export default function HomeScreen({ navigation }: any) {
                 if (!dateObj) return <View key={idx} style={styles.calCellEmpty} />;
                 const dStr = toLocalISOString(dateObj);
                 const hasClass = classes.some(c => c.date === dStr);
-                const isSelected = selectedCalendarDate === dStr;
+                const isSelected = activeDate === dStr;
                 const isTodayStr = dStr === todayStr;
 
                 return (
                   <TouchableOpacity
                     key={idx}
                     style={[styles.calCell, isSelected && styles.calCellSelected]}
-                    onPress={() => setSelectedCalendarDate(dStr)}
+                    onPress={() => {
+                      setSelectedDate(dStr);
+                      setCalendarModalVisible(false);
+                    }}
                   >
                     <Text style={[styles.calCellText, isTodayStr && { color: '#3b82f6', fontWeight: 'bold' }, isSelected && { color: 'white' }]}>
                       {dateObj.getDate()}
@@ -294,27 +358,23 @@ export default function HomeScreen({ navigation }: any) {
                 );
               })}
             </View>
-
-            {/* Selected Date Details */}
-            {selectedCalendarDate && (
-              <ScrollView style={styles.selectedDateScroll}>
-                <Text style={styles.selectedDateTitle}>{selectedCalendarDate.split('-')[1]}월 {selectedCalendarDate.split('-')[2]}일 일정</Text>
-                {classes.filter(c => c.date === selectedCalendarDate).length > 0 ? (
-                  classes.filter(c => c.date === selectedCalendarDate).map(cls => (
-                    <View key={cls.id} style={styles.calMiniCard}>
-                      <Text style={styles.calMiniTitle}>{cls.title}</Text>
-                      <Text style={styles.calMiniTime}>{cls.time} | {cls.location}</Text>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.emptyText}>해당 날짜에 예정된 강의가 없습니다.</Text>
-                )}
-              </ScrollView>
-            )}
           </View>
         </View>
       </Modal>
-    </View >
+      {/* Floating Action Button for Notifications */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setSidePanelVisible(true)}
+        activeOpacity={0.8}
+      >
+        <Bell color="white" size={28} />
+        {notifications.filter(n => n.type !== '💬 신규메시지').length + chatMessages.filter(msg => !msg.isMine && !msg.isRead).length > 0 && (
+          <View style={styles.fabBadge}>
+            <Text style={styles.badgeText}>{notifications.filter(n => n.type !== '💬 신규메시지').length + chatMessages.filter(msg => !msg.isMine && !msg.isRead).length}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -339,11 +399,10 @@ const styles = StyleSheet.create({
   checkInButton: { backgroundColor: '#2f95dc', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
   checkedInButton: { backgroundColor: '#10B981' },
   reportButtonStyles: { backgroundColor: '#E53E3E' },
+  doneButtonStyles: { backgroundColor: '#9CA3AF' },
   checkInText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
   emptyText: { textAlign: 'center', color: '#999', marginTop: 20 },
-  bellIconContainer: { padding: 8, position: 'relative' },
-  badge: { position: 'absolute', top: 4, right: 4, backgroundColor: '#E53E3E', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white' },
-  badgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+  settingsIconContainer: { padding: 8 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   viewCalendarBtn: { flexDirection: 'row', alignItems: 'center' },
   viewAllText: { fontSize: 13, color: '#333', fontWeight: '500' },
@@ -376,5 +435,18 @@ const styles = StyleSheet.create({
   selectedDateTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 10, color: '#333' },
   calMiniCard: { backgroundColor: '#f9fafb', padding: 12, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: '#f0f0f0' },
   calMiniTitle: { fontSize: 14, fontWeight: '600', color: '#111827' },
-  calMiniTime: { fontSize: 12, color: '#666', marginTop: 4 }
+  calMiniTime: { fontSize: 12, color: '#666', marginTop: 4 },
+
+  // Report Modal Styles
+  reportModalContent: { backgroundColor: 'white', width: '90%', borderRadius: 16, padding: 20 },
+  reportModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  reportModalTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  reportInput: { backgroundColor: '#F3F4F6', borderRadius: 12, padding: 15, minHeight: 120, fontSize: 15, marginBottom: 15 },
+  submitReportBtn: { backgroundColor: '#3b82f6', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  submitReportText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+
+  // Floating Action Button
+  fab: { position: 'absolute', bottom: 20, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: '#3b82f6', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5, zIndex: 1000 },
+  fabBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#E53E3E', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white' },
+  badgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' }
 });
