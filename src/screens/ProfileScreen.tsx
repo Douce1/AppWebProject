@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Clock, UserCircle, ChevronRight, Briefcase, MapPin } from 'lucide-react-native';
+import { Clock, UserCircle, ChevronRight, Briefcase, MapPin, Camera } from 'lucide-react-native';
 import { useProfile } from '@/src/context/ProfileContext';
 
 export default function ProfileScreen() {
@@ -12,15 +12,27 @@ export default function ProfileScreen() {
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
-                <View style={styles.profileCard}>
+                <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => router.push('/(tabs)/profile/instructor')}
+                    style={styles.profileCard}
+                >
                     <View style={styles.profileInfo}>
-                        <View style={styles.avatarPlaceholder} />
+                        <View style={styles.avatarWrapper}>
+                            <View style={styles.avatarPlaceholder}>
+                                <Camera color="#9CA3AF" size={28} />
+                            </View>
+                            <View style={styles.avatarBadge}>
+                                <Camera color="#ffffff" size={16} />
+                            </View>
+                        </View>
                         <View style={styles.profileTextWrap}>
                             <Text style={styles.nameText}>김태완 강사님</Text>
                             <Text style={styles.subText}>메가강남본원 소속</Text>
+                            <Text style={styles.helperText}>프로필 사진을 탭하여 변경</Text>
                         </View>
                     </View>
-                </View>
+                </TouchableOpacity>
             </View>
 
             <View style={styles.section}>
@@ -82,17 +94,33 @@ const styles = StyleSheet.create({
     },
     profileInfo: { flexDirection: 'row', alignItems: 'center' },
     profileTextWrap: { flex: 1 },
+    avatarWrapper: { marginRight: 18 },
     avatarPlaceholder: {
         width: 72,
         height: 72,
         borderRadius: 36,
         backgroundColor: '#E0E7FF',
-        marginRight: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
         borderWidth: 3,
         borderColor: '#C7D2FE',
     },
+    avatarBadge: {
+        position: 'absolute',
+        right: -2,
+        bottom: -2,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#4F46E5',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: '#ffffff',
+    },
     nameText: { fontSize: 22, fontWeight: 'bold', color: '#111827', marginBottom: 6, letterSpacing: -0.3 },
     subText: { fontSize: 15, color: '#6B7280', fontWeight: '500' },
+    helperText: { fontSize: 12, color: '#9CA3AF', marginTop: 4 },
     section: { padding: 20, marginTop: 10 },
     sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#6B7280', marginBottom: 15 },
     menuItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 5, elevation: 1 },
