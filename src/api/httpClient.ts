@@ -8,14 +8,12 @@ import {
   ApiChatRoom,
   ApiCompany,
   ApiContract,
+  ApiContractDetail,
+  ApiContractVersion,
   ApiInstructorProfile,
   ApiLesson,
   ApiLessonReport,
   ApiLessonRequest,
-  ApiContract,
-  ApiContractDetail,
-  ApiContractVersion,
-  ApiAttendanceEvent,
   LectureRecordView,
 } from './types';
 import type { SubmitContractSignaturePayload } from './types';
