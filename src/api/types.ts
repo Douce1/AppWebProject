@@ -122,23 +122,45 @@ export interface LectureRecordView {
   notes?: string;        // 특이 사항 (lessonDetails/lessonReports 등에서 파생)
 }
 
-// ---- Chat API Types ----
+// ---- Chat API Types (백엔드 free-b 기준) ----
+
+export interface ApiChatRoomMember {
+  userId: string;
+  role: 'ADMIN' | 'INSTRUCTOR';
+  userName: string | null;
+  userEmail: string;
+  lastReadAt: string | null;
+}
+
+export interface ApiChatRoomLastMessage {
+  messageId: string;
+  messageType: 'TEXT' | 'SYSTEM';
+  content: string;
+  senderUserId: string;
+  sentAt: string; // ISO
+}
 
 export interface ApiChatRoom {
   roomId: string;
-  name: string;
-  lastMessage: string;
-  lastMessageAt: string; // ISO
+  companyId: string;
+  instructorId: string;
+  lessonId: string | null;
+  title: string | null;           // 방 이름 (null 가능 → 표시 시 ?? '채팅방')
+  status: 'ACTIVE' | 'ARCHIVED';
+  lastMessage: ApiChatRoomLastMessage | null;
   unreadCount: number;
+  members: ApiChatRoomMember[];
+  updatedAt: string;              // ISO — 마지막 업데이트 시간
 }
 
 export interface ApiChatMessage {
   messageId: string;
   roomId: string;
-  senderId: string;
-  senderName: string;
-  text: string;
-  createdAt: string; // ISO
-  isRead: boolean;
+  senderUserId: string;           // senderId → senderUserId
+  senderName: string | null;
+  messageType: 'TEXT' | 'SYSTEM';
+  content: string;                // text → content
+  sentAt: string;                 // createdAt → sentAt
+  // isMine은 앱에서 직접 계산: senderUserId === 현재 로그인 userId
   isMine: boolean;
 }

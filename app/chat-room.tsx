@@ -19,7 +19,7 @@ export default function ChatRoomScreen() {
     const keyboardPadding = useRef(new Animated.Value(0)).current;
 
     const roomMessages = getMessages(roomId);
-    const companyName = chatRooms.find(r => r.roomId === roomId)?.name || '채팅';
+    const companyName = chatRooms.find(r => r.roomId === roomId)?.title ?? '채팅';
 
     useEffect(() => {
         if (roomId) {
@@ -138,11 +138,11 @@ export default function ChatRoomScreen() {
                             )}
                             {!showProfile && !msg.isMine && <View style={styles.profilePlaceholder} />}
 
-                            {msg.isMine && <Text style={styles.chatTime}>{new Date(msg.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>}
+                            {msg.isMine && <Text style={styles.chatTime}>{new Date(msg.sentAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>}
                             <View style={[styles.chatBubble, msg.isMine ? styles.myBubble : styles.theirBubble]}>
-                                <Text style={[styles.chatText, msg.isMine && styles.myChatText]}>{msg.text}</Text>
+                                <Text style={[styles.chatText, msg.isMine && styles.myChatText]}>{msg.content}</Text>
                             </View>
-                            {!msg.isMine && <Text style={styles.chatTime}>{new Date(msg.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>}
+                            {!msg.isMine && <Text style={styles.chatTime}>{new Date(msg.sentAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>}
                         </View>
                     );
                 })}

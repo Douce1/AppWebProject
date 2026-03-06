@@ -37,8 +37,10 @@ interface ScheduleContextType {
     endedClassIds: string[];
     readyToReportIds: string[];
     reportedIds: string[];
+    classReports: Record<string, string>;
+    getClassReport: (id: string) => string | null;
     handleClassAction: (id: string) => Promise<void>;
-    submitClassReport: (id: string) => void;
+    submitClassReport: (id: string, text: string) => void;
 }
 
 const ScheduleContext = createContext<ScheduleContextType>({
@@ -56,6 +58,8 @@ const ScheduleContext = createContext<ScheduleContextType>({
     endedClassIds: [],
     readyToReportIds: [],
     reportedIds: [],
+    classReports: {},
+    getClassReport: () => null,
     handleClassAction: async () => { },
     submitClassReport: () => { }
 });
@@ -82,6 +86,8 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const resolveProposal = (status: '수락' | '거절' = '수락') => {
         setProposalStatus(status);
+        // 제안 알림 자동 제거 (알림 id: '2')
+        setNotifications(prev => prev.filter(n => n.id !== '2'));
         if (status === '수락') {
             addClass({
                 id: 'proposed-1',
@@ -104,6 +110,9 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [endedClassIds, setEndedClassIds] = useState<string[]>([]);
     const [readyToReportIds, setReadyToReportIds] = useState<string[]>([]);
     const [reportedIds, setReportedIds] = useState<string[]>([]);
+    const [classReports, setClassReports] = useState<Record<string, string>>({});
+
+    const getClassReport = (id: string): string | null => classReports[id] ?? null;
 
     useEffect(() => {
         let mounted = true;
@@ -189,14 +198,18 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     };
 
-    const submitClassReport = (id: string) => {
+    const submitClassReport = (id: string, text: string) => {
         setReportedIds(prev => [...prev, id]);
+        if (text.trim()) {
+            setClassReports(prev => ({ ...prev, [id]: text.trim() }));
+        }
     };
 
     return (
         <ScheduleContext.Provider value={{
             classes, addClass, notifications, removeNotification, isProposalResolved, proposalStatus, resolveProposal,
-            departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport
+            departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds,
+            classReports, getClassReport, handleClassAction, submitClassReport
         }}>
             {children}
         </ScheduleContext.Provider>

@@ -7,17 +7,18 @@ const socketModule = require('socket.io-client');
 const io = socketModule.io || socketModule.default?.io || socketModule;
 
 const USE_MOCK = true;
-const SOCKET_URL = 'http://localhost:3000'; // 백엔드 서버 URL
+const SOCKET_URL = 'http://localhost:3000/chat'; // /chat 네임스페이스 필수
 
 // ---- Types ----
 
 export interface ChatMessagePayload {
     messageId: string;
     roomId: string;
-    senderId: string;
-    senderName: string;
-    text: string;
-    createdAt: string;
+    senderUserId: string;    // senderId → senderUserId
+    senderName: string | null;
+    messageType: 'TEXT' | 'SYSTEM';
+    content: string;         // text → content
+    sentAt: string;          // createdAt → sentAt
 }
 
 export interface MessageReadPayload {
@@ -54,14 +55,15 @@ class MockChatSocket {
         console.log(`[MockSocket] Joined room: ${roomId}`);
     }
 
-    sendMessage(roomId: string, text: string, senderName: string = '나') {
+    sendMessage(roomId: string, content: string, senderName: string = '나') {
         const payload: ChatMessagePayload = {
             messageId: Date.now().toString(),
             roomId,
-            senderId: 'me',
+            senderUserId: 'me',
             senderName,
-            text,
-            createdAt: new Date().toISOString(),
+            messageType: 'TEXT',
+            content,
+            sentAt: new Date().toISOString(),
         };
         // 즉시 콜백 호출 (echo)
         setTimeout(() => {
@@ -136,8 +138,8 @@ class RealChatSocket {
         this.socket?.emit('join_room', { roomId });
     }
 
-    sendMessage(roomId: string, text: string) {
-        this.socket?.emit('send_message', { roomId, text });
+    sendMessage(roomId: string, content: string) {
+        this.socket?.emit('send_message', { roomId, content });
     }
 
     readRoom(roomId: string) {

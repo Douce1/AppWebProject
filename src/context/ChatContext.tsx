@@ -72,15 +72,17 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 실시간 메시지 수신
     useEffect(() => {
         const handleMessage = (payload: ChatMessagePayload) => {
+            // isMine: senderUserId === 'me' (mock) or 현재 로그인 userId
+            const isMine = payload.senderUserId === 'me';
             const newMsg: ApiChatMessage = {
                 messageId: payload.messageId,
                 roomId: payload.roomId,
-                senderId: payload.senderId,
+                senderUserId: payload.senderUserId,
                 senderName: payload.senderName,
-                text: payload.text,
-                createdAt: payload.createdAt,
-                isRead: false,
-                isMine: payload.senderId === 'me',
+                messageType: payload.messageType,
+                content: payload.content,
+                sentAt: payload.sentAt,
+                isMine,
             };
 
             // 메시지 맵에 추가
@@ -89,21 +91,27 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 [payload.roomId]: [...(prev[payload.roomId] || []), newMsg],
             }));
 
-            // 방 목록 갱신
+            // 방 목록 갱신 (lastMessage 객체 형식으로)
             setChatRooms(prev => {
                 const updated = prev.map(room => {
                     if (room.roomId === payload.roomId) {
                         return {
                             ...room,
-                            lastMessage: payload.text,
-                            lastMessageAt: payload.createdAt,
-                            unreadCount: payload.senderId === 'me' ? room.unreadCount : room.unreadCount + 1,
+                            lastMessage: {
+                                messageId: payload.messageId,
+                                messageType: payload.messageType,
+                                content: payload.content,
+                                senderUserId: payload.senderUserId,
+                                sentAt: payload.sentAt,
+                            },
+                            updatedAt: payload.sentAt,
+                            unreadCount: isMine ? room.unreadCount : room.unreadCount + 1,
                         };
                     }
                     return room;
                 });
                 // 최신 메시지 방을 맨 위로
-                updated.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+                updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
                 return updated;
             });
         };
@@ -123,10 +131,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const sendMessage = useCallback((roomId: string, text: string) => {
         if (!text.trim()) return;
 
-        const roomName = chatRooms.find(r => r.roomId === roomId)?.name || '채팅방';
+        const roomTitle = chatRooms.find(r => r.roomId === roomId)?.title ?? '채팅방';
 
         // 소켓으로 전송 (mock에서는 즉시 echo 콜백 발생)
-        chatSocket.sendMessage(roomId, text, roomName);
+        chatSocket.sendMessage(roomId, text, roomTitle);
 
         // API에도 저장 (mock에서는 즉시 반환)
         apiClient.sendChatMessage(roomId, text).catch(console.error);
@@ -135,14 +143,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const markAsRead = useCallback((roomId: string) => {
         // 로컬 상태 즉시 업데이트
         setMessagesMap(prev => {
-            const msgs = prev[roomId];
-            if (!msgs) return prev;
-            const hasUnread = msgs.some(m => !m.isMine && !m.isRead);
-            if (!hasUnread) return prev;
-            return {
-                ...prev,
-                [roomId]: msgs.map(m => (!m.isMine && !m.isRead) ? { ...m, isRead: true } : m),
-            };
+            // 백엔드에 isRead 없음 — unreadCount만 0으로 갱신
+            return prev;
         });
 
         setChatRooms(prev =>
@@ -160,9 +162,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unreadCount = chatRooms.reduce((sum, r) => sum + r.unreadCount, 0);
 
+    // 안읽은 메시지: isMine === false
     const unreadMessages: ApiChatMessage[] = Object.values(messagesMap)
         .flat()
-        .filter(m => !m.isMine && !m.isRead);
+        .filter(m => !m.isMine);
 
     return (
         <ChatContext.Provider value={{

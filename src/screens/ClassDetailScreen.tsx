@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSchedule } from '../context/ScheduleContext';
-import { ArrowLeft, User, Phone, BookOpen, CheckCircle2 } from 'lucide-react-native';
-import * as Location from 'expo-location';
+import { ArrowLeft, BookOpen, CheckCircle2, Phone, User } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSchedule } from '../context/ScheduleContext';
 
 export default function ClassDetailScreen() {
     const params = useLocalSearchParams();
     const classInfoString = typeof params.classInfo === 'string' ? params.classInfo : (Array.isArray(params.classInfo) ? params.classInfo[0] : null);
     const classInfo = classInfoString ? JSON.parse(classInfoString) : {};
 
-    const { classes, departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport } = useSchedule();
+    const { classes, departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport, getClassReport } = useSchedule();
     const router = useRouter();
     const insets = useSafeAreaInsets();
 
@@ -53,7 +52,7 @@ export default function ClassDetailScreen() {
             Alert.alert('알림', '강의 보고서 내용을 입력해주세요.');
             return;
         }
-        submitClassReport(classInfo.id);
+        submitClassReport(classInfo.id, reportText);
         setReportModalVisible(false);
         setReportText('');
         Alert.alert('보고서 작성 완료', '강의 보고서 작성이 완료되었습니다.');
@@ -66,7 +65,7 @@ export default function ClassDetailScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <ArrowLeft size={24} color="#333" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>학생 정보</Text>
+                <Text style={styles.headerTitle}>강의 정보</Text>
                 <View style={{ width: 24 }} />
             </View>
 
@@ -102,6 +101,17 @@ export default function ClassDetailScreen() {
                         </Text>
                     </View>
                 </View>
+
+                {/* 보고서 뷰어 */}
+                {isReported && getClassReport(classInfo.id) && (
+                    <View style={styles.reportCard}>
+                        <View style={styles.reportCardHeader}>
+                            <CheckCircle2 size={18} color="#10B981" />
+                            <Text style={styles.reportCardTitle}>작성된 강의 보고서</Text>
+                        </View>
+                        <Text style={styles.reportCardText}>{getClassReport(classInfo.id)}</Text>
+                    </View>
+                )}
             </ScrollView>
 
             <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
@@ -223,5 +233,11 @@ const styles = StyleSheet.create({
     cancelButton: { paddingVertical: 10, paddingHorizontal: 15, marginRight: 10 },
     cancelButtonText: { color: '#666', fontWeight: '600' },
     submitReportButton: { backgroundColor: '#3b82f6', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 8 },
-    submitReportText: { color: 'white', fontWeight: 'bold' }
+    submitReportText: { color: 'white', fontWeight: 'bold' },
+
+    // Report viewer card
+    reportCard: { backgroundColor: '#F0FDF4', borderRadius: 12, padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#BBF7D0' },
+    reportCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+    reportCardTitle: { fontSize: 15, fontWeight: '700', color: '#065F46', marginLeft: 8 },
+    reportCardText: { fontSize: 14, color: '#1F2937', lineHeight: 22 },
 });

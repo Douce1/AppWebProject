@@ -45,11 +45,11 @@ export default function ChatScreen({ navigation }: any) {
                         </View>
                         <View style={styles.roomInfo}>
                             <View style={styles.roomHeaderRow}>
-                                <Text style={styles.roomName}>{room.name}</Text>
-                                <Text style={styles.roomTime}>{new Date(room.lastMessageAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
+                                <Text style={styles.roomName}>{room.title ?? '주제 없음'}</Text>
+                                <Text style={styles.roomTime}>{new Date(room.lastMessage?.sentAt ?? room.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
                             </View>
                             <View style={styles.roomMessageRow}>
-                                <Text style={styles.roomLatestMessage} numberOfLines={1}>{room.lastMessage}</Text>
+                                <Text style={styles.roomLatestMessage} numberOfLines={1}>{room.lastMessage?.content ?? ''}</Text>
                                 {room.unreadCount > 0 && (
                                     <View style={styles.unreadBadge}>
                                         <Text style={styles.unreadText}>{room.unreadCount}</Text>

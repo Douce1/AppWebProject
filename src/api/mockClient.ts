@@ -142,16 +142,31 @@ const MOCK_LESSON_REPORTS: ApiLessonReport[] = [];
 
 // ---- Chat Mock Data ----
 const MOCK_CHAT_ROOMS: ApiChatRoom[] = [
-  { roomId: 'room-1', name: '강남본원 회화', lastMessage: '강의 제안에 대해 확인해주세요.', lastMessageAt: new Date().toISOString(), unreadCount: 1 },
-  { roomId: 'room-2', name: '종로 어학원', lastMessage: '네 참석 가능합니다!', lastMessageAt: new Date(Date.now() - 86400000).toISOString(), unreadCount: 0 },
-  { roomId: 'room-3', name: '분당 수능관', lastMessage: '다음 주 강의 자료 미리 부탁드립니다.', lastMessageAt: new Date(Date.now() - 7200000).toISOString(), unreadCount: 1 },
+  {
+    roomId: 'room-1', companyId: 'C_DEMO_001', instructorId: 'I_001', lessonId: null,
+    title: '강남본원 회화', status: 'ACTIVE',
+    lastMessage: { messageId: 'msg-r1', messageType: 'TEXT', content: '강의 제안에 대해 확인해주세요.', senderUserId: 'admin-1', sentAt: new Date().toISOString() },
+    unreadCount: 1, members: [], updatedAt: new Date().toISOString(),
+  },
+  {
+    roomId: 'room-2', companyId: 'C_DEMO_002', instructorId: 'I_001', lessonId: null,
+    title: '종로 어학원', status: 'ACTIVE',
+    lastMessage: { messageId: 'msg-r2', messageType: 'TEXT', content: '네 참석 가능합니다!', senderUserId: 'me', sentAt: new Date(Date.now() - 86400000).toISOString() },
+    unreadCount: 0, members: [], updatedAt: new Date(Date.now() - 86400000).toISOString(),
+  },
+  {
+    roomId: 'room-3', companyId: 'C_DEMO_003', instructorId: 'I_001', lessonId: null,
+    title: '분당 수능관', status: 'ACTIVE',
+    lastMessage: { messageId: 'msg-r3', messageType: 'TEXT', content: '다음 주 강의 자료 미리 부탁드립니다.', senderUserId: 'admin-3', sentAt: new Date(Date.now() - 7200000).toISOString() },
+    unreadCount: 1, members: [], updatedAt: new Date(Date.now() - 7200000).toISOString(),
+  },
 ];
 
 const MOCK_CHAT_MESSAGES: ApiChatMessage[] = [
-  { messageId: (Date.now() - 86400000 * 2).toString(), roomId: 'room-2', senderId: 'admin-2', senderName: '종로 어학원', text: '이번 주 금요일 회식 참석 가능하신가요?', createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), isRead: true, isMine: false },
-  { messageId: (Date.now() - 86400000).toString(), roomId: 'room-2', senderId: 'me', senderName: '나', text: '네 참석 가능합니다!', createdAt: new Date(Date.now() - 86400000).toISOString(), isRead: true, isMine: true },
-  { messageId: (Date.now() - 7200000).toString(), roomId: 'room-3', senderId: 'admin-3', senderName: '분당 수능관', text: '다음 주 강의 자료 미리 부탁드립니다.', createdAt: new Date(Date.now() - 7200000).toISOString(), isRead: false, isMine: false },
-  { messageId: Date.now().toString(), roomId: 'room-1', senderId: 'admin-1', senderName: '강남본원 회화', text: '강의 제안에 대해 확인해주세요.', createdAt: new Date().toISOString(), isRead: false, isMine: false },
+  { messageId: (Date.now() - 86400000 * 2).toString(), roomId: 'room-2', senderUserId: 'admin-2', senderName: '종로 어학원', messageType: 'TEXT', content: '이번 주 금요일 회식 참석 가능하신가요?', sentAt: new Date(Date.now() - 86400000 * 2).toISOString(), isMine: false },
+  { messageId: (Date.now() - 86400000).toString(), roomId: 'room-2', senderUserId: 'me', senderName: '나', messageType: 'TEXT', content: '네 참석 가능합니다!', sentAt: new Date(Date.now() - 86400000).toISOString(), isMine: true },
+  { messageId: (Date.now() - 7200000).toString(), roomId: 'room-3', senderUserId: 'admin-3', senderName: '분당 수능관', messageType: 'TEXT', content: '다음 주 강의 자료 미리 부탁드립니다.', sentAt: new Date(Date.now() - 7200000).toISOString(), isMine: false },
+  { messageId: Date.now().toString(), roomId: 'room-1', senderUserId: 'admin-1', senderName: '강남본원 회화', messageType: 'TEXT', content: '강의 제안에 대해 확인해주세요.', sentAt: new Date().toISOString(), isMine: false },
 ];
 
 // 강의 이력 뷰를 위한 변환 함수
@@ -232,31 +247,30 @@ export const mockClient = {
     return MOCK_CHAT_MESSAGES.filter(m => m.roomId === roomId);
   },
 
-  async sendChatMessage(roomId: string, text: string): Promise<ApiChatMessage> {
+  async sendChatMessage(roomId: string, content: string): Promise<ApiChatMessage> {
+    const sentAt = new Date().toISOString();
     const msg: ApiChatMessage = {
       messageId: Date.now().toString(),
       roomId,
-      senderId: 'me',
+      senderUserId: 'me',
       senderName: '나',
-      text,
-      createdAt: new Date().toISOString(),
-      isRead: true,
+      messageType: 'TEXT',
+      content,
+      sentAt,
       isMine: true,
     };
     MOCK_CHAT_MESSAGES.push(msg);
-    // Update room's lastMessage
+    // Update room's lastMessage (object)
     const room = MOCK_CHAT_ROOMS.find(r => r.roomId === roomId);
     if (room) {
-      room.lastMessage = text;
-      room.lastMessageAt = msg.createdAt;
+      room.lastMessage = { messageId: msg.messageId, messageType: 'TEXT', content, senderUserId: 'me', sentAt };
+      room.updatedAt = sentAt;
     }
     return msg;
   },
 
   async markRoomAsRead(roomId: string): Promise<void> {
-    MOCK_CHAT_MESSAGES.forEach(m => {
-      if (m.roomId === roomId && !m.isMine) m.isRead = true;
-    });
+    // 백엔드에 isRead가 없으므로 mock에서는 unreadCount만 0 처리
     const room = MOCK_CHAT_ROOMS.find(r => r.roomId === roomId);
     if (room) room.unreadCount = 0;
   },

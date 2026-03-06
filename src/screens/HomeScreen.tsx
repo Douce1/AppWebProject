@@ -1,11 +1,28 @@
 import { useRouter } from 'expo-router';
 import { Bell, CalendarIcon as Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, MapPin, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useRef, useState } from 'react';
-import { Animated, Dimensions, Modal, PanResponder, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useChat } from '../context/ChatContext';
 import { useSchedule } from '../context/ScheduleContext';
 
 const { width, height } = Dimensions.get('window');
+
+// ±180일 날짜 배열 생성 (오늘 = index 180)
+const DAYS_RANGE = 180;
+const TODAY_INDEX = DAYS_RANGE;
+
+function buildDateList() {
+  const today = new Date();
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const toStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return Array.from({ length: DAYS_RANGE * 2 + 1 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + (i - DAYS_RANGE));
+    return toStr(d);
+  });
+}
+
+const DATE_LIST = buildDateList();
 
 export default function HomeScreen({ navigation }: any) {
   const router = useRouter();
@@ -13,184 +30,118 @@ export default function HomeScreen({ navigation }: any) {
     departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport
   } = useSchedule();
   const { unreadCount, unreadMessages, markAsRead } = useChat();
+
+  const today = new Date();
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const toLocalISOString = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const todayStr = toLocalISOString(today);
+
   // Notice & Side panel logic
   const [sidePanelVisible, setSidePanelVisible] = useState(false);
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
-
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-
-  // Weekly calendar logic
-  const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
 
   const changeMonth = (offset: number) => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1));
   };
-  const dayOfWeek = today.getDay();
 
-  // Generate current week dates
+  // Weekly calendar row
+  const dayOfWeek = today.getDay();
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today);
     d.setDate(today.getDate() - dayOfWeek + i);
     return d;
   });
-
   const getWeekDayStr = (d: Date) => ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
 
-  const toLocalISOString = (d: Date) => {
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  };
+  // Carousel state
+  const flatListRef = useRef<FlatList>(null);
+  const [currentIndex, setCurrentIndex] = useState(TODAY_INDEX);
+  const activeDate = DATE_LIST[currentIndex];
 
-  // Today's Date String for Check-in logic
-  const todayStr = toLocalISOString(today);
-  const activeDate = selectedDate || todayStr;
-
-  // Keep a ref in sync for the PanResponder closure
-  const activeDateRef = useRef(activeDate);
-  activeDateRef.current = activeDate;
-
-  // Swipe gesture for schedule carousel
-  const swipeAnim = useRef(new Animated.Value(0)).current;
-
-  const changeDay = useCallback((offset: number) => {
-    const current = new Date(activeDateRef.current + 'T00:00:00');
-    current.setDate(current.getDate() + offset);
-    setSelectedDate(toLocalISOString(current));
+  // Scroll to a given index
+  const scrollToIndex = useCallback((index: number) => {
+    const clampedIndex = Math.max(0, Math.min(DATE_LIST.length - 1, index));
+    flatListRef.current?.scrollToIndex({ index: clampedIndex, animated: true });
   }, []);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 15 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy * 1.5);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        swipeAnim.setValue(gestureState.dx);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        Animated.spring(swipeAnim, { toValue: 0, useNativeDriver: true, tension: 40, friction: 8 }).start();
-        if (gestureState.dx < -50) {
-          // Swipe left → next day
-          changeDay(1);
-        } else if (gestureState.dx > 50) {
-          // Swipe right → previous day
-          changeDay(-1);
-        }
-      },
-      onPanResponderTerminate: () => {
-        Animated.spring(swipeAnim, { toValue: 0, useNativeDriver: true }).start();
-      },
-    })
-  ).current;
+  // Jump to today
+  const goToToday = useCallback(() => scrollToIndex(TODAY_INDEX), [scrollToIndex]);
 
+  // Chevron buttons
+  const goToPrev = useCallback(() => scrollToIndex(currentIndex - 1), [currentIndex, scrollToIndex]);
+  const goToNext = useCallback(() => scrollToIndex(currentIndex + 1), [currentIndex, scrollToIndex]);
+
+  // When weekly calendar bar is tapped, jump to that date
+  const jumpToDate = useCallback((dateStr: string) => {
+    const idx = DATE_LIST.indexOf(dateStr);
+    if (idx !== -1) scrollToIndex(idx);
+  }, [scrollToIndex]);
+
+  // Track which page is currently visible
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) {
+      setCurrentIndex(viewableItems[0].index);
+    }
+  }).current;
+  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
+
+  // getItemLayout so FlatList can scroll without measuring
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: width,
+    offset: width * index,
+    index,
+  }), []);
+
+  // Report modal
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [reportText, setReportText] = useState('');
 
   const submitReport = () => {
-    if (currentReportId) {
-      submitClassReport(currentReportId);
-    }
+    if (currentReportId) submitClassReport(currentReportId, reportText);
     setReportModalVisible(false);
     setReportText('');
     setCurrentReportId(null);
   };
 
-  // Helper func: Generate current month's calendar grid days
+  // Monthly calendar grid
   const getDaysInMonth = (year: number, month: number) => {
-    const days = [];
-    const date = new Date(year, month, 1);
-    const firstDay = date.getDay();
-
-    // Pad empty slots
-    for (let i = 0; i < firstDay; i++) {
-      days.push(null);
-    }
-
-    // Safely generate all days of the month at noon to prevent timezone shifts
+    const days: (Date | null)[] = [];
+    const firstDay = new Date(year, month, 1).getDay();
+    for (let i = 0; i < firstDay; i++) days.push(null);
     const numDays = new Date(year, month + 1, 0).getDate();
-    for (let i = 1; i <= numDays; i++) {
-      days.push(new Date(year, month, i, 12, 0, 0));
-    }
+    for (let i = 1; i <= numDays; i++) days.push(new Date(year, month, i, 12, 0, 0));
     return days;
   };
-
   const monthGridDays = getDaysInMonth(currentMonth.getFullYear(), currentMonth.getMonth());
 
-  return (
-    <View style={styles.container}>
-      {/* Top Bar with Settings & Notifications */}
-      <View style={styles.topBar}>
-        <Text style={styles.topBarTitle}>대시보드</Text>
-        <View style={styles.topBarIcons}>
-          <TouchableOpacity onPress={() => setSidePanelVisible(true)} style={styles.settingsIconContainer}>
-            <Bell color="#666" size={26} />
-            {notifications.filter(n => n.type !== '💬 신규메시지').length + unreadCount > 0 && (
-              <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>{notifications.filter(n => n.type !== '💬 신규메시지').length + unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
-            <Settings color="#666" size={26} />
-          </TouchableOpacity>
-        </View>
-      </View>
+  // Render one carousel page for a given dateStr
+  const renderPage = useCallback(({ item: dateStr }: { item: string }) => {
+    const dayClasses = classes.filter(c => c.date === dateStr);
+    const [, m, d] = dateStr.split('-');
 
-      {/* Weekly Schedule */}
-      <View style={styles.calendarContainer}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>📅 주간일정</Text>
-          <TouchableOpacity onPress={() => { setCalendarModalVisible(true); setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1)); }} style={styles.viewCalendarBtn}>
-            <Calendar size={16} color="#3b82f6" style={{ marginRight: 4 }} />
-            <Text style={styles.viewAllText}>전체 일정 확인</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.weekRow}>
-          {weekDates.map((date, idx) => {
-            const dateStr = toLocalISOString(date);
-            const isSelected = dateStr === activeDate;
-            const hasClass = classes.some(c => c.date === dateStr);
-
-            return (
-              <TouchableOpacity
-                key={idx}
-                style={[styles.dayContainer, isSelected && styles.todayContainer]}
-                onPress={() => setSelectedDate(dateStr)}
-              >
-                <Text style={[styles.dayText, isSelected && styles.todayText]}>{getWeekDayStr(date)}</Text>
-                <Text style={[styles.dateText, isSelected && styles.todayText]}>{date.getDate()}</Text>
-                {hasClass && <View style={styles.classIndicator} />}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Today's Schedule List with Swipe Carousel */}
-      <Animated.View
-        style={[styles.scheduleListContainer, { flex: 1, transform: [{ translateX: swipeAnim }] }]}
-        {...panResponder.panHandlers}
-      >
+    return (
+      <View style={{ width, flex: 1, paddingHorizontal: 15 }}>
         {/* Date Navigation Row */}
         <View style={styles.dateNavRow}>
-          <TouchableOpacity onPress={() => changeDay(-1)} style={styles.dateNavBtn}>
+          <TouchableOpacity onPress={goToPrev} style={styles.dateNavBtn}>
             <ChevronLeft size={22} color="#3b82f6" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setSelectedDate(todayStr)} style={styles.dateNavCenter}>
+          <TouchableOpacity onPress={goToToday} style={styles.dateNavCenter}>
             <Text style={styles.sectionTitle}>
-              {activeDate === todayStr ? '오늘의 일정' : `${parseInt(activeDate.split('-')[1])}월 ${parseInt(activeDate.split('-')[2])}일 일정`} ({classes.filter(c => c.date === activeDate).length})
+              {dateStr === todayStr ? '오늘의 일정' : `${parseInt(m)}월 ${parseInt(d)}일 일정`} ({dayClasses.length})
             </Text>
-            {activeDate !== todayStr && <Text style={styles.goTodayHint}>오늘로 이동</Text>}
+            {dateStr !== todayStr && <Text style={styles.goTodayHint}>오늘로 이동</Text>}
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => changeDay(1)} style={styles.dateNavBtn}>
+          <TouchableOpacity onPress={goToNext} style={styles.dateNavBtn}>
             <ChevronRight size={22} color="#3b82f6" />
           </TouchableOpacity>
         </View>
 
         <ScrollView style={{ flex: 1 }}>
-          {classes.filter(c => c.date === activeDate).map((c) => {
+          {dayClasses.map((c) => {
             const isReadyToReport = readyToReportIds.includes(c.id);
             const isEndedClass = endedClassIds.includes(c.id);
             const isCanEndClass = canEndClassIds.includes(c.id);
@@ -201,11 +152,11 @@ export default function HomeScreen({ navigation }: any) {
 
             let hasEnded = false;
             const endStr = c.time.split('-')[1]?.trim();
-            if (endStr && c.date === activeDate) {
+            if (endStr && c.date === dateStr) {
               const [endH, endM] = endStr.split(':').map(Number);
               const endTime = new Date(today);
               endTime.setHours(endH, endM, 0, 0);
-              if (new Date() > endTime && activeDate === todayStr) hasEnded = true;
+              if (new Date() > endTime && dateStr === todayStr) hasEnded = true;
             } else if (c.date < todayStr) {
               hasEnded = true;
             }
@@ -250,31 +201,19 @@ export default function HomeScreen({ navigation }: any) {
                   disabled={isReported || (isDeparted && !isCanArrive) || (isArrived && !isCanEndClass) || (isEndedClass && !isReadyToReport)}
                 >
                   {isReported ? (
-                    <View style={styles.row}>
-                      <CheckCircle2 color="white" size={18} />
-                      <Text style={[styles.checkInText, { marginLeft: 4 }]}>강의 수고하셨습니다!</Text>
-                    </View>
+                    <View style={styles.row}><CheckCircle2 color="white" size={18} /><Text style={[styles.checkInText, { marginLeft: 4 }]}>강의 수고하셨습니다!</Text></View>
                   ) : isReadyToReport ? (
                     <Text style={styles.checkInText}>강의 보고서 작성</Text>
                   ) : isEndedClass ? (
-                    <View style={styles.row}>
-                      <CheckCircle2 color="white" size={18} />
-                      <Text style={[styles.checkInText, { marginLeft: 4 }]}>종료 처리 중...</Text>
-                    </View>
+                    <View style={styles.row}><CheckCircle2 color="white" size={18} /><Text style={[styles.checkInText, { marginLeft: 4 }]}>종료 처리 중...</Text></View>
                   ) : isCanEndClass ? (
                     <Text style={styles.checkInText}>강의 종료</Text>
                   ) : isArrived ? (
-                    <View style={styles.row}>
-                      <CheckCircle2 color="white" size={18} />
-                      <Text style={[styles.checkInText, { marginLeft: 4 }]}>도착 완료 (강의 중)</Text>
-                    </View>
+                    <View style={styles.row}><CheckCircle2 color="white" size={18} /><Text style={[styles.checkInText, { marginLeft: 4 }]}>도착 완료 (강의 중)</Text></View>
                   ) : isCanArrive ? (
                     <Text style={styles.checkInText}>도착</Text>
                   ) : isDeparted ? (
-                    <View style={styles.row}>
-                      <CheckCircle2 color="white" size={18} />
-                      <Text style={[styles.checkInText, { marginLeft: 4 }]}>이동 중...</Text>
-                    </View>
+                    <View style={styles.row}><CheckCircle2 color="white" size={18} /><Text style={[styles.checkInText, { marginLeft: 4 }]}>이동 중...</Text></View>
                   ) : (
                     <Text style={styles.checkInText}>출발</Text>
                   )}
@@ -282,13 +221,82 @@ export default function HomeScreen({ navigation }: any) {
               </TouchableOpacity>
             );
           })}
-          {classes.filter(c => c.date === activeDate).length === 0 && (
+          {dayClasses.length === 0 && (
             <Text style={styles.emptyText}>
-              {activeDate === todayStr ? '오늘 예정된 강의가 없습니다.' : '해당 날짜에 예정된 강의가 없습니다.'}
+              {dateStr === todayStr ? '오늘 예정된 강의가 없습니다.' : '해당 날짜에 예정된 강의가 없습니다.'}
             </Text>
           )}
         </ScrollView>
-      </Animated.View>
+      </View>
+    );
+  }, [classes, readyToReportIds, endedClassIds, canEndClassIds, arrivedIds, canArriveIds, departedIds, reportedIds, todayStr, goToPrev, goToNext, goToToday, handleClassAction, router]);
+
+  return (
+    <View style={styles.container}>
+      {/* Top Bar with Settings & Notifications */}
+      <View style={styles.topBar}>
+        <Text style={styles.topBarTitle}>대시보드</Text>
+        <View style={styles.topBarIcons}>
+          <TouchableOpacity onPress={() => setSidePanelVisible(true)} style={styles.settingsIconContainer}>
+            <Bell color="#666" size={26} />
+            {notifications.filter(n => n.type !== '💬 신규메시지').length + unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{notifications.filter(n => n.type !== '💬 신규메시지').length + unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
+            <Settings color="#666" size={26} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Weekly Schedule */}
+      <View style={styles.calendarContainer}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>📅 주간일정</Text>
+          <TouchableOpacity onPress={() => { setCalendarModalVisible(true); setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1)); }} style={styles.viewCalendarBtn}>
+            <Calendar size={16} color="#3b82f6" style={{ marginRight: 4 }} />
+            <Text style={styles.viewAllText}>전체 일정 확인</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.weekRow}>
+          {weekDates.map((date, idx) => {
+            const dateStr = toLocalISOString(date);
+            const isSelected = dateStr === activeDate;
+            const hasClass = classes.some(c => c.date === dateStr);
+
+            return (
+              <TouchableOpacity
+                key={idx}
+                style={[styles.dayContainer, isSelected && styles.todayContainer]}
+                onPress={() => jumpToDate(dateStr)}
+              >
+                <Text style={[styles.dayText, isSelected && styles.todayText]}>{getWeekDayStr(date)}</Text>
+                <Text style={[styles.dateText, isSelected && styles.todayText]}>{date.getDate()}</Text>
+                {hasClass && <View style={styles.classIndicator} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Schedule Carousel — FlatList with pagingEnabled */}
+      <FlatList
+        ref={flatListRef}
+        data={DATE_LIST}
+        renderItem={renderPage}
+        keyExtractor={(item) => item}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        getItemLayout={getItemLayout}
+        initialScrollIndex={TODAY_INDEX}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        style={styles.scheduleListContainer}
+        removeClippedSubviews
+      />
 
       {/* Report Modal */}
       <Modal
@@ -351,8 +359,8 @@ export default function HomeScreen({ navigation }: any) {
                   }}
                 >
                   <Text style={styles.notifType}>💬 신규메시지 ({msg.senderName})</Text>
-                  <Text style={styles.notifTitle}>관리자님: {msg.text}</Text>
-                  <Text style={styles.notifTime}>{new Date(msg.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
+                  <Text style={styles.notifTitle}>관리자님: {msg.content}</Text>
+                  <Text style={styles.notifTime}>{new Date(msg.sentAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
                 </TouchableOpacity>
               ))}
               {notifications.filter(n => n.type !== '💬 신규메시지').map((notif: any) => (
@@ -413,7 +421,7 @@ export default function HomeScreen({ navigation }: any) {
                     key={idx}
                     style={[styles.calCell, isSelected && styles.calCellSelected]}
                     onPress={() => {
-                      setSelectedDate(dStr);
+                      jumpToDate(dStr);
                       setCalendarModalVisible(false);
                     }}
                   >
@@ -448,7 +456,7 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 16, fontWeight: '600', color: '#333' },
   todayText: { color: 'white', fontWeight: 'bold' },
   classIndicator: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E53E3E', marginTop: 5 },
-  scheduleListContainer: { paddingHorizontal: 15, marginTop: 20, flex: 1 },
+  scheduleListContainer: { marginTop: 20, flex: 1 },
   dateNavRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   dateNavBtn: { padding: 8, borderRadius: 20, backgroundColor: '#EEF2FF' },
   dateNavCenter: { flex: 1, alignItems: 'center' },
