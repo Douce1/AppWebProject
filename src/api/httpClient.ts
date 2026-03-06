@@ -2,14 +2,16 @@
 // 엔드포인트 경로는 free-b/docs/mock-api-contract.md 에 정의된 것만 사용합니다.
 
 import {
+  ApiAttendanceEvent,
   ApiAvailabilitySlot,
+  ApiChatMessage,
+  ApiChatRoom,
   ApiCompany,
+  ApiContract,
   ApiInstructorProfile,
   ApiLesson,
   ApiLessonReport,
   ApiLessonRequest,
-  ApiContract,
-  ApiAttendanceEvent,
   LectureRecordView,
 } from './types';
 
@@ -86,6 +88,36 @@ export const httpClient = {
   async getLectureHistory(): Promise<LectureRecordView[]> {
     const [lessons, reports] = await Promise.all([this.getLessons(), this.getLessonReports()]);
     return toLectureHistoryView(lessons, reports);
+  },
+
+  // ---- Chat ----
+  async getChatRooms(): Promise<ApiChatRoom[]> {
+    return getJson<ApiChatRoom[]>('/chat/rooms');
+  },
+
+  async getChatMessages(roomId: string, cursor?: string): Promise<ApiChatMessage[]> {
+    const query = cursor ? `?cursor=${cursor}` : '';
+    return getJson<ApiChatMessage[]>(`/chat/rooms/${roomId}/messages${query}`);
+  },
+
+  async sendChatMessage(roomId: string, text: string): Promise<ApiChatMessage> {
+    const res = await fetch(`${BASE_URL}/chat/rooms/${roomId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return res.json() as Promise<ApiChatMessage>;
+  },
+
+  async markRoomAsRead(roomId: string): Promise<void> {
+    const res = await fetch(`${BASE_URL}/chat/rooms/${roomId}/read`, { method: 'POST' });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+  },
+
+  async getUnreadCount(): Promise<number> {
+    const data = await getJson<{ count: number }>('/chat/unread-count');
+    return data.count;
   },
 };
 

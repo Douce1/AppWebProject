@@ -1,8 +1,10 @@
+import { useRouter } from 'expo-router';
+import { FileText, RefreshCcw, Settings, TrendingUp, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
-import { TrendingUp, RefreshCcw, X, FileText } from 'lucide-react-native';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function IncomeScreen() {
+    const router = useRouter();
     const [selectedDetail, setSelectedDetail] = useState<any>(null);
 
     const historyData = [
@@ -14,6 +16,9 @@ export default function IncomeScreen() {
         <ScrollView style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>수입/정산</Text>
+                <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
+                    <Settings color="#666" size={26} />
+                </TouchableOpacity>
             </View>
 
             <View style={styles.incomeCard}>
@@ -141,8 +146,9 @@ export default function IncomeScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f5f7fa' },
-    header: { paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20, backgroundColor: 'white' },
+    header: { paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
+    settingsIconContainer: { padding: 8 },
     incomeCard: { backgroundColor: '#1E3A8A', margin: 15, borderRadius: 16, padding: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4 },
     incomeLabel: { color: '#D1D5DB', fontSize: 14, marginBottom: 4 },
     amountRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 5 },
