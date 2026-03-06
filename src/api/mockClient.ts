@@ -12,8 +12,14 @@ import {
   ApiLesson,
   ApiLessonReport,
   ApiLessonRequest,
+  ApiContract,
+  ApiContractDetail,
+  ApiContractVersion,
+  ApiContractSignature,
+  ApiAttendanceEvent,
   LectureRecordView,
 } from './types';
+import type { SubmitContractSignaturePayload } from './types';
 
 // 간단한 샘플 데이터 (shape 검증용)
 const MOCK_COMPANY: ApiCompany = {
@@ -133,6 +139,42 @@ const MOCK_CONTRACTS: ApiContract[] = [
     instructorId: 'I_001',
     status: 'FULLY_SIGNED',
     currentVersion: 1,
+    title: '강남본원 2023 하반기 계약서',
+    effectiveFrom: '2023-09-01',
+    effectiveTo: '2024-02-28',
+  },
+  {
+    contractId: 'CT_002',
+    companyId: 'C_DEMO_001',
+    lessonId: 'L_002',
+    instructorId: 'I_001',
+    status: 'SENT',
+    currentVersion: 1,
+    title: '강남본원 2026 상반기 계약서',
+    effectiveFrom: '2026-03-01',
+    effectiveTo: '2026-08-31',
+  },
+  {
+    contractId: 'CT_003',
+    companyId: 'C_DEMO_001',
+    lessonId: 'L_003',
+    instructorId: 'I_001',
+    status: 'INSTRUCTOR_SIGNED',
+    currentVersion: 1,
+    title: '경기박물관 계약서',
+    effectiveFrom: '2026-02-01',
+    effectiveTo: '2026-06-30',
+  },
+  {
+    contractId: 'CT_004',
+    companyId: 'C_DEMO_001',
+    lessonId: 'L_004',
+    instructorId: 'I_001',
+    status: 'VOID',
+    currentVersion: 1,
+    title: '취소된 계약 (VOID)',
+    effectiveFrom: '2026-01-01',
+    effectiveTo: '2026-12-31',
   },
 ];
 
@@ -140,6 +182,94 @@ const MOCK_ATTENDANCE_EVENTS: ApiAttendanceEvent[] = [];
 
 const MOCK_LESSON_REPORTS: ApiLessonReport[] = [];
 
+// 계약 상세/버전/서명 Mock (contractId 기준)
+const MOCK_CONTRACT_VERSIONS: Record<string, ApiContractVersion> = {
+  CT_001: {
+    contractId: 'CT_001',
+    version: 1,
+    contentJson: JSON.stringify({
+      sections: [
+        { title: '1. 계약 당사자', content: '· 원장: 메가강남본원 원장\n· 강사: 김태완' },
+        { title: '2. 강의 및 근무 조건', content: '· 담당 과목: 수학\n· 근무 요일: 월, 수, 금' },
+        { title: '3. 정산 및 지급', content: '· 정산 주기: 매월 1회\n· 지급일: 익월 10일' },
+      ],
+    }),
+    documentHashSha256: 'a1b2c3d4e5f6mockhash001',
+    documentFileKey: 'contracts/CT_001/v1/document.pdf',
+    createdAt: '2023-09-01T00:00:00Z',
+  },
+  CT_002: {
+    contractId: 'CT_002',
+    version: 1,
+    contentJson: JSON.stringify({
+      sections: [
+        { title: '1. 계약 당사자', content: '· 원장: 강남본원\n· 강사: (서명 대기)' },
+        { title: '2. 강의 및 근무 조건', content: '· 고3 EBS 파이널 문풀 관련 조건' },
+      ],
+    }),
+    documentHashSha256: 'b2c3d4e5f6mockhash002',
+    documentFileKey: 'contracts/CT_002/v1/document.pdf',
+    createdAt: '2026-03-01T00:00:00Z',
+  },
+  CT_003: {
+    contractId: 'CT_003',
+    version: 1,
+    contentJson: JSON.stringify({ sections: [{ title: '경기박물관 계약', content: '강사 서명 완료, 관리자 서명 대기' }] }),
+    documentHashSha256: 'c3d4e5f6mockhash003',
+    documentFileKey: 'contracts/CT_003/v1/document.pdf',
+    createdAt: '2026-02-01T00:00:00Z',
+  },
+  CT_004: {
+    contractId: 'CT_004',
+    version: 1,
+    contentJson: JSON.stringify({ sections: [] }),
+    documentHashSha256: 'd4e5f6mockhash004',
+    documentFileKey: 'contracts/CT_004/v1/document.pdf',
+    createdAt: '2026-01-01T00:00:00Z',
+  },
+};
+
+/** 서명용 유효 토큰 (CT_002만 서명 대기 상태) */
+const VALID_SIGN_TOKEN_CT002 = 'sign-token-valid-ct002';
+
+function getMockSignatures(contractId: string, version: number, status: string): ApiContractSignature[] {
+  const base = {
+    contractId,
+    version,
+    consentGiven: true,
+    consentTextVersion: '1.0',
+    signTokenId: 'used-token',
+    ipHash: 'mock-ip-hash',
+    userAgent: 'MockApp/1.0',
+    signedAt: '2023-09-01T10:00:00Z',
+  };
+  if (contractId === 'CT_001' && status === 'FULLY_SIGNED') {
+    return [
+      { ...base, signerRole: 'INSTRUCTOR', signedAt: '2023-09-01T10:00:00Z' },
+      { ...base, signerRole: 'OWNER', signedAt: '2023-09-01T11:00:00Z' },
+    ];
+  }
+  if (contractId === 'CT_002' && status === 'SENT') return [];
+  if (contractId === 'CT_003' && status === 'INSTRUCTOR_SIGNED') {
+    return [{ ...base, signerRole: 'INSTRUCTOR', signedAt: '2026-02-15T10:00:00Z' }];
+  }
+  if (contractId === 'CT_004') return [];
+  return [];
+}
+
+function getContractDetail(contractId: string): ApiContractDetail {
+  const contract = MOCK_CONTRACTS.find((c) => c.contractId === contractId);
+  if (!contract) {
+    const err = new Error('CONTRACT_NOT_FOUND') as Error & { code?: string };
+    err.code = 'CONTRACT_NOT_FOUND';
+    throw err;
+  }
+  const currentVersion = MOCK_CONTRACT_VERSIONS[contractId] ?? null;
+  const signatures = getMockSignatures(contractId, contract.currentVersion, contract.status);
+  let signTokenId: string | null = null;
+  if (contract.status === 'SENT' && contractId === 'CT_002') signTokenId = VALID_SIGN_TOKEN_CT002;
+  return { contract, currentVersion, signatures, signTokenId };
+}
 // ---- Chat Mock Data ----
 const MOCK_CHAT_ROOMS: ApiChatRoom[] = [
   { roomId: 'room-1', name: '강남본원 회화', lastMessage: '강의 제안에 대해 확인해주세요.', lastMessageAt: new Date().toISOString(), unreadCount: 1 },
@@ -208,6 +338,63 @@ export const mockClient = {
 
   async getContracts(): Promise<ApiContract[]> {
     return MOCK_CONTRACTS;
+  },
+
+  async getContract(contractId: string): Promise<ApiContractDetail> {
+    return getContractDetail(contractId);
+  },
+
+  async getContractVersion(contractId: string, version: number): Promise<ApiContractVersion> {
+    const v = MOCK_CONTRACT_VERSIONS[contractId];
+    if (!v || v.version !== version) {
+      const err = new Error('CONTRACT_NOT_FOUND') as Error & { code?: string };
+      err.code = 'CONTRACT_NOT_FOUND';
+      throw err;
+    }
+    return v;
+  },
+
+  async submitContractSignature(contractId: string, payload: SubmitContractSignaturePayload): Promise<ApiContractDetail> {
+    if (!payload.consentGiven) {
+      const err = new Error('CONSENT_REQUIRED') as Error & { code?: string };
+      err.code = 'CONSENT_REQUIRED';
+      throw err;
+    }
+    const detail = getContractDetail(contractId);
+    if (detail.contract.status === 'FULLY_SIGNED') {
+      const err = new Error('CONTRACT_ALREADY_SIGNED') as Error & { code?: string };
+      err.code = 'CONTRACT_ALREADY_SIGNED';
+      throw err;
+    }
+    if (detail.contract.status === 'SENT' && detail.signTokenId) {
+      if (payload.signTokenId !== detail.signTokenId) {
+        const err = new Error('SIGN_TOKEN_EXPIRED') as Error & { code?: string };
+        err.code = 'SIGN_TOKEN_EXPIRED';
+        throw err;
+      }
+      // 성공: 강사 서명 반영된 상세 반환 (INSTRUCTOR_SIGNED)
+      const instructorSignature: ApiContractSignature = {
+        contractId,
+        version: detail.contract.currentVersion,
+        signerRole: 'INSTRUCTOR',
+        consentGiven: true,
+        consentTextVersion: payload.consentTextVersion,
+        signTokenId: payload.signTokenId,
+        ipHash: payload.ipHash ?? 'mock-ip-hash',
+        userAgent: payload.userAgent ?? 'MockApp/1.0',
+        signedAt: new Date().toISOString(),
+      };
+      return {
+        contract: { ...detail.contract, status: 'INSTRUCTOR_SIGNED' },
+        currentVersion: detail.currentVersion,
+        signatures: [...detail.signatures, instructorSignature],
+        signTokenId: null,
+      };
+    }
+    // 이미 강사 서명된 경우 등
+    const err = new Error('CONTRACT_ALREADY_SIGNED') as Error & { code?: string };
+    err.code = 'CONTRACT_ALREADY_SIGNED';
+    throw err;
   },
 
   async getAttendanceEvents(): Promise<ApiAttendanceEvent[]> {

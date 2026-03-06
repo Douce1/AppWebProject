@@ -83,6 +83,55 @@ export interface ApiContract {
   instructorId: string;
   status: ContractStatus;
   currentVersion: number;
+  /** 상세 표시용 (백엔드에서 내려주면 표시) */
+  title?: string;
+  effectiveFrom?: string; // ISO date
+  effectiveTo?: string;   // ISO date
+}
+
+/** 계약 서명자 역할 */
+export type ContractSignerRole = 'INSTRUCTOR' | 'OWNER';
+
+/** 계약 버전 (법적 증빙 필드 필수) */
+export interface ApiContractVersion {
+  contractId: string;
+  version: number;
+  contentJson: string;
+  documentHashSha256: string;
+  documentFileKey: string;
+  createdAt: string; // ISO
+}
+
+/** 계약 서명 1건 (법적 증빙 필드 필수) */
+export interface ApiContractSignature {
+  contractId: string;
+  version: number;
+  signerRole: ContractSignerRole;
+  consentGiven: boolean;
+  consentTextVersion: string;
+  signTokenId: string;
+  ipHash: string;
+  userAgent: string;
+  signedAt: string; // ISO
+}
+
+/** 계약 상세 응답 (getContract) */
+export interface ApiContractDetail {
+  contract: ApiContract;
+  currentVersion: ApiContractVersion | null;
+  signatures: ApiContractSignature[];
+  /** 강사가 다음 서명할 때 필요한 토큰 (상태 SENT이고 강사 차례일 때만) */
+  signTokenId?: string | null;
+}
+
+/** 서명 제출 요청 body */
+export interface SubmitContractSignaturePayload {
+  consentGiven: boolean;
+  consentTextVersion: string;
+  signTokenId: string;
+  /** 클라이언트에서 채우거나 백엔드가 무시할 수 있음 */
+  ipHash?: string;
+  userAgent?: string;
 }
 
 export interface ApiAttendanceEvent {

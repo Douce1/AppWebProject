@@ -12,15 +12,40 @@ import {
   ApiLesson,
   ApiLessonReport,
   ApiLessonRequest,
+  ApiContract,
+  ApiContractDetail,
+  ApiContractVersion,
+  ApiAttendanceEvent,
   LectureRecordView,
 } from './types';
+import type { SubmitContractSignaturePayload } from './types';
 
 const BASE_URL = 'http://localhost:3000';
 
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`);
   if (!res.ok) {
-    throw new Error(`HTTP error ${res.status} for ${path}`);
+    const body = await res.json().catch(() => ({})) as { code?: string };
+    const err = new Error(body?.code ?? `HTTP error ${res.status} for ${path}`) as Error & { code?: string; status?: number };
+    err.code = body?.code;
+    err.status = res.status;
+    throw err;
+  }
+  return res.json() as Promise<T>;
+}
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({})) as { code?: string };
+    const err = new Error(data?.code ?? `HTTP error ${res.status} for ${path}`) as Error & { code?: string; status?: number };
+    err.code = data?.code;
+    err.status = res.status;
+    throw err;
   }
   return res.json() as Promise<T>;
 }
@@ -75,6 +100,18 @@ export const httpClient = {
 
   async getContracts(): Promise<ApiContract[]> {
     return getJson<ApiContract[]>('/contracts');
+  },
+
+  async getContract(contractId: string): Promise<ApiContractDetail> {
+    return getJson<ApiContractDetail>(`/contracts/${encodeURIComponent(contractId)}`);
+  },
+
+  async getContractVersion(contractId: string, version: number): Promise<ApiContractVersion> {
+    return getJson<ApiContractVersion>(`/contracts/${encodeURIComponent(contractId)}/versions/${version}`);
+  },
+
+  async submitContractSignature(contractId: string, payload: SubmitContractSignaturePayload): Promise<ApiContractDetail> {
+    return postJson<ApiContractDetail>(`/contracts/${encodeURIComponent(contractId)}/sign`, payload);
   },
 
   async getAttendanceEvents(): Promise<ApiAttendanceEvent[]> {
