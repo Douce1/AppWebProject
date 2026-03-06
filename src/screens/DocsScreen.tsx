@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { FileSignature, FileText, Bell, Settings } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSchedule } from '../context/ScheduleContext';
 import { apiClient } from '../api/apiClient';
 import type { ApiContract, ContractStatus } from '../api/types';
 
 export default function DocsScreen() {
+    const insets = useSafeAreaInsets();
     const { proposalStatus, resolveProposal } = useSchedule();
     const router = useRouter();
     const params = useLocalSearchParams();
@@ -54,13 +56,15 @@ export default function DocsScreen() {
     };
 
     return (
-        <View style={styles.container}>
-            {/* Top Bar with Settings */}
+        <View style={[styles.container, { paddingTop: Math.max(50, insets.top) }]}>
+            {/* Top Bar with Settings - 대시보드와 동일한 디자인 */}
             <View style={styles.topBar}>
                 <Text style={styles.topBarTitle}>서류/계약</Text>
-                <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
-                    <Settings color="#666" size={26} />
-                </TouchableOpacity>
+                <View style={styles.topBarIcons}>
+                    <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
+                        <Settings color="#666" size={26} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* Top Tabs */}
@@ -198,9 +202,10 @@ export default function DocsScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f7fa', paddingTop: 50 },
-    topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 10 },
-    topBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
+    container: { flex: 1, backgroundColor: '#f5f7fa' },
+    topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 15 },
+    topBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827', lineHeight: 32 },
+    topBarIcons: { flexDirection: 'row', alignItems: 'center' },
     settingsIconContainer: { padding: 8 },
     tabContainer: { flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
     tabButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, marginRight: 8, backgroundColor: '#f0f0f0' },
