@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { FileSignature, FileText, Bell } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSchedule } from '../context/ScheduleContext';
+import { apiClient } from '../api/apiClient';
+import type { ApiContract, ContractStatus } from '../api/types';
 
 export default function DocsScreen() {
     const { proposalStatus, resolveProposal } = useSchedule();
@@ -14,7 +16,36 @@ export default function DocsScreen() {
     const [isRejecting, setIsRejecting] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
 
-    const handleRejectSubmit = () => {
+    const [contracts, setContracts] = useState<ApiContract[]>([]);
+    const [contractsLoading, setContractsLoading] = useState(false);
+
+    useEffect(() => {
+        if (selectedTab !== '계약') return;
+        let mounted = true;
+        setContractsLoading(true);
+        apiClient.getContracts()
+            .then((list) => { if (mounted) setContracts(list); })
+            .catch(() => { if (mounted) setContracts([]); })
+            .finally(() => { if (mounted) setContractsLoading(false); });
+        return () => { mounted = false; };
+    }, [selectedTab]);
+
+    const contractStatusLabel = (s: ContractStatus): string => {
+        const map: Record<ContractStatus, string> = {
+            DRAFT: '초안',
+            SENT: '서명 대기',
+            INSTRUCTOR_SIGNED: '강사 서명 완료',
+            FULLY_SIGNED: '체결 완료',
+            VOID: '취소',
+        };
+        return map[s] ?? s;
+    };
+
+    const formatContractDate = (c: ApiContract): string => {
+        if (c.effectiveFrom && c.effectiveTo) return `${c.effectiveFrom.slice(0, 10)} ~ ${c.effectiveTo.slice(0, 10)}`;
+        if (c.effectiveFrom) return `${c.effectiveFrom.slice(0, 10)} 체결`;
+        return '';
+    };
         if (rejectReason.trim()) {
             resolveProposal('거절');
             // Mock sending rejectReason to server
@@ -62,21 +93,37 @@ export default function DocsScreen() {
                 )}
 
                 {selectedTab === '계약' && (
-                    <View style={styles.docCard}>
-                        <View style={styles.docIcon}>
-                            <FileText color="#10B981" size={24} />
-                        </View>
-                        <View style={styles.docInfo}>
-                            <Text style={styles.docTitle}>강남본원 2023 하반기 계약서</Text>
-                            <Text style={styles.docDate}>2023.09.01 체결 완료</Text>
-                        </View>
-                        <TouchableOpacity
-                            style={styles.viewButton}
-                            onPress={() => router.push('/(tabs)/docs/contract')}
-                        >
-                            <Text style={styles.viewButtonText}>보기</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <>
+                        {contractsLoading ? (
+                            <View style={styles.loadingRow}>
+                                <ActivityIndicator size="small" color="#3b82f6" />
+                                <Text style={styles.loadingText}>계약 목록 불러오는 중...</Text>
+                            </View>
+                        ) : contracts.length === 0 ? (
+                            <Text style={styles.emptyText}>표시할 계약이 없습니다.</Text>
+                        ) : (
+                            contracts.map((c) => (
+                                <View key={c.contractId} style={styles.docCard}>
+                                    <View style={styles.docIcon}>
+                                        <FileText color="#10B981" size={24} />
+                                    </View>
+                                    <View style={styles.docInfo}>
+                                        <Text style={styles.docTitle}>{c.title ?? `계약 ${c.contractId}`}</Text>
+                                        <Text style={styles.docDate}>
+                                            {formatContractDate(c)}
+                                            {formatContractDate(c) ? ' · ' : ''}{contractStatusLabel(c.status)}
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.viewButton}
+                                        onPress={() => router.push(`/(tabs)/docs/contract?contractId=${encodeURIComponent(c.contractId)}`)}
+                                    >
+                                        <Text style={styles.viewButtonText}>보기</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ))
+                        )}
+                    </>
                 )}
 
                 {selectedTab === '요청/제안' && (
@@ -160,6 +207,9 @@ const styles = StyleSheet.create({
     signButtonText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
     viewButton: { backgroundColor: '#f0f0f0', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
     viewButtonText: { color: '#666', fontWeight: 'bold', fontSize: 13 },
+    loadingRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 8 },
+    loadingText: { fontSize: 13, color: '#6B7280' },
+    emptyText: { fontSize: 13, color: '#9CA3AF', padding: 16 },
 
     requestCard: { backgroundColor: 'white', padding: 16, borderRadius: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, marginBottom: 16 },
     requestHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
