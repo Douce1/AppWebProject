@@ -3,21 +3,26 @@ import { useRouter } from 'expo-router';
 import { Briefcase, Camera, ChevronRight, Clock, MapPin, Settings, UserCircle } from 'lucide-react-native';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
+    const insets = useSafeAreaInsets();
     const router = useRouter();
     const { selectedRegions } = useProfile();
     const regionSummary = selectedRegions.length > 0 ? selectedRegions.join(', ') : null;
 
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.headerTopBar}>
-                    <Text style={styles.headerTopBarTitle}>내 정보</Text>
+        <ScrollView style={[styles.container, { paddingTop: Math.max(50, insets.top) }]}>
+            {/* Top Bar - 대시보드와 동일한 디자인/위치 */}
+            <View style={styles.topBar}>
+                <Text style={styles.topBarTitle}>내 정보</Text>
+                <View style={styles.topBarIcons}>
                     <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
                         <Settings color="#666" size={26} />
                     </TouchableOpacity>
                 </View>
+            </View>
+            <View style={styles.header}>
                 <TouchableOpacity
                     activeOpacity={0.9}
                     onPress={() => router.push('/(tabs)/profile/instructor')}
@@ -85,10 +90,11 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f5f7fa' },
-    header: { paddingTop: 48, paddingHorizontal: 20, paddingBottom: 20 },
-    headerTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-    headerTopBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
+    topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 15 },
+    topBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827', lineHeight: 32 },
+    topBarIcons: { flexDirection: 'row', alignItems: 'center' },
     settingsIconContainer: { padding: 8 },
+    header: { paddingHorizontal: 15, paddingBottom: 20 },
     profileCard: {
         backgroundColor: 'white',
         borderRadius: 20,
@@ -130,7 +136,7 @@ const styles = StyleSheet.create({
     nameText: { fontSize: 22, fontWeight: 'bold', color: '#111827', marginBottom: 6, letterSpacing: -0.3 },
     subText: { fontSize: 15, color: '#6B7280', fontWeight: '500' },
     helperText: { fontSize: 12, color: '#9CA3AF', marginTop: 4 },
-    section: { padding: 20, marginTop: 10 },
+    section: { paddingHorizontal: 15, paddingVertical: 20, marginTop: 10 },
     sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#6B7280', marginBottom: 15 },
     menuItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 5, elevation: 1 },
     menuIconContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', marginRight: 15 },
