@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { Filter } from 'lucide-react-native';
+import { Filter, Check } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { apiClient } from '../api/apiClient';
 
@@ -17,22 +17,22 @@ type LectureRecord = {
 type Filters = {
   startYearMonth?: string | null;
   endYearMonth?: string | null;
-  region?: string | null;
-  museum?: string | null;
+  regions?: string[] | null;
+  museums?: string[] | null;
 };
 
 const toYearMonth = (dateStr: string) => dateStr.slice(0, 7);
 
 const applyFilters = (records: LectureRecord[], filters: Filters) => {
-  const { startYearMonth, endYearMonth, region, museum } = filters;
+  const { startYearMonth, endYearMonth, regions, museums } = filters;
 
   return records.filter((r) => {
     const ym = toYearMonth(r.date);
 
     if (startYearMonth && ym < startYearMonth) return false;
     if (endYearMonth && ym > endYearMonth) return false;
-    if (region && r.region !== region) return false;
-    if (museum && r.museum !== museum) return false;
+    if (regions && regions.length > 0 && !regions.includes(r.region)) return false;
+    if (museums && museums.length > 0 && !museums.includes(r.museum)) return false;
 
     return true;
   });
@@ -49,16 +49,16 @@ export default function CareerSettingScreen() {
   // 입력용 필터 상태 (연월/지역/박물관)
   const [startYearMonth, setStartYearMonth] = useState<string | null>(defaultStartYm);
   const [endYearMonth, setEndYearMonth] = useState<string | null>(defaultEndYm);
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [selectedMuseum, setSelectedMuseum] = useState<string | null>(null);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [selectedMuseums, setSelectedMuseums] = useState<string[]>([]);
   const [regionDropdownOpen, setRegionDropdownOpen] = useState(false);
   const [museumDropdownOpen, setMuseumDropdownOpen] = useState(false);
 
   // 실제로 적용된 필터 상태 (조회 버튼 눌렀을 때만 반영)
   const [appliedStartYearMonth, setAppliedStartYearMonth] = useState<string | null>(defaultStartYm);
   const [appliedEndYearMonth, setAppliedEndYearMonth] = useState<string | null>(defaultEndYm);
-  const [appliedRegion, setAppliedRegion] = useState<string | null>(null);
-  const [appliedMuseum, setAppliedMuseum] = useState<string | null>(null);
+  const [appliedRegions, setAppliedRegions] = useState<string[]>([]);
+  const [appliedMuseums, setAppliedMuseums] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const router = useRouter();
 
@@ -113,10 +113,10 @@ export default function CareerSettingScreen() {
       applyFilters(lectures, {
         startYearMonth: appliedStartYearMonth,
         endYearMonth: appliedEndYearMonth,
-        region: appliedRegion,
-        museum: appliedMuseum,
+        regions: appliedRegions.length > 0 ? appliedRegions : null,
+        museums: appliedMuseums.length > 0 ? appliedMuseums : null,
       }),
-    [lectures, appliedStartYearMonth, appliedEndYearMonth, appliedRegion, appliedMuseum],
+    [lectures, appliedStartYearMonth, appliedEndYearMonth, appliedRegions, appliedMuseums],
   );
 
   const summary = useMemo(() => {
@@ -141,13 +141,31 @@ export default function CareerSettingScreen() {
   const handleReset = () => {
     setStartYearMonth(defaultStartYm);
     setEndYearMonth(defaultEndYm);
-    setSelectedRegion(null);
-    setSelectedMuseum(null);
+    setSelectedRegions([]);
+    setSelectedMuseums([]);
 
     setAppliedStartYearMonth(defaultStartYm);
     setAppliedEndYearMonth(defaultEndYm);
-    setAppliedRegion(null);
-    setAppliedMuseum(null);
+    setAppliedRegions([]);
+    setAppliedMuseums([]);
+  };
+
+  const toggleRegion = (r: string) => {
+    setSelectedRegions((prev) =>
+      prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r].sort()
+    );
+  };
+
+  const toggleMuseum = (m: string) => {
+    setSelectedMuseums((prev) =>
+      prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m].sort()
+    );
+  };
+
+  const formatMultiLabel = (arr: string[]) => {
+    if (arr.length === 0) return '전체';
+    if (arr.length <= 2) return arr.join(', ');
+    return `${arr.length}개 선택`;
   };
 
   const applyQuickRange = (months: number) => {
@@ -246,7 +264,7 @@ export default function CareerSettingScreen() {
             </View>
 
             <Text style={[styles.filterPanelTitle, { marginTop: 16 }]}>지역 / 박물관</Text>
-            <View style={styles.filterRow}>
+            <View style={[styles.filterRow, (regionDropdownOpen || museumDropdownOpen) && styles.filterRowWithDropdown]}>
               <View style={styles.comboContainer}>
                 <TouchableOpacity
                   style={styles.selectorPill}
@@ -255,31 +273,32 @@ export default function CareerSettingScreen() {
                     setMuseumDropdownOpen(false);
                   }}
                 >
-                  <Text style={styles.filterValue}>{selectedRegion ?? '전체'}</Text>
+                  <Text style={styles.filterValue} numberOfLines={1}>
+                    {formatMultiLabel(selectedRegions)}
+                  </Text>
                 </TouchableOpacity>
                 {regionDropdownOpen && (
-                  <View style={styles.dropdown}>
+                  <View style={[styles.dropdown, styles.dropdownAbsolute]}>
                     <TouchableOpacity
-                      style={styles.dropdownItem}
-                      onPress={() => {
-                        setSelectedRegion(null);
-                        setRegionDropdownOpen(false);
-                      }}
+                      style={[styles.dropdownItem, styles.dropdownItemRow, selectedRegions.length === 0 && styles.dropdownItemSelected]}
+                      onPress={() => setSelectedRegions([])}
                     >
                       <Text style={styles.dropdownText}>전체</Text>
+                      {selectedRegions.length === 0 && <Check color="#4F46E5" size={16} />}
                     </TouchableOpacity>
-                    {regionOptions.map((r) => (
-                      <TouchableOpacity
-                        key={r}
-                        style={styles.dropdownItem}
-                        onPress={() => {
-                          setSelectedRegion(r);
-                          setRegionDropdownOpen(false);
-                        }}
-                      >
-                        <Text style={styles.dropdownText}>{r}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {regionOptions.map((r) => {
+                      const isSelected = selectedRegions.includes(r);
+                      return (
+                        <TouchableOpacity
+                          key={r}
+                          style={[styles.dropdownItem, styles.dropdownItemRow, isSelected && styles.dropdownItemSelected]}
+                          onPress={() => toggleRegion(r)}
+                        >
+                          <Text style={styles.dropdownText}>{r}</Text>
+                          {isSelected && <Check color="#4F46E5" size={16} />}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 )}
               </View>
@@ -292,31 +311,32 @@ export default function CareerSettingScreen() {
                     setRegionDropdownOpen(false);
                   }}
                 >
-                  <Text style={styles.filterValue}>{selectedMuseum ?? '전체'}</Text>
+                  <Text style={styles.filterValue} numberOfLines={1}>
+                    {formatMultiLabel(selectedMuseums)}
+                  </Text>
                 </TouchableOpacity>
                 {museumDropdownOpen && (
-                  <View style={styles.dropdown}>
+                  <View style={[styles.dropdown, styles.dropdownAbsolute]}>
                     <TouchableOpacity
-                      style={styles.dropdownItem}
-                      onPress={() => {
-                        setSelectedMuseum(null);
-                        setMuseumDropdownOpen(false);
-                      }}
+                      style={[styles.dropdownItem, styles.dropdownItemRow, selectedMuseums.length === 0 && styles.dropdownItemSelected]}
+                      onPress={() => setSelectedMuseums([])}
                     >
                       <Text style={styles.dropdownText}>전체</Text>
+                      {selectedMuseums.length === 0 && <Check color="#4F46E5" size={16} />}
                     </TouchableOpacity>
-                    {museumOptions.map((m) => (
-                      <TouchableOpacity
-                        key={m}
-                        style={styles.dropdownItem}
-                        onPress={() => {
-                          setSelectedMuseum(m);
-                          setMuseumDropdownOpen(false);
-                        }}
-                      >
-                        <Text style={styles.dropdownText}>{m}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {museumOptions.map((m) => {
+                      const isSelected = selectedMuseums.includes(m);
+                      return (
+                        <TouchableOpacity
+                          key={m}
+                          style={[styles.dropdownItem, styles.dropdownItemRow, isSelected && styles.dropdownItemSelected]}
+                          onPress={() => toggleMuseum(m)}
+                        >
+                          <Text style={styles.dropdownText}>{m}</Text>
+                          {isSelected && <Check color="#4F46E5" size={16} />}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 )}
               </View>
@@ -328,8 +348,10 @@ export default function CareerSettingScreen() {
                 onPress={() => {
                   setAppliedStartYearMonth(startYearMonth || null);
                   setAppliedEndYearMonth(endYearMonth || null);
-                  setAppliedRegion(selectedRegion);
-                  setAppliedMuseum(selectedMuseum);
+                  setAppliedRegions([...selectedRegions]);
+                  setAppliedMuseums([...selectedMuseums]);
+                  setRegionDropdownOpen(false);
+                  setMuseumDropdownOpen(false);
                 }}
               >
                 <Text style={styles.searchButtonText}>조회</Text>
@@ -389,6 +411,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  filterRowWithDropdown: {
+    marginBottom: 200,
   },
   filterPill: {
     flex: 1,
@@ -546,6 +571,8 @@ const styles = StyleSheet.create({
   comboContainer: {
     flex: 1,
     marginRight: 8,
+    position: 'relative',
+    minHeight: 40,
   },
   dropdown: {
     marginTop: 4,
@@ -556,11 +583,30 @@ const styles = StyleSheet.create({
     maxHeight: 180,
     overflow: 'hidden',
   },
+  dropdownAbsolute: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 38,
+    zIndex: 10,
+    elevation: 10,
+  },
   dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+  },
+  dropdownItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#EEF2FF',
   },
   dropdownText: {
     fontSize: 13,
