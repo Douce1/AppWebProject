@@ -82,27 +82,7 @@ export default function DocsScreen() {
 
             <ScrollView style={styles.contentContainer}>
                 {selectedTab === '서류' && (
-                    <>
-                        <View style={styles.todoBadgeContainer}>
-                            <Text style={styles.todoBadgeText}>서명 필요 1건</Text>
-                        </View>
-
-                        <View style={styles.docCard}>
-                            <View style={styles.docIcon}>
-                                <FileSignature color="#3b82f6" size={24} />
-                            </View>
-                            <View style={styles.docInfo}>
-                                <Text style={styles.docTitle}>개인정보 활용 동의서</Text>
-                                <Text style={styles.docDate}>2023.10.20 마감</Text>
-                            </View>
-                            <TouchableOpacity
-                                style={styles.signButton}
-                                onPress={() => router.push('/(tabs)/docs/sign')}
-                            >
-                                <Text style={styles.signButtonText}>서명하기</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </>
+                    <Text style={styles.emptyText}>표시할 서류가 없습니다.</Text>
                 )}
 
                 {selectedTab === '계약' && (
@@ -154,14 +134,14 @@ export default function DocsScreen() {
                             <Text style={styles.requestMetaText}>{proposalStatus === '미응답' ? '미응답' : `${proposalStatus} 완료`}</Text>
                         </View>
 
-                        <Text style={styles.requestTitle}>강남본원 화요일 신규 강의 배정 제안</Text>
+                        <Text style={styles.requestTitle}>(샘플) 강남본원 화요일 신규 강의 배정 제안</Text>
 
                         <View style={styles.requestBody}>
-                            <Text style={styles.requestBullet}>· 강의명: 고3 EBS 파이널 문풀</Text>
-                            <Text style={styles.requestBullet}>· 날짜: 2026-03-10</Text>
-                            <Text style={styles.requestBullet}>· 시간: 18:00 ~ 20:00</Text>
-                            <Text style={styles.requestBullet}>· 장소: 강남본원 3관 302호</Text>
-                            <Text style={styles.requestBullet}>· 페이: 50,000원 / 1시간</Text>
+                            <Text style={styles.requestBullet}>(샘플) · 강의명: 고3 EBS 파이널 문풀</Text>
+                            <Text style={styles.requestBullet}>(샘플) · 날짜: 2026-03-10</Text>
+                            <Text style={styles.requestBullet}>(샘플) · 시간: 18:00 ~ 20:00</Text>
+                            <Text style={styles.requestBullet}>(샘플) · 장소: 강남본원 3관 302호</Text>
+                            <Text style={styles.requestBullet}>(샘플) · 페이: 50,000원 / 1시간</Text>
                         </View>
 
                         {proposalStatus === '미응답' && !isRejecting && (

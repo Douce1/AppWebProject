@@ -1,7 +1,9 @@
 import { useProfile } from '@/src/context/ProfileContext';
+import { apiClient } from '@/src/api/apiClient';
+import type { ApiCompany, ApiInstructorProfile } from '@/src/api/types';
 import { useRouter } from 'expo-router';
 import { Briefcase, Camera, ChevronRight, Clock, MapPin, Settings, UserCircle } from 'lucide-react-native';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,6 +12,28 @@ export default function ProfileScreen() {
     const router = useRouter();
     const { selectedRegions } = useProfile();
     const regionSummary = selectedRegions.length > 0 ? selectedRegions.join(', ') : null;
+
+    const [instructor, setInstructor] = useState<ApiInstructorProfile | null>(null);
+    const [company, setCompany] = useState<ApiCompany | null>(null);
+
+    useEffect(() => {
+        let mounted = true;
+        Promise.all([apiClient.getInstructorProfile(), apiClient.getCompany()])
+            .then(([profile, companyInfo]) => {
+                if (!mounted) return;
+                setInstructor(profile);
+                setCompany(companyInfo);
+            })
+            .catch(() => {
+                // 실패 시에는 샘플 텍스트 대신 최소한의 기본 문구만 표시
+                if (!mounted) return;
+                setInstructor(null);
+                setCompany(null);
+            });
+        return () => {
+            mounted = false;
+        };
+    }, []);
 
     return (
         <ScrollView style={[styles.container, { paddingTop: Math.max(50, insets.top) }]}>
@@ -38,8 +62,12 @@ export default function ProfileScreen() {
                             </View>
                         </View>
                         <View style={styles.profileTextWrap}>
-                            <Text style={styles.nameText}>김태완 강사님</Text>
-                            <Text style={styles.subText}>메가강남본원 소속</Text>
+                            <Text style={styles.nameText}>
+                                {instructor ? `${instructor.name} 강사님` : '강사님'}
+                            </Text>
+                            {company && (
+                                <Text style={styles.subText}>{company.name} 소속</Text>
+                            )}
                             <Text style={styles.helperText}>프로필 사진을 탭하여 변경</Text>
                         </View>
                     </View>
