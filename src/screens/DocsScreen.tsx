@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
-import { FileSignature, FileText, Bell } from 'lucide-react-native';
+import { FileSignature, FileText, Bell, Settings } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Bell, FileSignature, FileText, Settings } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSchedule } from '../context/ScheduleContext';
 import { apiClient } from '../api/apiClient';
 import type { ApiContract, ContractStatus } from '../api/types';
@@ -50,9 +46,10 @@ export default function DocsScreen() {
         if (c.effectiveFrom) return `${c.effectiveFrom.slice(0, 10)} 체결`;
         return '';
     };
+
+    const handleRejectSubmit = () => {
         if (rejectReason.trim()) {
             resolveProposal('거절');
-            // Mock sending rejectReason to server
         }
     };
 
