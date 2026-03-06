@@ -9,8 +9,8 @@ export default function DocSignDetailScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.title}>개인정보 활용 동의서</Text>
-        <Text style={styles.subTitle}>메가강남본원 · 2023 하반기</Text>
+        <Text style={styles.title}>(샘플) 개인정보 활용 동의서</Text>
+        <Text style={styles.subTitle}>(샘플) 메가강남본원 · 2023 하반기</Text>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>동의 내용</Text>
@@ -26,9 +26,9 @@ export default function DocSignDetailScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>서명 대상 정보</Text>
-          <Text style={styles.item}>· 이름: 김태완</Text>
-          <Text style={styles.item}>· 소속: 메가강남본원</Text>
-          <Text style={styles.item}>· 계약 기간: 2023-09-01 ~ 2024-02-28</Text>
+          <Text style={styles.item}>(샘플) · 이름: 김태완</Text>
+          <Text style={styles.item}>(샘플) · 소속: 메가강남본원</Text>
+          <Text style={styles.item}>(샘플) · 계약 기간: 2023-09-01 ~ 2024-02-28</Text>
         </View>
 
         <TouchableOpacity style={styles.signButton} onPress={handleSign}>

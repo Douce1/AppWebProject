@@ -71,7 +71,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         {
             id: '2',
             type: '📄 요청/제안',
-            title: '강남본원 회화 신규 강의 배정 제안',
+            title: '(샘플) 강남본원 회화 신규 강의 배정 제안',
             time: '어제',
             target: { pathname: '/(tabs)/docs', params: { targetTab: '요청/제안' } },
         }
@@ -91,10 +91,10 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (status === '수락') {
             addClass({
                 id: 'proposed-1',
-                title: '고3 EBS 파이널 문풀',
-                date: '2026-03-10',
-                location: '강남본원 3관 302호',
-                time: '18:00 - 20:00'
+                title: '(샘플) 고3 EBS 파이널 문풀',
+                date: '(샘플) 2026-03-10',
+                location: '(샘플) 강남본원 3관 302호',
+                time: '(샘플) 18:00 - 20:00'
             });
         }
     };
