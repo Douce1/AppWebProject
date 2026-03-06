@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
-import { Bell, FileText, Shield, Info, LogOut, ChevronLeft } from 'lucide-react-native';
 import * as Linking from 'expo-linking';
-import { useNavigation, useRouter, useLocalSearchParams } from 'expo-router';
-import { useEffect } from 'react';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { Bell, ChevronLeft, FileText, Info, LogOut, Shield } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 // 샘플 데이터
 const SAMPLE_SETTINGS = {
@@ -18,17 +17,15 @@ export default function AppSettingsScreen() {
   const params = useLocalSearchParams();
 
   useEffect(() => {
-    if (params.returnTo) {
-      navigation.setOptions({
-        headerLeft: () => (
-          <TouchableOpacity onPress={() => router.replace(params.returnTo as any)} style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}>
-            <ChevronLeft size={28} color="#4F46E5" />
-            <Text style={{ fontSize: 16, color: '#4F46E5', marginLeft: -4 }}>대시보드</Text>
-          </TouchableOpacity>
-        ),
-      });
-    }
-  }, [navigation, params]);
+    navigation.setOptions({
+      headerBackTitle: ' ',
+      headerLeft: () => (
+        <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}>
+          <ChevronLeft size={28} color="#4F46E5" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, router]);
 
   const handleLogout = () => {
     Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [

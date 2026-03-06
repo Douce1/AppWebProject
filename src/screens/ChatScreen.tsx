@@ -1,59 +1,26 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
-import { Flame } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useSchedule } from '../context/ScheduleContext';
+import { Flame, Settings } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useChat } from '../context/ChatContext';
 
 export default function ChatScreen({ navigation }: any) {
     const router = useRouter();
-    const { chatMessages } = useSchedule();
+    const { chatRooms } = useChat();
     const [selectedTab, setSelectedTab] = useState('전체 메시지');
 
     const tabs = ['전체 메시지', '안읽은 메시지'];
 
-    // Calculate recent messages and unread counts per room
-    const getChatRooms = () => {
-        const roomsMap = new Map();
-
-        // Sort messages chronologically so we can get the latest one easily
-        const sortedMessages = [...chatMessages].sort((a, b) => {
-            // Sort based on numeric id to handle Date.now() properly vs dummy '1', '2'
-            return parseInt(a.id) - parseInt(b.id);
-        });
-
-        sortedMessages.forEach(msg => {
-            if (!roomsMap.has(msg.roomId)) {
-                roomsMap.set(msg.roomId, {
-                    roomId: msg.roomId,
-                    companyName: msg.companyName,
-                    latestMessage: msg.text,
-                    latestTime: msg.time,
-                    latestMsgId: parseInt(msg.id),
-                    unreadCount: (!msg.isMine && !msg.isRead) ? 1 : 0
-                });
-            } else {
-                const room = roomsMap.get(msg.roomId);
-                room.latestMessage = msg.text;
-                room.latestTime = msg.time;
-                room.latestMsgId = parseInt(msg.id);
-                if (!msg.isMine && !msg.isRead) {
-                    room.unreadCount += 1;
-                }
-            }
-        });
-
-        let rooms = Array.from(roomsMap.values());
-        rooms.sort((a, b) => b.latestMsgId - a.latestMsgId); // Sort descending based on latest message id
-
+    // Filter rooms based on selected tab
+    const getFilteredRooms = () => {
         if (selectedTab === '안읽은 메시지') {
-            rooms = rooms.filter(room => room.unreadCount > 0);
+            return chatRooms.filter(room => room.unreadCount > 0);
         }
-
-        return rooms;
+        return chatRooms;
     };
 
     const renderChatRooms = () => {
-        const rooms = getChatRooms();
+        const rooms = getFilteredRooms();
 
         if (rooms.length === 0) {
             return (
@@ -78,11 +45,11 @@ export default function ChatScreen({ navigation }: any) {
                         </View>
                         <View style={styles.roomInfo}>
                             <View style={styles.roomHeaderRow}>
-                                <Text style={styles.roomName}>{room.companyName}</Text>
-                                <Text style={styles.roomTime}>{room.latestTime}</Text>
+                                <Text style={styles.roomName}>{room.name}</Text>
+                                <Text style={styles.roomTime}>{new Date(room.lastMessageAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
                             </View>
                             <View style={styles.roomMessageRow}>
-                                <Text style={styles.roomLatestMessage} numberOfLines={1}>{room.latestMessage}</Text>
+                                <Text style={styles.roomLatestMessage} numberOfLines={1}>{room.lastMessage}</Text>
                                 {room.unreadCount > 0 && (
                                     <View style={styles.unreadBadge}>
                                         <Text style={styles.unreadText}>{room.unreadCount}</Text>
@@ -98,6 +65,14 @@ export default function ChatScreen({ navigation }: any) {
 
     return (
         <View style={styles.container}>
+            {/* Top Bar with Settings */}
+            <View style={styles.topBar}>
+                <Text style={styles.topBarTitle}>채팅</Text>
+                <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
+                    <Settings color="#666" size={26} />
+                </TouchableOpacity>
+            </View>
+
             {/* Top Tabs */}
             <View style={styles.tabContainer}>
                 {tabs.map(tab => (
@@ -120,6 +95,9 @@ export default function ChatScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f5f7fa', paddingTop: 50 },
+    topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 10 },
+    topBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
+    settingsIconContainer: { padding: 8 },
     tabContainer: { flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
     tabButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, marginRight: 8, backgroundColor: '#f0f0f0' },
     activeTabButton: { backgroundColor: '#3b82f6' },

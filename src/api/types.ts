@@ -171,3 +171,23 @@ export interface LectureRecordView {
   notes?: string;        // 특이 사항 (lessonDetails/lessonReports 등에서 파생)
 }
 
+// ---- Chat API Types ----
+
+export interface ApiChatRoom {
+  roomId: string;
+  name: string;
+  lastMessage: string;
+  lastMessageAt: string; // ISO
+  unreadCount: number;
+}
+
+export interface ApiChatMessage {
+  messageId: string;
+  roomId: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  createdAt: string; // ISO
+  isRead: boolean;
+  isMine: boolean;
+}

@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { FileSignature, FileText, Bell } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Bell, FileSignature, FileText, Settings } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSchedule } from '../context/ScheduleContext';
 import { apiClient } from '../api/apiClient';
 import type { ApiContract, ContractStatus } from '../api/types';
@@ -54,6 +58,14 @@ export default function DocsScreen() {
 
     return (
         <View style={styles.container}>
+            {/* Top Bar with Settings */}
+            <View style={styles.topBar}>
+                <Text style={styles.topBarTitle}>서류/계약</Text>
+                <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
+                    <Settings color="#666" size={26} />
+                </TouchableOpacity>
+            </View>
+
             {/* Top Tabs */}
             <View style={styles.tabContainer}>
                 {tabs.map(tab => (
@@ -190,6 +202,9 @@ export default function DocsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f5f7fa', paddingTop: 50 },
+    topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 10 },
+    topBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
+    settingsIconContainer: { padding: 8 },
     tabContainer: { flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
     tabButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, marginRight: 8, backgroundColor: '#f0f0f0' },
     activeTabButton: { backgroundColor: '#3b82f6' },

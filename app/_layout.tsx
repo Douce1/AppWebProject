@@ -6,8 +6,9 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { ScheduleProvider } from '@/src/context/ScheduleContext';
+import { ChatProvider } from '@/src/context/ChatContext';
 import { ProfileProvider } from '@/src/context/ProfileContext';
+import { ScheduleProvider } from '@/src/context/ScheduleContext';
 
 // JS 번들 로딩 중에는 스플래시 유지 (빈 화면 대신 스플래시 표시)
 SplashScreen.preventAutoHideAsync();
@@ -26,15 +27,18 @@ export default function RootLayout() {
 
   return (
     <ScheduleProvider>
-      <ProfileProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        </Stack>
-        <StatusBar style="auto" />
-        </ThemeProvider>
-      </ProfileProvider>
+      <ChatProvider>
+        <ProfileProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="settings" options={{ title: '앱 설정' }} />
+              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            </Stack>
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </ProfileProvider>
+      </ChatProvider>
     </ScheduleProvider>
   );
 }

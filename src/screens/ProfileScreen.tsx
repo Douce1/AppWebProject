@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Clock, UserCircle, ChevronRight, Briefcase, MapPin, Camera } from 'lucide-react-native';
 import { useProfile } from '@/src/context/ProfileContext';
+import { useRouter } from 'expo-router';
+import { Briefcase, Camera, ChevronRight, Clock, MapPin, Settings, UserCircle } from 'lucide-react-native';
+import React from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -12,6 +12,12 @@ export default function ProfileScreen() {
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
+                <View style={styles.headerTopBar}>
+                    <Text style={styles.headerTopBarTitle}>내 정보</Text>
+                    <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
+                        <Settings color="#666" size={26} />
+                    </TouchableOpacity>
+                </View>
                 <TouchableOpacity
                     activeOpacity={0.9}
                     onPress={() => router.push('/(tabs)/profile/instructor')}
@@ -80,6 +86,9 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f5f7fa' },
     header: { paddingTop: 48, paddingHorizontal: 20, paddingBottom: 20 },
+    headerTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+    headerTopBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
+    settingsIconContainer: { padding: 8 },
     profileCard: {
         backgroundColor: 'white',
         borderRadius: 20,

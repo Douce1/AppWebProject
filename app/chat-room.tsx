@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, Keyboard, Animated } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Flame } from 'lucide-react-native';
-import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
-import { useSchedule } from '../src/context/ScheduleContext';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useChat } from '../src/context/ChatContext';
+import { useSchedule } from '../src/context/ScheduleContext';
 
 export default function ChatRoomScreen() {
     const router = useRouter();
@@ -12,15 +13,19 @@ export default function ChatRoomScreen() {
     const insets = useSafeAreaInsets();
     const scrollViewRef = useRef<ScrollView>(null);
 
-    const { chatMessages, addChatMessage, markChatRoomAsRead, isProposalResolved, proposalStatus, resolveProposal } = useSchedule();
+    const { isProposalResolved, proposalStatus, resolveProposal } = useSchedule();
+    const { getMessages, sendMessage, markAsRead, chatRooms } = useChat();
     const [inputText, setInputText] = useState('');
     const keyboardPadding = useRef(new Animated.Value(0)).current;
 
+    const roomMessages = getMessages(roomId);
+    const companyName = chatRooms.find(r => r.roomId === roomId)?.name || '채팅';
+
     useEffect(() => {
         if (roomId) {
-            markChatRoomAsRead(roomId);
+            markAsRead(roomId);
         }
-    }, [roomId, chatMessages]);
+    }, [roomId, roomMessages]);
 
     // Android keyboard handling via Keyboard API
     useEffect(() => {
@@ -49,19 +54,11 @@ export default function ChatRoomScreen() {
         };
     }, []);
 
-    const roomMessages = chatMessages.filter(msg => msg.roomId === roomId);
-    const companyName = roomMessages.length > 0 ? roomMessages[0].companyName : '채팅';
+
 
     const handleSend = () => {
         if (inputText.trim()) {
-            addChatMessage({
-                id: Date.now().toString(),
-                roomId: roomId,
-                companyName: companyName,
-                text: inputText,
-                isMine: true,
-                time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-            });
+            sendMessage(roomId, inputText);
             setInputText('');
             setTimeout(() => {
                 scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -129,7 +126,7 @@ export default function ChatRoomScreen() {
                 {roomMessages.map((msg, index) => {
                     const showProfile = !msg.isMine && (index === 0 || roomMessages[index - 1].isMine);
                     return (
-                        <View key={msg.id} style={[
+                        <View key={msg.messageId} style={[
                             styles.messageRow,
                             msg.isMine ? styles.myMessageRow : styles.theirMessageRow,
                             { marginTop: showProfile ? 15 : 4 }
@@ -141,10 +138,11 @@ export default function ChatRoomScreen() {
                             )}
                             {!showProfile && !msg.isMine && <View style={styles.profilePlaceholder} />}
 
+                            {msg.isMine && <Text style={styles.chatTime}>{new Date(msg.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>}
                             <View style={[styles.chatBubble, msg.isMine ? styles.myBubble : styles.theirBubble]}>
                                 <Text style={[styles.chatText, msg.isMine && styles.myChatText]}>{msg.text}</Text>
                             </View>
-                            <Text style={styles.chatTime}>{msg.time}</Text>
+                            {!msg.isMine && <Text style={styles.chatTime}>{new Date(msg.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>}
                         </View>
                     );
                 })}
@@ -212,12 +210,12 @@ const styles = StyleSheet.create({
     profileCircleText: { fontSize: 14, fontWeight: 'bold', color: '#6B7280' },
     profilePlaceholder: { width: 36, marginRight: 8 },
 
-    chatBubble: { maxWidth: '75%', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
+    chatBubble: { maxWidth: '65%', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
     theirBubble: { backgroundColor: 'white', borderTopLeftRadius: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
     myBubble: { backgroundColor: '#3b82f6', borderTopRightRadius: 4 },
     chatText: { fontSize: 15, color: '#111827', lineHeight: 22 },
     myChatText: { color: 'white' },
-    chatTime: { fontSize: 11, color: '#9CA3AF', marginHorizontal: 8, marginBottom: 4 },
+    chatTime: { fontSize: 11, color: '#9CA3AF', marginHorizontal: 4, marginBottom: 4, flexShrink: 0 },
 
     inputContainer: { backgroundColor: 'white', paddingHorizontal: 15, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' },
     inputRow: { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: '#F3F4F6', borderRadius: 24, paddingHorizontal: 15, paddingVertical: 8, maxHeight: 120 },

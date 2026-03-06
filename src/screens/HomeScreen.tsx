@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Alert, Dimensions, TextInput } from 'react-native';
-import { useSchedule } from '../context/ScheduleContext';
-import { Bell, MapPin, Clock, CalendarIcon as Calendar, CheckCircle2, ChevronLeft, ChevronRight, X, Megaphone, Settings } from 'lucide-react-native';
-import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
+import { Bell, CalendarIcon as Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, MapPin, Settings, X } from 'lucide-react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { Animated, Dimensions, Modal, PanResponder, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useChat } from '../context/ChatContext';
+import { useSchedule } from '../context/ScheduleContext';
 
 const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }: any) {
   const router = useRouter();
-  const { classes, notifications, removeNotification, chatMessages, markChatRoomAsRead,
+  const { classes, notifications, removeNotification,
     departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport
   } = useSchedule();
+  const { unreadCount, unreadMessages, markAsRead } = useChat();
   // Notice & Side panel logic
   const [sidePanelVisible, setSidePanelVisible] = useState(false);
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
@@ -44,6 +45,44 @@ export default function HomeScreen({ navigation }: any) {
   // Today's Date String for Check-in logic
   const todayStr = toLocalISOString(today);
   const activeDate = selectedDate || todayStr;
+
+  // Keep a ref in sync for the PanResponder closure
+  const activeDateRef = useRef(activeDate);
+  activeDateRef.current = activeDate;
+
+  // Swipe gesture for schedule carousel
+  const swipeAnim = useRef(new Animated.Value(0)).current;
+
+  const changeDay = useCallback((offset: number) => {
+    const current = new Date(activeDateRef.current + 'T00:00:00');
+    current.setDate(current.getDate() + offset);
+    setSelectedDate(toLocalISOString(current));
+  }, []);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 15 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy * 1.5);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        swipeAnim.setValue(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        Animated.spring(swipeAnim, { toValue: 0, useNativeDriver: true, tension: 40, friction: 8 }).start();
+        if (gestureState.dx < -50) {
+          // Swipe left → next day
+          changeDay(1);
+        } else if (gestureState.dx > 50) {
+          // Swipe right → previous day
+          changeDay(-1);
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(swipeAnim, { toValue: 0, useNativeDriver: true }).start();
+      },
+    })
+  ).current;
 
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
@@ -81,12 +120,22 @@ export default function HomeScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Top Bar with Settings */}
+      {/* Top Bar with Settings & Notifications */}
       <View style={styles.topBar}>
         <Text style={styles.topBarTitle}>대시보드</Text>
-        <TouchableOpacity onPress={() => router.push({ pathname: '/(tabs)/profile/settings', params: { returnTo: '/' } })} style={styles.settingsIconContainer}>
-          <Settings color="#666" size={26} />
-        </TouchableOpacity>
+        <View style={styles.topBarIcons}>
+          <TouchableOpacity onPress={() => setSidePanelVisible(true)} style={styles.settingsIconContainer}>
+            <Bell color="#666" size={26} />
+            {notifications.filter(n => n.type !== '💬 신규메시지').length + unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{notifications.filter(n => n.type !== '💬 신규메시지').length + unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
+            <Settings color="#666" size={26} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Weekly Schedule */}
@@ -119,109 +168,127 @@ export default function HomeScreen({ navigation }: any) {
         </View>
       </View>
 
-      {/* Today's Schedule List */}
-      <ScrollView style={styles.scheduleListContainer}>
-        <Text style={styles.sectionTitle}>
-          {activeDate === todayStr ? '오늘의 일정' : `${activeDate.split('-')[1]}월 ${activeDate.split('-')[2]}일 일정`} ({classes.filter(c => c.date === activeDate).length})
-        </Text>
-        {classes.filter(c => c.date === activeDate).map((c) => {
-          const isReadyToReport = readyToReportIds.includes(c.id);
-          const isEndedClass = endedClassIds.includes(c.id);
-          const isCanEndClass = canEndClassIds.includes(c.id);
-          const isArrived = arrivedIds.includes(c.id);
-          const isCanArrive = canArriveIds.includes(c.id);
-          const isDeparted = departedIds.includes(c.id);
-          const isReported = reportedIds.includes(c.id);
+      {/* Today's Schedule List with Swipe Carousel */}
+      <Animated.View
+        style={[styles.scheduleListContainer, { flex: 1, transform: [{ translateX: swipeAnim }] }]}
+        {...panResponder.panHandlers}
+      >
+        {/* Date Navigation Row */}
+        <View style={styles.dateNavRow}>
+          <TouchableOpacity onPress={() => changeDay(-1)} style={styles.dateNavBtn}>
+            <ChevronLeft size={22} color="#3b82f6" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setSelectedDate(todayStr)} style={styles.dateNavCenter}>
+            <Text style={styles.sectionTitle}>
+              {activeDate === todayStr ? '오늘의 일정' : `${parseInt(activeDate.split('-')[1])}월 ${parseInt(activeDate.split('-')[2])}일 일정`} ({classes.filter(c => c.date === activeDate).length})
+            </Text>
+            {activeDate !== todayStr && <Text style={styles.goTodayHint}>오늘로 이동</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => changeDay(1)} style={styles.dateNavBtn}>
+            <ChevronRight size={22} color="#3b82f6" />
+          </TouchableOpacity>
+        </View>
 
-          let hasEnded = false;
-          const endStr = c.time.split('-')[1]?.trim();
-          if (endStr && c.date === activeDate) {
-            const [endH, endM] = endStr.split(':').map(Number);
-            const endTime = new Date(today);
-            endTime.setHours(endH, endM, 0, 0);
-            if (new Date() > endTime && activeDate === todayStr) hasEnded = true;
-          } else if (c.date < todayStr) {
-            hasEnded = true;
-          }
+        <ScrollView style={{ flex: 1 }}>
+          {classes.filter(c => c.date === activeDate).map((c) => {
+            const isReadyToReport = readyToReportIds.includes(c.id);
+            const isEndedClass = endedClassIds.includes(c.id);
+            const isCanEndClass = canEndClassIds.includes(c.id);
+            const isArrived = arrivedIds.includes(c.id);
+            const isCanArrive = canArriveIds.includes(c.id);
+            const isDeparted = departedIds.includes(c.id);
+            const isReported = reportedIds.includes(c.id);
 
-          return (
-            <TouchableOpacity
-              key={c.id}
-              style={styles.classCard}
-              onPress={() => router.push({ pathname: '/class-detail' as any, params: { classInfo: JSON.stringify(c) } })}
-            >
-              <Text style={styles.classTitle}>{c.title}</Text>
-              <View style={styles.row}>
-                <MapPin size={16} color="gray" />
-                <Text style={styles.classDetails}> {c.location}</Text>
-              </View>
-              <View style={styles.row}>
-                <Clock size={16} color="gray" />
-                <Text style={styles.classDetails}> {c.time}</Text>
-              </View>
+            let hasEnded = false;
+            const endStr = c.time.split('-')[1]?.trim();
+            if (endStr && c.date === activeDate) {
+              const [endH, endM] = endStr.split(':').map(Number);
+              const endTime = new Date(today);
+              endTime.setHours(endH, endM, 0, 0);
+              if (new Date() > endTime && activeDate === todayStr) hasEnded = true;
+            } else if (c.date < todayStr) {
+              hasEnded = true;
+            }
 
+            return (
               <TouchableOpacity
-                style={[
-                  styles.checkInButton,
-                  (isDeparted && !isCanArrive) && styles.checkedInButton,
-                  (isCanArrive && !isArrived) && styles.checkInButton,
-                  (isArrived && !isCanEndClass) && styles.checkedInButton,
-                  (isCanEndClass && !isEndedClass) && styles.checkInButton,
-                  (isEndedClass && !isReadyToReport) && styles.checkedInButton,
-                  (isReadyToReport && !isReported) && styles.reportButtonStyles,
-                  (isReported) && styles.doneButtonStyles
-                ]}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  if (isReadyToReport && !isReported) {
-                    setCurrentReportId(c.id);
-                    setReportModalVisible(true);
-                  } else {
-                    handleClassAction(c.id);
-                  }
-                }}
-                activeOpacity={0.7}
-                disabled={isReported || (isDeparted && !isCanArrive) || (isArrived && !isCanEndClass) || (isEndedClass && !isReadyToReport)}
+                key={c.id}
+                style={styles.classCard}
+                onPress={() => router.push({ pathname: '/class-detail' as any, params: { classInfo: JSON.stringify(c) } })}
               >
-                {isReported ? (
-                  <View style={styles.row}>
-                    <CheckCircle2 color="white" size={18} />
-                    <Text style={[styles.checkInText, { marginLeft: 4 }]}>강의 수고하셨습니다!</Text>
-                  </View>
-                ) : isReadyToReport ? (
-                  <Text style={styles.checkInText}>강의 보고서 작성</Text>
-                ) : isEndedClass ? (
-                  <View style={styles.row}>
-                    <CheckCircle2 color="white" size={18} />
-                    <Text style={[styles.checkInText, { marginLeft: 4 }]}>종료 처리 중...</Text>
-                  </View>
-                ) : isCanEndClass ? (
-                  <Text style={styles.checkInText}>강의 종료</Text>
-                ) : isArrived ? (
-                  <View style={styles.row}>
-                    <CheckCircle2 color="white" size={18} />
-                    <Text style={[styles.checkInText, { marginLeft: 4 }]}>도착 완료 (강의 중)</Text>
-                  </View>
-                ) : isCanArrive ? (
-                  <Text style={styles.checkInText}>도착</Text>
-                ) : isDeparted ? (
-                  <View style={styles.row}>
-                    <CheckCircle2 color="white" size={18} />
-                    <Text style={[styles.checkInText, { marginLeft: 4 }]}>이동 중...</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.checkInText}>출발</Text>
-                )}
+                <Text style={styles.classTitle}>{c.title}</Text>
+                <View style={styles.row}>
+                  <MapPin size={16} color="gray" />
+                  <Text style={styles.classDetails}> {c.location}</Text>
+                </View>
+                <View style={styles.row}>
+                  <Clock size={16} color="gray" />
+                  <Text style={styles.classDetails}> {c.time}</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.checkInButton,
+                    (isDeparted && !isCanArrive) && styles.checkedInButton,
+                    (isCanArrive && !isArrived) && styles.checkInButton,
+                    (isArrived && !isCanEndClass) && styles.checkedInButton,
+                    (isCanEndClass && !isEndedClass) && styles.checkInButton,
+                    (isEndedClass && !isReadyToReport) && styles.checkedInButton,
+                    (isReadyToReport && !isReported) && styles.reportButtonStyles,
+                    (isReported) && styles.doneButtonStyles
+                  ]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (isReadyToReport && !isReported) {
+                      setCurrentReportId(c.id);
+                      setReportModalVisible(true);
+                    } else {
+                      handleClassAction(c.id);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                  disabled={isReported || (isDeparted && !isCanArrive) || (isArrived && !isCanEndClass) || (isEndedClass && !isReadyToReport)}
+                >
+                  {isReported ? (
+                    <View style={styles.row}>
+                      <CheckCircle2 color="white" size={18} />
+                      <Text style={[styles.checkInText, { marginLeft: 4 }]}>강의 수고하셨습니다!</Text>
+                    </View>
+                  ) : isReadyToReport ? (
+                    <Text style={styles.checkInText}>강의 보고서 작성</Text>
+                  ) : isEndedClass ? (
+                    <View style={styles.row}>
+                      <CheckCircle2 color="white" size={18} />
+                      <Text style={[styles.checkInText, { marginLeft: 4 }]}>종료 처리 중...</Text>
+                    </View>
+                  ) : isCanEndClass ? (
+                    <Text style={styles.checkInText}>강의 종료</Text>
+                  ) : isArrived ? (
+                    <View style={styles.row}>
+                      <CheckCircle2 color="white" size={18} />
+                      <Text style={[styles.checkInText, { marginLeft: 4 }]}>도착 완료 (강의 중)</Text>
+                    </View>
+                  ) : isCanArrive ? (
+                    <Text style={styles.checkInText}>도착</Text>
+                  ) : isDeparted ? (
+                    <View style={styles.row}>
+                      <CheckCircle2 color="white" size={18} />
+                      <Text style={[styles.checkInText, { marginLeft: 4 }]}>이동 중...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.checkInText}>출발</Text>
+                  )}
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
-          );
-        })}
-        {classes.filter(c => c.date === activeDate).length === 0 && (
-          <Text style={styles.emptyText}>
-            {activeDate === todayStr ? '오늘 예정된 강의가 없습니다.' : '해당 날짜에 예정된 강의가 없습니다.'}
-          </Text>
-        )}
-      </ScrollView>
+            );
+          })}
+          {classes.filter(c => c.date === activeDate).length === 0 && (
+            <Text style={styles.emptyText}>
+              {activeDate === todayStr ? '오늘 예정된 강의가 없습니다.' : '해당 날짜에 예정된 강의가 없습니다.'}
+            </Text>
+          )}
+        </ScrollView>
+      </Animated.View>
 
       {/* Report Modal */}
       <Modal
@@ -265,7 +332,7 @@ export default function HomeScreen({ navigation }: any) {
           <View style={styles.sidebarPanel}>
             <View style={styles.sidebarHeader}>
               <Text style={styles.sidebarTitle}>
-                알림 센터 ({notifications.filter(n => n.type !== '💬 신규메시지').length + chatMessages.filter(msg => !msg.isMine && !msg.isRead).length})
+                알림 센터 ({notifications.filter(n => n.type !== '💬 신규메시지').length + unreadCount})
               </Text>
               <TouchableOpacity onPress={() => setSidePanelVisible(false)}>
                 <X size={24} color="#333" />
@@ -273,19 +340,19 @@ export default function HomeScreen({ navigation }: any) {
             </View>
             <ScrollView style={styles.sidebarContent}>
               {/* Added Dynamic Chat Notifications */}
-              {chatMessages.filter(msg => !msg.isMine && !msg.isRead).map(msg => (
+              {unreadMessages.map(msg => (
                 <TouchableOpacity
-                  key={`chat-${msg.id}`}
+                  key={`chat-${msg.messageId}`}
                   style={styles.notifItem}
                   onPress={() => {
                     setSidePanelVisible(false);
-                    markChatRoomAsRead(msg.roomId);
+                    markAsRead(msg.roomId);
                     router.push({ pathname: '/chat-room', params: { roomId: msg.roomId } } as any);
                   }}
                 >
-                  <Text style={styles.notifType}>💬 신규메시지 ({msg.companyName})</Text>
+                  <Text style={styles.notifType}>💬 신규메시지 ({msg.senderName})</Text>
                   <Text style={styles.notifTitle}>관리자님: {msg.text}</Text>
-                  <Text style={styles.notifTime}>{msg.time}</Text>
+                  <Text style={styles.notifTime}>{new Date(msg.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
                 </TouchableOpacity>
               ))}
               {notifications.filter(n => n.type !== '💬 신규메시지').map((notif: any) => (
@@ -303,7 +370,7 @@ export default function HomeScreen({ navigation }: any) {
                   <Text style={styles.notifTime}>{notif.time}</Text>
                 </TouchableOpacity>
               ))}
-              {notifications.filter(n => n.type !== '💬 신규메시지').length === 0 && chatMessages.filter(msg => !msg.isMine && !msg.isRead).length === 0 && (
+              {notifications.filter(n => n.type !== '💬 신규메시지').length === 0 && unreadCount === 0 && (
                 <Text style={styles.emptyText}>새로운 알림이 없습니다.</Text>
               )}
             </ScrollView>
@@ -361,19 +428,6 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-      {/* Floating Action Button for Notifications */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setSidePanelVisible(true)}
-        activeOpacity={0.8}
-      >
-        <Bell color="white" size={28} />
-        {notifications.filter(n => n.type !== '💬 신규메시지').length + chatMessages.filter(msg => !msg.isMine && !msg.isRead).length > 0 && (
-          <View style={styles.fabBadge}>
-            <Text style={styles.badgeText}>{notifications.filter(n => n.type !== '💬 신규메시지').length + chatMessages.filter(msg => !msg.isMine && !msg.isRead).length}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
     </View>
   );
 }
@@ -382,6 +436,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f7fa', paddingTop: 50 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 15 },
   topBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
+  topBarIcons: { flexDirection: 'row', alignItems: 'center' },
+  bellBadge: { position: 'absolute', top: 2, right: 2, backgroundColor: '#E53E3E', borderRadius: 8, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white' },
+  bellBadgeText: { color: 'white', fontSize: 9, fontWeight: 'bold' },
   calendarContainer: { backgroundColor: 'white', padding: 15, marginHorizontal: 15, borderRadius: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#333' },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
@@ -392,6 +449,10 @@ const styles = StyleSheet.create({
   todayText: { color: 'white', fontWeight: 'bold' },
   classIndicator: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E53E3E', marginTop: 5 },
   scheduleListContainer: { paddingHorizontal: 15, marginTop: 20, flex: 1 },
+  dateNavRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  dateNavBtn: { padding: 8, borderRadius: 20, backgroundColor: '#EEF2FF' },
+  dateNavCenter: { flex: 1, alignItems: 'center' },
+  goTodayHint: { fontSize: 11, color: '#3b82f6', marginTop: 2 },
   classCard: { backgroundColor: 'white', padding: 15, borderRadius: 15, marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
   classTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#333' },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
@@ -445,8 +506,5 @@ const styles = StyleSheet.create({
   submitReportBtn: { backgroundColor: '#3b82f6', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   submitReportText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
 
-  // Floating Action Button
-  fab: { position: 'absolute', bottom: 20, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: '#3b82f6', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5, zIndex: 1000 },
-  fabBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#E53E3E', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white' },
-  badgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' }
+
 });

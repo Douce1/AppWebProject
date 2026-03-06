@@ -1,6 +1,6 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { Alert } from 'react-native';
 import * as Location from 'expo-location';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import { apiClient } from '../api/apiClient';
 
 export interface ClassSession {
@@ -19,15 +19,7 @@ export interface AppNotification {
     target: any;
 }
 
-export interface ChatMessage {
-    id: string;
-    roomId: string;
-    companyName: string;
-    text: string;
-    isMine: boolean;
-    time: string;
-    isRead?: boolean;
-}
+
 
 interface ScheduleContextType {
     classes: ClassSession[];
@@ -37,9 +29,6 @@ interface ScheduleContextType {
     isProposalResolved: boolean;
     proposalStatus: '미응답' | '수락' | '거절';
     resolveProposal: (status?: '수락' | '거절') => void;
-    chatMessages: ChatMessage[];
-    addChatMessage: (msg: ChatMessage) => void;
-    markChatRoomAsRead: (roomId: string) => void;
 
     departedIds: string[];
     canArriveIds: string[];
@@ -60,9 +49,6 @@ const ScheduleContext = createContext<ScheduleContextType>({
     isProposalResolved: false,
     proposalStatus: '미응답',
     resolveProposal: () => { },
-    chatMessages: [],
-    addChatMessage: () => { },
-    markChatRoomAsRead: () => { },
     departedIds: [],
     canArriveIds: [],
     arrivedIds: [],
@@ -87,13 +73,6 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     ]);
 
-    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-        { id: (Date.now() - 86400000 * 2).toString(), roomId: 'room-2', companyName: '종로 어학원', text: '이번 주 금요일 회식 참석 가능하신가요?', isMine: false, time: '어제', isRead: true },
-        { id: (Date.now() - 86400000).toString(), roomId: 'room-2', companyName: '종로 어학원', text: '네 참석 가능합니다!', isMine: true, time: '어제', isRead: true },
-        { id: (Date.now() - 7200000).toString(), roomId: 'room-3', companyName: '분당 수능관', text: '다음 주 강의 자료 미리 부탁드립니다.', isMine: false, time: '09:30 AM', isRead: false },
-        { id: Date.now().toString(), roomId: 'room-1', companyName: '강남본원 회화', text: '강의 제안에 대해 확인해주세요.', isMine: false, time: '10:00 AM', isRead: false }
-    ]);
-
     const [proposalStatus, setProposalStatus] = useState<'미응답' | '수락' | '거절'>('미응답');
     const isProposalResolved = proposalStatus !== '미응답';
 
@@ -116,18 +95,6 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const addClass = (newClass: ClassSession) => {
         setClasses(prev => [...prev, newClass]);
-    };
-
-    const addChatMessage = (msg: ChatMessage) => {
-        setChatMessages(prev => [...prev, msg]);
-    };
-
-    const markChatRoomAsRead = (roomId: string) => {
-        setChatMessages(prev => {
-            const hasUnread = prev.some(msg => msg.roomId === roomId && !msg.isRead && !msg.isMine);
-            if (!hasUnread) return prev;
-            return prev.map(msg => (msg.roomId === roomId && !msg.isRead && !msg.isMine) ? { ...msg, isRead: true } : msg);
-        });
     };
 
     const [departedIds, setDepartedIds] = useState<string[]>([]);
@@ -228,7 +195,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     return (
         <ScheduleContext.Provider value={{
-            classes, addClass, notifications, removeNotification, isProposalResolved, proposalStatus, resolveProposal, chatMessages, addChatMessage, markChatRoomAsRead,
+            classes, addClass, notifications, removeNotification, isProposalResolved, proposalStatus, resolveProposal,
             departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport
         }}>
             {children}
