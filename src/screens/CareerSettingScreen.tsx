@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { Filter } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { apiClient } from '../api/apiClient';
 
 type LectureRecord = {
   id: string;
@@ -12,135 +13,6 @@ type LectureRecord = {
   durationHours: number; // 강의 시간(시간 단위)
   notes?: string; // 특이 사항
 };
-
-const LECTURE_HISTORY: LectureRecord[] = [
-  {
-    id: 'L1',
-    date: '2022-03-15',
-    region: '서울특별시',
-    museum: '국립중앙박물관',
-    title: '고대 유물 기초 탐구',
-    durationHours: 2,
-    notes: '중학생 대상, 질의응답 시간 많았음',
-  },
-  {
-    id: 'L2',
-    date: '2022-05-10',
-    region: '서울특별시',
-    museum: '국립중앙박물관',
-    title: '조선시대 회화 이해',
-    durationHours: 3,
-    notes: '고3 수험생 대상 집중 강의',
-  },
-  {
-    id: 'L3',
-    date: '2022-09-01',
-    region: '부산광역시',
-    museum: '부산시립박물관',
-    title: '항구 도시의 역사',
-    durationHours: 1.5,
-  },
-  {
-    id: 'L4',
-    date: '2022-11-20',
-    region: '대구광역시',
-    museum: '대구미술관',
-    title: '현대 미술 감상',
-    durationHours: 2.5,
-  },
-  {
-    id: 'L5',
-    date: '2023-01-05',
-    region: '인천광역시',
-    museum: '인천어린이박물관',
-    title: '어린이 체험 역사 수업',
-    durationHours: 2,
-  },
-  {
-    id: 'L6',
-    date: '2023-04-18',
-    region: '서울특별시',
-    museum: '국립중앙박물관',
-    title: '세계 문화유산 특강',
-    durationHours: 1.5,
-  },
-  {
-    id: 'L7',
-    date: '2023-07-22',
-    region: '광주광역시',
-    museum: '광주역사민속박물관',
-    title: '호남 지역 민속 문화',
-    durationHours: 2,
-  },
-  {
-    id: 'L8',
-    date: '2023-10-02',
-    region: '부산광역시',
-    museum: '부산시립박물관',
-    title: '근현대 해양사 이야기',
-    durationHours: 3,
-  },
-  {
-    id: 'L9',
-    date: '2024-02-14',
-    region: '서울특별시',
-    museum: '국립중앙박물관',
-    title: '박물관 투어 스페셜',
-    durationHours: 2,
-  },
-  {
-    id: 'L10',
-    date: '2024-05-30',
-    region: '대구광역시',
-    museum: '대구미술관',
-    title: '청소년 현대미술 워크숍',
-    durationHours: 2.5,
-  },
-  {
-    id: 'L11',
-    date: '2024-08-09',
-    region: '인천광역시',
-    museum: '인천어린이박물관',
-    title: '여름방학 특별 체험 수업',
-    durationHours: 1,
-  },
-  {
-    id: 'L12',
-    date: '2024-12-01',
-    region: '광주광역시',
-    museum: '광주역사민속박물관',
-    title: '연말 전통문화 돌아보기',
-    durationHours: 3,
-  },
-  // 3월(현재 연도) 샘플 데이터
-  {
-    id: 'M1',
-    date: '2026-03-05',
-    region: '서울특별시',
-    museum: '국립중앙박물관',
-    title: '삼국시대 유물 집중 탐구',
-    durationHours: 2,
-    notes: '첫 방문 학교, OT 성격',
-  },
-  {
-    id: 'M2',
-    date: '2026-03-12',
-    region: '부산광역시',
-    museum: '부산시립박물관',
-    title: '근현대 부산 항만사 특강',
-    durationHours: 1.5,
-    notes: '보호자 참여, 질의응답 30분 진행',
-  },
-  {
-    id: 'M3',
-    date: '2026-03-20',
-    region: '광주광역시',
-    museum: '광주역사민속박물관',
-    title: '호남 전통 민속문화 이야기',
-    durationHours: 2,
-    notes: '체험 위주 수업, 만족도 높음',
-  },
-];
 
 type Filters = {
   startYearMonth?: string | null;
@@ -190,33 +62,61 @@ export default function CareerSettingScreen() {
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const router = useRouter();
 
+  const [lectures, setLectures] = useState<LectureRecord[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    apiClient
+      .getLectureHistory()
+      .then((data) => {
+        if (!mounted) return;
+        setLectures(
+          data.map((item) => ({
+            id: item.id,
+            date: item.date,
+            region: item.region,
+            museum: item.museum,
+            title: item.title,
+            durationHours: item.durationHours,
+            notes: item.notes,
+          })),
+        );
+      })
+      .catch(() => {
+        // 실패 시에는 빈 배열 유지 (UI는 "검색 결과가 없습니다" 처리)
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const yearMonthOptions = useMemo(() => {
     const set = new Set<string>();
-    LECTURE_HISTORY.forEach((l) => set.add(toYearMonth(l.date)));
+    lectures.forEach((l) => set.add(toYearMonth(l.date)));
     return Array.from(set).sort();
-  }, []);
+  }, [lectures]);
 
   const regionOptions = useMemo(() => {
     const set = new Set<string>();
-    LECTURE_HISTORY.forEach((l) => set.add(l.region));
+    lectures.forEach((l) => set.add(l.region));
     return Array.from(set).sort();
-  }, []);
+  }, [lectures]);
 
   const museumOptions = useMemo(() => {
     const set = new Set<string>();
-    LECTURE_HISTORY.forEach((l) => set.add(l.museum));
+    lectures.forEach((l) => set.add(l.museum));
     return Array.from(set).sort();
-  }, []);
+  }, [lectures]);
 
   const filtered = useMemo(
     () =>
-      applyFilters(LECTURE_HISTORY, {
+      applyFilters(lectures, {
         startYearMonth: appliedStartYearMonth,
         endYearMonth: appliedEndYearMonth,
         region: appliedRegion,
         museum: appliedMuseum,
       }),
-    [appliedStartYearMonth, appliedEndYearMonth, appliedRegion, appliedMuseum],
+    [lectures, appliedStartYearMonth, appliedEndYearMonth, appliedRegion, appliedMuseum],
   );
 
   const summary = useMemo(() => {

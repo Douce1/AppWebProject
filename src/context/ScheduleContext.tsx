@@ -1,6 +1,7 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Alert } from 'react-native';
 import * as Location from 'expo-location';
+import { apiClient } from '../api/apiClient';
 
 export interface ClassSession {
     id: string;
@@ -74,15 +75,7 @@ const ScheduleContext = createContext<ScheduleContextType>({
 });
 
 export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [classes, setClasses] = useState<ClassSession[]>([
-        {
-            id: '1',
-            title: 'Mathematics Intro',
-            date: new Date().toISOString().split('T')[0], // Today
-            location: 'Seoul Gangnam-gu, Building A 301',
-            time: '14:00 - 16:00'
-        }
-    ]);
+    const [classes, setClasses] = useState<ClassSession[]>([]);
 
     const [notifications, setNotifications] = useState<AppNotification[]>([
         {
@@ -144,6 +137,36 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [endedClassIds, setEndedClassIds] = useState<string[]>([]);
     const [readyToReportIds, setReadyToReportIds] = useState<string[]>([]);
     const [reportedIds, setReportedIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        let mounted = true;
+        apiClient.getLessons()
+            .then((lessons) => {
+                if (!mounted) return;
+                const mapped: ClassSession[] = lessons.map((lesson) => {
+                    const start = new Date(lesson.startsAt);
+                    const end = new Date(lesson.endsAt);
+                    const pad = (n: number) => n.toString().padStart(2, '0');
+                    const date = lesson.startsAt.slice(0, 10);
+                    const time = `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(end.getHours())}:${pad(end.getMinutes())}`;
+                    const location = `${lesson.region} ${lesson.museum}`;
+                    return {
+                        id: lesson.lessonId,
+                        title: lesson.lectureTitle,
+                        date,
+                        location,
+                        time,
+                    };
+                });
+                setClasses(mapped);
+            })
+            .catch(() => {
+                // 실패 시에는 기존 빈 상태 유지
+            });
+        return () => {
+            mounted = false;
+        };
+    }, []);
 
     const handleClassAction = async (id: string) => {
         // 1. If ready to report (handled by modal, so we skip it here but could alert)
