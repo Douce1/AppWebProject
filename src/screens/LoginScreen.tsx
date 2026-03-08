@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -19,20 +20,87 @@ WebBrowser.maybeCompleteAuthSession();
 
 type AppExtra = {
   googleClientId?: string;
+  googleAndroidClientId?: string;
+  googleIosClientId?: string;
+  googleWebClientId?: string;
 };
 
 const extra = (Constants.expoConfig?.extra ?? {}) as AppExtra;
 
 export default function LoginScreen() {
+  const googleClientIds = {
+    androidClientId: extra.googleAndroidClientId ?? extra.googleClientId ?? '',
+    iosClientId: extra.googleIosClientId ?? extra.googleClientId ?? '',
+    webClientId: extra.googleWebClientId ?? extra.googleClientId ?? '',
+  };
+
+  const currentPlatformClientId =
+    Platform.select({
+      android: googleClientIds.androidClientId,
+      ios: googleClientIds.iosClientId,
+      web: googleClientIds.webClientId,
+      default: '',
+    }) ?? '';
+
+  if (!currentPlatformClientId) {
+    return <MockLoginCard />;
+  }
+
+  return <GoogleLoginCard googleClientIds={googleClientIds} />;
+}
+
+function MockLoginCard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const clientId = extra.googleClientId ?? '';
   const mockIdToken = useMemo(() => Crypto.randomUUID(), []);
 
+  const completeLogin = async () => {
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+
+      const data = await httpClient.loginWithGoogle(mockIdToken);
+      await saveTokens(data.accessToken, data.refreshToken);
+      router.replace('/(tabs)');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : '로그인 중 오류가 발생했습니다.';
+      setErrorMessage(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <LoginCard
+      buttonLabel="Google 계정으로 계속하기"
+      disabled={isSubmitting}
+      errorMessage={errorMessage}
+      helperText='Google client ID가 없어서 개발용 mock 로그인으로 동작합니다.'
+      isSubmitting={isSubmitting}
+      onPress={() => {
+        void completeLogin();
+      }}
+    />
+  );
+}
+
+function GoogleLoginCard({
+  googleClientIds,
+}: {
+  googleClientIds: {
+    androidClientId: string;
+    iosClientId: string;
+    webClientId: string;
+  };
+}) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    androidClientId: clientId || undefined,
-    iosClientId: clientId || undefined,
-    webClientId: clientId || undefined,
+    androidClientId: googleClientIds.androidClientId || undefined,
+    iosClientId: googleClientIds.iosClientId || undefined,
+    webClientId: googleClientIds.webClientId || undefined,
     scopes: ['openid', 'profile', 'email'],
   });
 
@@ -72,17 +140,40 @@ export default function LoginScreen() {
       return;
     }
 
-    if (!clientId) {
-      await completeLogin(mockIdToken);
-      return;
-    }
-
     const result = await promptAsync();
     if (result.type === 'dismiss') {
       setErrorMessage('로그인이 취소되었습니다.');
     }
   };
 
+  return (
+    <LoginCard
+      buttonLabel="Google 계정으로 계속하기"
+      disabled={isSubmitting || !request}
+      errorMessage={errorMessage}
+      isSubmitting={isSubmitting}
+      onPress={() => {
+        void handleLoginPress();
+      }}
+    />
+  );
+}
+
+function LoginCard({
+  buttonLabel,
+  disabled,
+  errorMessage,
+  helperText,
+  isSubmitting,
+  onPress,
+}: {
+  buttonLabel: string;
+  disabled: boolean;
+  errorMessage: string | null;
+  helperText?: string;
+  isSubmitting: boolean;
+  onPress: () => void;
+}) {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
@@ -94,28 +185,21 @@ export default function LoginScreen() {
 
         <Pressable
           accessibilityRole="button"
-          disabled={isSubmitting || (!request && Boolean(clientId))}
-          onPress={() => {
-            void handleLoginPress();
-          }}
+          disabled={disabled}
+          onPress={onPress}
           style={({ pressed }) => [
             styles.button,
-            (pressed || isSubmitting) && styles.buttonPressed,
+            (pressed || isSubmitting || disabled) && styles.buttonPressed,
           ]}
         >
           {isSubmitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>Google 계정으로 계속하기</Text>
+            <Text style={styles.buttonText}>{buttonLabel}</Text>
           )}
         </Pressable>
 
-        {!clientId ? (
-          <Text style={styles.helperText}>
-            `googleClientId`가 없어서 개발용 mock 로그인으로 동작합니다.
-          </Text>
-        ) : null}
-
+        {helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
       </View>
     </View>
