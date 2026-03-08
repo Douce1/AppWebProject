@@ -27,6 +27,18 @@ export interface ApiCompany {
   ownerUserId: string;
 }
 
+export interface AuthUser {
+  userId: string;
+  email: string;
+  name: string;
+}
+
+export interface AuthLoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: AuthUser;
+}
+
 export interface ApiInstructorProfile {
   instructorId: string;
   userId: string;

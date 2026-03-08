@@ -1,6 +1,7 @@
 // httpClient: 실제 백엔드 API 호출용 껍데기 구현.
 // 엔드포인트 경로는 free-b/docs/mock-api-contract.md 에 정의된 것만 사용합니다.
 
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import {
   ApiAttendanceEvent,
@@ -16,6 +17,7 @@ import {
   ApiLesson,
   ApiLessonReport,
   ApiLessonRequest,
+  AuthLoginResponse,
   LectureRecordView,
 } from './types';
 import type { SubmitContractSignaturePayload } from './types';
@@ -26,7 +28,9 @@ import {
   saveTokens,
 } from '../store/authStore';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+const extra = (Constants.expoConfig?.extra ?? {}) as { apiUrl?: string };
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? extra.apiUrl ?? 'http://localhost:3000';
 
 type ApiError = Error & { code?: string; status?: number };
 type AuthFailureHandler = () => void | Promise<void>;
@@ -182,6 +186,15 @@ function toLectureHistoryView(lessons: ApiLesson[], reports: ApiLessonReport[]):
 }
 
 export const httpClient = {
+  async loginWithGoogle(idToken: string): Promise<AuthLoginResponse> {
+    return requestJson<AuthLoginResponse>('/auth/google', {
+      method: 'POST',
+      requiresAuth: false,
+      retryOnUnauthorized: false,
+      body: JSON.stringify({ idToken }),
+    });
+  },
+
   async getMe() {
     return getJson<{ userId: string; email: string; name: string }>('/me');
   },
