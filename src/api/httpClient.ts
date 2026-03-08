@@ -5,6 +5,7 @@ import {
   ApiAttendanceEvent,
   ApiAvailabilitySlot,
   ApiChatMessage,
+  ApiChatMessageList,
   ApiChatRoom,
   ApiCompany,
   ApiContract,
@@ -18,7 +19,7 @@ import {
 } from './types';
 import type { SubmitContractSignaturePayload } from './types';
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`);
@@ -130,9 +131,19 @@ export const httpClient = {
     return getJson<ApiChatRoom[]>('/chat/rooms');
   },
 
-  async getChatMessages(roomId: string, cursor?: string): Promise<ApiChatMessage[]> {
+  async getChatMessages(
+    roomId: string,
+    cursor?: string,
+  ): Promise<ApiChatMessageList> {
     const query = cursor ? `?cursor=${cursor}` : '';
-    return getJson<ApiChatMessage[]>(`/chat/rooms/${roomId}/messages${query}`);
+    const data = await getJson<{ items: ApiChatMessage[]; nextCursor?: string | null }>(
+      `/chat/rooms/${roomId}/messages${query}`,
+    );
+
+    return {
+      items: data.items,
+      nextCursor: data.nextCursor ?? null,
+    };
   },
 
   async sendChatMessage(roomId: string, text: string): Promise<ApiChatMessage> {
@@ -151,8 +162,7 @@ export const httpClient = {
   },
 
   async getUnreadCount(): Promise<number> {
-    const data = await getJson<{ count: number }>('/chat/unread-count');
-    return data.count;
+    const data = await getJson<{ unreadCount: number }>('/chat/unread-count');
+    return data.unreadCount;
   },
 };
-

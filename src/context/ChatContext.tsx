@@ -48,7 +48,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 for (const room of rooms) {
                     const msgs = await apiClient.getChatMessages(room.roomId);
                     if (!mounted) return;
-                    msgEntries[room.roomId] = msgs;
+                    msgEntries[room.roomId] = msgs.items;
                 }
                 setMessagesMap(msgEntries);
             } catch (e) {

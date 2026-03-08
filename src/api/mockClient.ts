@@ -5,6 +5,7 @@ import {
   ApiAttendanceEvent,
   ApiAvailabilitySlot,
   ApiChatMessage,
+  ApiChatMessageList,
   ApiChatRoom,
   ApiCompany,
   ApiContract,
@@ -428,8 +429,11 @@ export const mockClient = {
     return MOCK_CHAT_ROOMS;
   },
 
-  async getChatMessages(roomId: string, _cursor?: string): Promise<ApiChatMessage[]> {
-    return MOCK_CHAT_MESSAGES.filter(m => m.roomId === roomId);
+  async getChatMessages(roomId: string, _cursor?: string): Promise<ApiChatMessageList> {
+    return {
+      items: MOCK_CHAT_MESSAGES.filter(m => m.roomId === roomId),
+      nextCursor: null,
+    };
   },
 
   async sendChatMessage(roomId: string, content: string): Promise<ApiChatMessage> {
@@ -464,4 +468,3 @@ export const mockClient = {
     return MOCK_CHAT_ROOMS.reduce((sum, r) => sum + r.unreadCount, 0);
   },
 };
-
