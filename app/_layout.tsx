@@ -1,14 +1,16 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { startTransition, useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
+import { setAuthFailureHandler } from '@/src/api/httpClient';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ChatProvider } from '@/src/context/ChatContext';
 import { ProfileProvider } from '@/src/context/ProfileContext';
 import { ScheduleProvider } from '@/src/context/ScheduleContext';
+import { getAccessToken, subscribeAuthState } from '@/src/store/authStore';
 
 // JS 번들 로딩 중에는 스플래시 유지 (빈 화면 대신 스플래시 표시)
 SplashScreen.preventAutoHideAsync();
@@ -19,26 +21,99 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // 첫 렌더 후 스플래시 숨김 → 체감 로딩 개선
-    SplashScreen.hideAsync();
+    let mounted = true;
+
+    const bootstrapAuth = async () => {
+      const token = await getAccessToken();
+      if (!mounted) {
+        return;
+      }
+
+      setIsAuthenticated(Boolean(token));
+      setIsAuthReady(true);
+    };
+
+    bootstrapAuth();
+
+    const unsubscribe = subscribeAuthState((nextIsAuthenticated) => {
+      startTransition(() => {
+        setIsAuthenticated(nextIsAuthenticated);
+      });
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, []);
+
+  useEffect(() => {
+    setAuthFailureHandler(async () => {
+      startTransition(() => {
+        setIsAuthenticated(false);
+      });
+
+      if (pathname !== '/login') {
+        router.replace('/login');
+      }
+    });
+
+    return () => {
+      setAuthFailureHandler(() => {});
+    };
+  }, [pathname, router]);
+
+  useEffect(() => {
+    if (!isAuthReady) {
+      return;
+    }
+
+    if (!isAuthenticated && pathname !== '/login') {
+      router.replace('/login');
+      return;
+    }
+
+    if (isAuthenticated && pathname === '/login') {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthReady, isAuthenticated, pathname, router]);
+
+  useEffect(() => {
+    if (isAuthReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [isAuthReady]);
+
+  if (!isAuthReady) {
+    return null;
+  }
+
+  const stack = (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="settings" options={{ title: '앱 설정' }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+      </Stack>
+      <StatusBar style="auto" />
+    </ThemeProvider>
+  );
+
+  if (!isAuthenticated) {
+    return stack;
+  }
 
   return (
     <ScheduleProvider>
       <ChatProvider>
-        <ProfileProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="login" options={{ headerShown: false }} />
-              <Stack.Screen name="settings" options={{ title: '앱 설정' }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            </Stack>
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </ProfileProvider>
+        <ProfileProvider>{stack}</ProfileProvider>
       </ChatProvider>
     </ScheduleProvider>
   );
