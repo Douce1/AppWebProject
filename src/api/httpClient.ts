@@ -3,6 +3,7 @@
 
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
+import { Platform } from 'react-native';
 import {
   ApiAttendanceEvent,
   ApiAvailabilitySlot,
@@ -28,9 +29,34 @@ import {
   saveTokens,
 } from '../store/authStore';
 
-const extra = (Constants.expoConfig?.extra ?? {}) as { apiUrl?: string };
-const BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? extra.apiUrl ?? 'http://localhost:3000';
+const extra = (Constants.expoConfig?.extra ?? {}) as {
+  apiUrl?: string;
+  deviceApiUrl?: string;
+  useMockAuth?: boolean;
+};
+
+function normalizeAndroidLocalhost(url: string): string {
+  return url
+    .replace('://localhost', '://10.0.2.2')
+    .replace('://127.0.0.1', '://10.0.2.2');
+}
+
+function resolveBaseUrl(): string {
+  const configuredUrl =
+    process.env.EXPO_PUBLIC_API_URL ??
+    extra.deviceApiUrl ??
+    extra.apiUrl ??
+    'http://localhost:3000';
+
+  if (Platform.OS === 'android') {
+    return normalizeAndroidLocalhost(configuredUrl);
+  }
+
+  return configuredUrl;
+}
+
+const BASE_URL = resolveBaseUrl();
+const USE_MOCK_AUTH = extra.useMockAuth ?? true;
 
 type ApiError = Error & { code?: string; status?: number };
 type AuthFailureHandler = () => void | Promise<void>;
@@ -38,6 +64,12 @@ type AuthFailureHandler = () => void | Promise<void>;
 interface RefreshLoginResponse {
   accessToken: string;
   refreshToken: string;
+}
+
+interface DemoLoginPayload {
+  channel: 'web' | 'app';
+  email?: string;
+  userId?: string;
 }
 
 interface RequestOptions extends RequestInit {
@@ -186,7 +218,28 @@ function toLectureHistoryView(lessons: ApiLesson[], reports: ApiLessonReport[]):
 }
 
 export const httpClient = {
+  async loginWithDemoAccount(payload: DemoLoginPayload): Promise<AuthLoginResponse> {
+    return requestJson<AuthLoginResponse>('/auth/demo-login', {
+      method: 'POST',
+      requiresAuth: false,
+      retryOnUnauthorized: false,
+      body: JSON.stringify(payload),
+    });
+  },
+
   async loginWithGoogle(idToken: string): Promise<AuthLoginResponse> {
+    if (USE_MOCK_AUTH) {
+      return {
+        accessToken: `mock-access-token-${idToken.slice(0, 8)}`,
+        refreshToken: `mock-refresh-token-${idToken.slice(0, 8)}`,
+        user: {
+          userId: 'U1',
+          email: 'admin@example.com',
+          name: 'Demo Admin',
+        },
+      };
+    }
+
     return requestJson<AuthLoginResponse>('/auth/google', {
       method: 'POST',
       requiresAuth: false,
