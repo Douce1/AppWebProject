@@ -1,6 +1,7 @@
 // httpClient: 실제 백엔드 API 호출용 껍데기 구현.
 // 엔드포인트 경로는 free-b/docs/mock-api-contract.md 에 정의된 것만 사용합니다.
 
+import { router } from 'expo-router';
 import {
   ApiAttendanceEvent,
   ApiAvailabilitySlot,
@@ -18,35 +19,144 @@ import {
   LectureRecordView,
 } from './types';
 import type { SubmitContractSignaturePayload } from './types';
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  saveTokens,
+} from '../store/authStore';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
-async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { code?: string };
-    const err = new Error(body?.code ?? `HTTP error ${res.status} for ${path}`) as Error & { code?: string; status?: number };
-    err.code = body?.code;
-    err.status = res.status;
-    throw err;
-  }
-  return res.json() as Promise<T>;
+type ApiError = Error & { code?: string; status?: number };
+type AuthFailureHandler = () => void | Promise<void>;
+
+interface RefreshLoginResponse {
+  accessToken: string;
+  refreshToken: string;
 }
 
-async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+interface RequestOptions extends RequestInit {
+  requiresAuth?: boolean;
+  retryOnUnauthorized?: boolean;
+}
+
+let authFailureHandler: AuthFailureHandler = () => {
+  router.replace('/login');
+};
+
+export function setAuthFailureHandler(handler: AuthFailureHandler): void {
+  authFailureHandler = handler;
+}
+
+async function buildApiError(response: Response, path: string): Promise<ApiError> {
+  const body = (await response.json().catch(() => ({}))) as { code?: string; message?: string };
+  const err = new Error(
+    body.message ?? body.code ?? `HTTP error ${response.status} for ${path}`,
+  ) as ApiError;
+  err.code = body.code;
+  err.status = response.status;
+  return err;
+}
+
+async function handleAuthFailure(): Promise<void> {
+  await clearTokens();
+  await authFailureHandler();
+}
+
+async function tryRefreshTokens(): Promise<boolean> {
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) {
+    return false;
+  }
+
+  const response = await fetch(`${BASE_URL}/auth/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!response.ok) {
+    return false;
+  }
+
+  const data = (await response.json()) as RefreshLoginResponse;
+  if (!data.accessToken || !data.refreshToken) {
+    return false;
+  }
+
+  await saveTokens(data.accessToken, data.refreshToken);
+  return true;
+}
+
+async function requestJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const {
+    headers,
+    requiresAuth = true,
+    retryOnUnauthorized = true,
+    ...init
+  } = options;
+
+  const requestHeaders = new Headers(headers);
+  if (init.body && !requestHeaders.has('Content-Type')) {
+    requestHeaders.set('Content-Type', 'application/json');
+  }
+
+  if (requiresAuth) {
+    const accessToken = await getAccessToken();
+    if (accessToken) {
+      requestHeaders.set('Authorization', `Bearer ${accessToken}`);
+    }
+  }
+
+  const response = await fetch(`${BASE_URL}${path}`, {
+    ...init,
+    headers: requestHeaders,
+  });
+
+  if (response.status === 401 && requiresAuth && retryOnUnauthorized) {
+    const refreshed = await tryRefreshTokens();
+    if (refreshed) {
+      return requestJson<T>(path, {
+        ...options,
+        retryOnUnauthorized: false,
+      });
+    }
+
+    await handleAuthFailure();
+  }
+
+  if (!response.ok) {
+    throw await buildApiError(response, path);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export async function getJson<T>(path: string): Promise<T> {
+  return requestJson<T>(path, { method: 'GET' });
+}
+
+export async function postJson<T>(path: string, body?: unknown): Promise<T> {
+  return requestJson<T>(path, {
+    method: 'POST',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+export async function putJson<T>(path: string, body: unknown): Promise<T> {
+  return requestJson<T>(path, {
+    method: 'PUT',
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({})) as { code?: string };
-    const err = new Error(data?.code ?? `HTTP error ${res.status} for ${path}`) as Error & { code?: string; status?: number };
-    err.code = data?.code;
-    err.status = res.status;
-    throw err;
-  }
-  return res.json() as Promise<T>;
+}
+
+export async function deleteJson<T>(path: string): Promise<T> {
+  return requestJson<T>(path, { method: 'DELETE' });
 }
 
 // 강의 이력 뷰 변환은 mockClient와 동일한 규칙 사용
@@ -147,18 +257,11 @@ export const httpClient = {
   },
 
   async sendChatMessage(roomId: string, text: string): Promise<ApiChatMessage> {
-    const res = await fetch(`${BASE_URL}/chat/rooms/${roomId}/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    });
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-    return res.json() as Promise<ApiChatMessage>;
+    return postJson<ApiChatMessage>(`/chat/rooms/${roomId}/messages`, { text });
   },
 
   async markRoomAsRead(roomId: string): Promise<void> {
-    const res = await fetch(`${BASE_URL}/chat/rooms/${roomId}/read`, { method: 'POST' });
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    await postJson<void>(`/chat/rooms/${roomId}/read`);
   },
 
   async getUnreadCount(): Promise<number> {
