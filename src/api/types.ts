@@ -213,3 +213,8 @@ export interface ApiChatMessage {
   // isMine은 앱에서 직접 계산: senderUserId === 현재 로그인 userId
   isMine: boolean;
 }
+
+export interface ApiChatMessageList {
+  items: ApiChatMessage[];
+  nextCursor: string | null;
+}
