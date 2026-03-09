@@ -162,10 +162,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unreadCount = chatRooms.reduce((sum, r) => sum + r.unreadCount, 0);
 
-    // 안읽은 메시지: isMine === false
+    // 안읽은 메시지: unreadCount > 0인 방의 메시지만 (읽음 처리된 방은 제외)
+    const unreadRoomIds = new Set(chatRooms.filter(r => r.unreadCount > 0).map(r => r.roomId));
     const unreadMessages: ApiChatMessage[] = Object.values(messagesMap)
         .flat()
-        .filter(m => !m.isMine);
+        .filter(m => !m.isMine && unreadRoomIds.has(m.roomId));
 
     return (
         <ChatContext.Provider value={{
