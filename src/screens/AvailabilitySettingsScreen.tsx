@@ -1,4 +1,4 @@
-﻿import { Colors, Radius, Shadows } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
@@ -13,6 +13,8 @@ import {
 import { Calendar } from 'react-native-calendars';
 import { Plus } from 'lucide-react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { apiClient } from '../api/apiClient';
+import { putJson } from '@/src/api/httpClient';
 
 export type TimeSlot = { start: string; end: string };
 type AvailabilityMap = Record<string, TimeSlot[]>; // key: YYYY-MM-DD
@@ -70,6 +72,46 @@ export default function AvailabilitySettingsScreen() {
   const [endTimeInput, setEndTimeInput] = useState('18:00');
   const [rangeText, setRangeText] = useState('');
 
+  // 초기 진입 시 백엔드에서 기존 가용시간을 불러와서 캘린더에 표시
+  useEffect(() => {
+    let mounted = true;
+
+    const loadAvailability = async () => {
+      try {
+        const slots = await apiClient.getAvailability();
+        if (!mounted) return;
+
+        const next: AvailabilityMap = {};
+
+        const pad = (n: number) => n.toString().padStart(2, '0');
+
+        slots.forEach((slot) => {
+          const start = new Date(slot.availableStartAt);
+          const end = new Date(slot.availableEndAt);
+          const dateKey = formatDate(start);
+
+          const startStr = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
+          const endStr = `${pad(end.getHours())}:${pad(end.getMinutes())}`;
+
+          const list = next[dateKey] ?? [];
+          list.push({ start: startStr, end: endStr });
+          next[dateKey] = list;
+        });
+
+        setAvailability(next);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.log('[AvailabilitySettingsScreen] failed to load availability', error);
+      }
+    };
+
+    void loadAvailability();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     if (!selectedDates.length) {
       setRangeText('');
@@ -84,29 +126,28 @@ export default function AvailabilitySettingsScreen() {
   const markedDates: MarkedDates = useMemo(() => {
     const marked: MarkedDates = {};
 
-    // 1) 기본: 가능시간이 설정된 날짜는 초록색 "설정 완료" 상태( + 초록 점 )
+    // 1) 서버에 이미 저장된 "설정 완료" 날짜들 → 보조 동작 버튼 색
     Object.keys(availability).forEach((date) => {
       const hasSlots = availability[date] && availability[date].length > 0;
       if (!hasSlots) return;
       marked[date] = {
         selected: true,
-        selectedColor: '#10B981',
-        selectedTextColor: '#FFFFFF',
+        selectedColor: '#FFF0C2', // Button secondary background
+        selectedTextColor: Colors.brandInk,
         marked: true,
-        dotColor: '#10B981',
+        dotColor: Colors.brandHoney,
       };
     });
 
-    // 2) 현재 작업 범위로 선택된 날짜들은 모두 보라색 "작업 중" 상태로 덮어씀
-    //    이미 설정된 날짜라면 초록색 점(dot)으로 "설정됨" 상태를 함께 표시
+    // 2) 현재 선택/편집 중인 날짜들 → 주요 동작 버튼 색
     selectedDates.forEach((date) => {
       const hasSlots = availability[date] && availability[date].length > 0;
       marked[date] = {
         selected: true,
-        selectedColor: Colors.brandInk,
-        selectedTextColor: '#FFFFFF',
+        selectedColor: Colors.brandHoney, // Button primary background
+        selectedTextColor: Colors.brandInk,
         marked: hasSlots || marked[date]?.marked,
-        dotColor: hasSlots || marked[date]?.marked ? '#10B981' : undefined,
+        dotColor: Colors.brandHoney,
       };
     });
 
@@ -152,23 +193,35 @@ export default function AvailabilitySettingsScreen() {
     setRangeStart(null);
   };
 
-  const applyTimeToSelectedDates = () => {
+  const applyTimeToSelectedDates = async () => {
     if (!selectedDates.length) {
       Alert.alert('알림', '가능시간을 적용할 날짜를 먼저 선택해주세요.');
       return;
     }
-    setAvailability((prev) => {
-      const next: AvailabilityMap = { ...prev };
-      selectedDates.forEach((date) => {
-        next[date] = [{ start: startTimeInput, end: endTimeInput }];
-      });
-      return next;
+
+    // 1) 로컬 상태 업데이트
+    const next: AvailabilityMap = { ...availability };
+    selectedDates.forEach((date) => {
+      next[date] = [{ start: startTimeInput, end: endTimeInput }];
     });
+    setAvailability(next);
+
+    // 2) 백엔드에 UpsertMyAvailabilityDto 형태로 저장
+    const payloadSlots = buildPayloadSlots(next);
+
+    try {
+      await putJson('/availability/me', { slots: payloadSlots });
+      Alert.alert('등록 완료', '선택한 날짜의 가능시간이 저장되었습니다.');
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.log('[AvailabilitySettingsScreen] failed to save availability', error);
+      Alert.alert('저장 실패', '가용시간 저장 중 오류가 발생했습니다.');
+    }
+
     // 등록 후 선택 상태 초기화
     setSelectedDates([]);
     setRangeStart(null);
     setRangeText('');
-    Alert.alert('등록 완료', '선택한 날짜의 가능시간이 설정되었습니다.');
   };
 
   const currentSlots: TimeSlot[] = availability[focusedDate] ?? [];
@@ -177,6 +230,21 @@ export default function AvailabilitySettingsScreen() {
   const hasConfiguredInSelection = selectedDates.some(
     (date) => availability[date] && availability[date].length > 0,
   );
+
+  const toIso = (date: string, time: string): string => {
+    const [hh, mm] = time.split(':').map((v) => Number(v));
+    const d = new Date(`${date}T00:00:00`);
+    d.setHours(hh, mm, 0, 0);
+    return d.toISOString();
+  };
+
+  const buildPayloadSlots = (map: AvailabilityMap) =>
+    Object.entries(map).flatMap(([date, slots]) =>
+      (slots ?? []).map((slot) => ({
+        availableStartAt: toIso(date, slot.start),
+        availableEndAt: toIso(date, slot.end),
+      })),
+    );
 
   const allConfiguredSlots = useMemo(
     () =>
@@ -233,6 +301,7 @@ export default function AvailabilitySettingsScreen() {
               value={startTimeInput}
               onChangeText={setStartTimeInput}
               placeholder="09:00"
+              placeholderTextColor={Colors.mutedForeground}
             />
             <Text style={styles.slotDash}>~</Text>
             <TextInput
@@ -240,6 +309,7 @@ export default function AvailabilitySettingsScreen() {
               value={endTimeInput}
               onChangeText={setEndTimeInput}
               placeholder="18:00"
+              placeholderTextColor={Colors.mutedForeground}
             />
           </View>
           <View style={styles.actionsRow}>
@@ -255,19 +325,32 @@ export default function AvailabilitySettingsScreen() {
                     {
                       text: '확인',
                       style: 'destructive',
-                      onPress: () => {
-                        setAvailability((prev) => {
-                          const next: AvailabilityMap = { ...prev };
-                          selectedDates.forEach((date) => {
-                            if (next[date]) {
-                              delete next[date];
-                            }
-                          });
-                          return next;
+                      onPress: async () => {
+                        // 1) 로컬 상태에서 선택된 날짜 삭제
+                        const next: AvailabilityMap = { ...availability };
+                        selectedDates.forEach((date) => {
+                          if (next[date]) {
+                            delete next[date];
+                          }
                         });
+                        setAvailability(next);
                         setSelectedDates([]);
                         setRangeStart(null);
                         setRangeText('');
+
+                        // 2) 백엔드에 전체 가용시간 상태를 다시 저장
+                        const payloadSlots = buildPayloadSlots(next);
+                        try {
+                          await putJson('/availability/me', { slots: payloadSlots });
+                          Alert.alert('삭제 완료', '선택한 날짜의 가능시간이 삭제되었습니다.');
+                        } catch (error) {
+                          // eslint-disable-next-line no-console
+                          console.log(
+                            '[AvailabilitySettingsScreen] failed to delete availability',
+                            error,
+                          );
+                          Alert.alert('삭제 실패', '가용시간 삭제 중 오류가 발생했습니다.');
+                        }
                       },
                     },
                   ],
@@ -289,7 +372,7 @@ export default function AvailabilitySettingsScreen() {
               onPress={applyTimeToSelectedDates}
               disabled={!canApply}
             >
-              <Plus color={canApply ? '#FFFFFF' : '#9CA3AF'} size={20} />
+              <Plus color={canApply ? Colors.brandInk : '#9CA3AF'} size={20} />
               <Text style={[styles.applyButtonText, !canApply && styles.applyButtonTextDisabled]}>
                 등록
               </Text>
@@ -336,7 +419,17 @@ const styles = StyleSheet.create({
   },
   emptyText: { color: '#9CA3AF', fontSize: 14, marginBottom: 8 },
   slotRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  timeInput: { flex: 1, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, fontSize: 14 },
+  timeInput: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Radius.button,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: Colors.foreground,
+  },
   slotDash: { marginHorizontal: 8, color: '#6B7280', fontWeight: '600' },
   actionsRow: {
     flexDirection: 'row',
@@ -348,9 +441,9 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 6,
     paddingVertical: 12,
-    borderRadius: 10,
+    ...Radius.button,
     borderWidth: 1,
-    borderColor: '#F97373',
+    borderColor: Colors.colorError,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FEF2F2',
@@ -359,7 +452,7 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
     backgroundColor: '#FFF7ED',
   },
-  deleteButtonText: { fontSize: 14, fontWeight: '600', color: '#DC2626' },
+  deleteButtonText: { fontSize: 14, fontWeight: '600', color: Colors.colorError },
   deleteButtonTextDisabled: { color: '#FDA4A4' },
   applyButton: {
     flex: 1,
@@ -369,12 +462,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     ...Radius.button,
-    backgroundColor: Colors.brandInk,
+    backgroundColor: Colors.brandHoney,
   },
   applyButtonDisabled: {
     backgroundColor: '#E5E7EB',
   },
-  applyButtonText: { color: Colors.brandHoney, fontWeight: '700', marginLeft: 6 },
+  applyButtonText: { color: Colors.brandInk, fontWeight: '700', marginLeft: 6 },
   applyButtonTextDisabled: { color: '#9CA3AF' },
   slotDisplayRow: { paddingVertical: 8 },
   slotDisplayText: { fontSize: 14, color: '#374151' },

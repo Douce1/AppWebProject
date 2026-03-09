@@ -2,10 +2,12 @@ import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, Modal, Pressable, Platform, KeyboardAvoidingView } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { Phone, MapPin, Camera, User, GraduationCap, Plus, Trash2, ChevronDown, Mail } from 'lucide-react-native';
+import { Phone, MapPin, Camera, UserCircle, GraduationCap, Plus, Trash2, ChevronDown, Mail } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useProfile } from '../context/ProfileContext';
 import { REGION_SIDO_GU } from '../data/regionData';
+import { apiClient } from '../api/apiClient';
+import { putJson } from '@/src/api/httpClient';
 
 const SIDO_LIST = REGION_SIDO_GU.map((r) => r.sido);
 
@@ -54,6 +56,9 @@ export default function InstructorProfileScreen() {
     phone: '',
     address: '',
   });
+  const [savedCertifications, setSavedCertifications] = useState<
+    { id: string; name: string; year: string }[]
+  >([]);
 
   const [schoolName, setSchoolName] = useState(education?.schoolName ?? '');
   const [major, setMajor] = useState(education?.major ?? '');
@@ -78,6 +83,83 @@ export default function InstructorProfileScreen() {
     setGraduationYear(education?.graduationYear ?? '');
   }, [education]);
 
+  // 초기 진입 시 백엔드 프로필을 불러와서 필드 초기화
+  useEffect(() => {
+    let mounted = true;
+
+    const loadProfile = async () => {
+      try {
+        const profile = await apiClient.getInstructorProfile();
+        if (!mounted) return;
+
+        setName(profile.name ?? '');
+        setEmail(profile.email ?? '');
+        setPhone(profile.phone ?? '');
+        // residenceArea는 주소(시도)로 사용
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anyProfile = profile as any;
+        setAddress(anyProfile.residenceArea ?? '');
+
+        const edu = anyProfile.education as
+          | { schoolName?: string; major?: string; graduationYear?: string }
+          | null
+          | undefined;
+        if (edu) {
+          const eduState = {
+            schoolName: edu.schoolName ?? '',
+            major: edu.major ?? '',
+            graduationYear: edu.graduationYear ?? '',
+          };
+          setEducation(eduState);
+          setSchoolName(eduState.schoolName);
+          setMajor(eduState.major);
+          setGraduationYear(eduState.graduationYear);
+        }
+
+        const backendCerts = (anyProfile.certifications ??
+          []) as { id: string; name: string; year: string }[];
+        if (backendCerts.length > 0) {
+          const mapped = backendCerts.map((c) => ({
+            id: c.id,
+            name: c.name,
+            year: c.year,
+          }));
+          setCertifications(mapped);
+          setSavedCertifications(mapped);
+        } else {
+          setCertifications([]);
+          setSavedCertifications([]);
+        }
+
+        setSavedProfile({
+          photoUri: '', // photoUrl은 현재 UI에서 사용 안 함
+          name: profile.name ?? '',
+          email: profile.email ?? '',
+          phone: profile.phone ?? '',
+          address: anyProfile.residenceArea ?? '',
+        });
+      } catch (error) {
+        // 프로필을 못 불러와도 화면은 빈 상태로 유지
+        // eslint-disable-next-line no-console
+        console.log('[InstructorProfileScreen] failed to load profile', error);
+      }
+    };
+
+    void loadProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, [setCertifications, setEducation]);
+
+  const certificationsKey = certifications
+    .map((c) => `${c.id}|${c.name}|${c.year}`)
+    .join(';');
+  const savedCertificationsKey = savedCertifications
+    .map((c) => `${c.id}|${c.name}|${c.year}`)
+    .join(';');
+  const hasCertificationChanges = certificationsKey !== savedCertificationsKey;
+
   const isDirty =
     photoUri !== savedProfile.photoUri ||
     name !== savedProfile.name ||
@@ -86,7 +168,8 @@ export default function InstructorProfileScreen() {
     address !== savedProfile.address ||
     education?.schoolName !== schoolName.trim() ||
     education?.major !== major.trim() ||
-    education?.graduationYear !== graduationYear.trim();
+    education?.graduationYear !== graduationYear.trim() ||
+    hasCertificationChanges;
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -105,20 +188,75 @@ export default function InstructorProfileScreen() {
     }
   };
 
-  const handleSave = () => {
-    const nextProfile: Profile = { photoUri, name, email, phone, address };
-    setSavedProfile(nextProfile);
-    if (schoolName.trim()) {
-      setEducation({ schoolName: schoolName.trim(), major: major.trim(), graduationYear: graduationYear.trim() });
-    } else {
-      setEducation(null);
+  const handleSave = async () => {
+    const nextProfile = { photoUri, name, email, phone, address };
+
+    // 백엔드 UpdateMyInstructorProfileDto 형태에 맞춰 payload 구성
+    const payload: {
+      name: string;
+      email: string;
+      phone: string;
+      residenceArea: string;
+      education:
+        | {
+            schoolName: string;
+            major: string;
+            graduationYear: string;
+          }
+        | null;
+      certifications?: { id: string; name: string; year: string }[];
+    } = {
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      residenceArea: address.trim(),
+      education: null,
+    };
+
+    if (schoolName.trim() || major.trim() || graduationYear.trim()) {
+      payload.education = {
+        schoolName: schoolName.trim(),
+        major: major.trim(),
+        graduationYear: graduationYear.trim(),
+      };
     }
-    Alert.alert('저장 완료', '프로필이 저장되었습니다.');
+
+    if (certifications.length > 0) {
+      payload.certifications = certifications.map((c) => ({
+        id: c.id,
+        name: c.name,
+        year: c.year,
+      }));
+    }
+
+    try {
+      await putJson('/instructors/me', payload);
+
+      setSavedProfile(nextProfile);
+      setSavedCertifications(certifications);
+      if (schoolName.trim()) {
+        setEducation({
+          schoolName: schoolName.trim(),
+          major: major.trim(),
+          graduationYear: graduationYear.trim(),
+        });
+      } else {
+        setEducation(null);
+      }
+      Alert.alert('저장 완료', '프로필이 저장되었습니다.');
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.log('[InstructorProfileScreen] failed to save profile', error);
+      Alert.alert('저장 실패', '프로필 저장 중 오류가 발생했습니다.');
+    }
   };
 
   const addCertification = () => {
     if (!certName.trim()) return;
-    setCertifications([...certifications, { id: Date.now().toString(), name: certName.trim(), year: certYear.trim() }]);
+    setCertifications([
+      ...certifications,
+      { id: Date.now().toString(), name: certName.trim(), year: certYear.trim() },
+    ]);
     setCertName('');
     setCertYear('');
   };
@@ -162,7 +300,7 @@ export default function InstructorProfileScreen() {
             <View style={styles.divider} />
 
             <View style={styles.fieldRow}>
-              <User color={Colors.brandInk} size={20} />
+              <UserCircle color={Colors.brandInk} size={20} />
               <TextInput
                 style={styles.input}
                 value={name}
@@ -265,12 +403,14 @@ export default function InstructorProfileScreen() {
                 keyboardType="number-pad"
               />
               <TouchableOpacity style={styles.addCertButton} onPress={addCertification}>
-                <Plus color="#fff" size={20} />
+                <Plus color={Colors.brandInk} size={20} />
               </TouchableOpacity>
             </View>
             {certifications.map((item) => (
               <View key={item.id} style={styles.tagRow}>
-                <Text style={styles.tagText}>{item.name} ({item.year})</Text>
+                <Text style={styles.tagText}>
+                  {item.name} ({item.year})
+                </Text>
                 <TouchableOpacity onPress={() => removeCertification(item.id)}>
                   <Trash2 color="#9CA3AF" size={18} />
                 </TouchableOpacity>
@@ -304,14 +444,44 @@ const styles = StyleSheet.create({
   name: { fontSize: 22, fontWeight: 'bold', color: '#111827', marginBottom: 4 },
   subLabel: { fontSize: 12, color: '#9CA3AF', marginBottom: 16 },
   divider: { height: 1, backgroundColor: '#F3F4F6', alignSelf: 'stretch', marginVertical: 16 },
-  fieldRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 12 },
+  fieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    marginBottom: 12,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Radius.button,
+    paddingHorizontal: 12,
+    minHeight: 48,
+  },
   educationSingleInput: { flex: 1, minWidth: 0 },
   input: { flex: 1, paddingVertical: 12, paddingLeft: 8, fontSize: 15, color: '#374151' },
   subSectionTitle: { fontSize: 14, fontWeight: 'bold', color: '#6B7280', alignSelf: 'stretch', marginTop: 8, marginBottom: 8 },
-  certRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 12, marginBottom: 8 },
+  certRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Radius.button,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    minHeight: 48,
+  },
   certNameInput: { flex: 1, minWidth: 0 },
   certYearInput: { width: 72, marginLeft: 8 },
-  addCertButton: { backgroundColor: Colors.brandInk, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  addCertButton: {
+    backgroundColor: Colors.brandHoney,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
   tagRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch', paddingVertical: 10, paddingHorizontal: 12, backgroundColor: Colors.surfaceSoft, borderRadius: 8, marginBottom: 6 },
   tagText: { fontSize: 14, color: '#374151', flex: 1 },
   addressCombo: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingLeft: 8 },
@@ -324,7 +494,15 @@ const styles = StyleSheet.create({
   dropdownItemText: { fontSize: 15, color: '#374151' },
   dropdownItemTextSelected: { color: Colors.brandInk, fontWeight: '700' },
   inputMultiline: { minHeight: 60, textAlignVertical: 'top' },
-  saveButton: { backgroundColor: Colors.brandInk, alignSelf: 'stretch', padding: 16, ...Radius.button, alignItems: 'center', marginTop: 16 },
+  saveButton: {
+    backgroundColor: Colors.brandHoney,
+    alignSelf: 'stretch',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    ...Radius.button,
+    alignItems: 'center',
+    marginTop: 16,
+  },
   saveButtonDisabled: { backgroundColor: '#E5E7EB' },
-  saveButtonText: { color: Colors.brandHoney, fontSize: 16, fontWeight: 'bold' },
+  saveButtonText: { color: Colors.brandInk, fontSize: 16, fontWeight: 'bold' },
 });

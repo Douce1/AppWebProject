@@ -58,6 +58,10 @@ function resolveBaseUrl(): string {
 
 const BASE_URL = resolveBaseUrl();
 export const API_BASE_URL = BASE_URL;
+// Debug: show where the app is pointing for APIs
+// This will print once on bundle load in the Metro terminal.
+// eslint-disable-next-line no-console
+console.log('[httpClient] API_BASE_URL =', API_BASE_URL);
 
 const USE_MOCK_AUTH = extra.useMockAuth ?? false;
 
@@ -151,7 +155,13 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
     }
   }
 
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const url = `${BASE_URL}${path}`;
+  // eslint-disable-next-line no-console
+  console.log('[httpClient] request', url, {
+    requiresAuth,
+  });
+
+  const response = await fetch(url, {
     ...init,
     headers: requestHeaders,
   });
@@ -169,7 +179,15 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   }
 
   if (!response.ok) {
-    throw await buildApiError(response, path);
+    const err = await buildApiError(response, path);
+    // eslint-disable-next-line no-console
+    console.log('[httpClient] error', {
+      path,
+      status: err.status,
+      code: err.code,
+      message: err.message,
+    });
+    throw err;
   }
 
   if (response.status === 204) {
