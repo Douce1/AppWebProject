@@ -2,7 +2,7 @@ import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, Modal, Pressable, Platform, KeyboardAvoidingView } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { Phone, MapPin, Camera, User, GraduationCap, Plus, Trash2, ChevronDown, Mail } from 'lucide-react-native';
+import { Phone, MapPin, Camera, UserCircle, GraduationCap, Plus, Trash2, ChevronDown, Mail } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useProfile } from '../context/ProfileContext';
 import { REGION_SIDO_GU } from '../data/regionData';
@@ -106,7 +106,7 @@ export default function InstructorProfileScreen() {
   };
 
   const handleSave = () => {
-    const nextProfile: Profile = { photoUri, name, email, phone, address };
+    const nextProfile = { photoUri, name, email, phone, address };
     setSavedProfile(nextProfile);
     if (schoolName.trim()) {
       setEducation({ schoolName: schoolName.trim(), major: major.trim(), graduationYear: graduationYear.trim() });
@@ -162,7 +162,7 @@ export default function InstructorProfileScreen() {
             <View style={styles.divider} />
 
             <View style={styles.fieldRow}>
-              <User color={Colors.brandInk} size={20} />
+              <UserCircle color={Colors.brandInk} size={20} />
               <TextInput
                 style={styles.input}
                 value={name}
@@ -265,7 +265,7 @@ export default function InstructorProfileScreen() {
                 keyboardType="number-pad"
               />
               <TouchableOpacity style={styles.addCertButton} onPress={addCertification}>
-                <Plus color="#fff" size={20} />
+                <Plus color={Colors.brandInk} size={20} />
               </TouchableOpacity>
             </View>
             {certifications.map((item) => (
@@ -333,7 +333,15 @@ const styles = StyleSheet.create({
   },
   certNameInput: { flex: 1, minWidth: 0 },
   certYearInput: { width: 72, marginLeft: 8 },
-  addCertButton: { backgroundColor: Colors.brandInk, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  addCertButton: {
+    backgroundColor: Colors.brandHoney,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
   tagRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch', paddingVertical: 10, paddingHorizontal: 12, backgroundColor: Colors.surfaceSoft, borderRadius: 8, marginBottom: 6 },
   tagText: { fontSize: 14, color: '#374151', flex: 1 },
   addressCombo: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingLeft: 8 },
@@ -346,7 +354,15 @@ const styles = StyleSheet.create({
   dropdownItemText: { fontSize: 15, color: '#374151' },
   dropdownItemTextSelected: { color: Colors.brandInk, fontWeight: '700' },
   inputMultiline: { minHeight: 60, textAlignVertical: 'top' },
-  saveButton: { backgroundColor: Colors.brandInk, alignSelf: 'stretch', padding: 16, ...Radius.button, alignItems: 'center', marginTop: 16 },
+  saveButton: {
+    backgroundColor: Colors.brandHoney,
+    alignSelf: 'stretch',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    ...Radius.button,
+    alignItems: 'center',
+    marginTop: 16,
+  },
   saveButtonDisabled: { backgroundColor: '#E5E7EB' },
-  saveButtonText: { color: Colors.brandHoney, fontSize: 16, fontWeight: 'bold' },
+  saveButtonText: { color: Colors.brandInk, fontSize: 16, fontWeight: 'bold' },
 });
