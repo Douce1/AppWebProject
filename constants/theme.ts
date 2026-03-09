@@ -1,53 +1,73 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
 export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+  // Brand Colors
+  brandHoney: '#F3C742',
+  brandInk: '#251B10',
+  brandCream: '#FFF6DC',
+  brandSand: '#EFD9A2',
+  brandMint: '#EAF7F0',
+
+  // Surfaces
+  surfaceSoft: '#F8F4EA',
+  surfaceAlt: '#FBF7ED',
+  background: '#FFF9EF', // Main background from pen
+  card: '#FFFFFF',
+
+  // UI Colors
+  text: '#11181C',
+  foreground: '#251B10',
+  mutedForeground: '#7A6A58',
+  border: '#EFD9A2',
+
+  // Status Colors
+  colorSuccess: '#10B981',
+  colorError: '#EF4444',
+  colorWarning: '#F59E0B',
+  colorInfo: '#3B82F6',
+
+  // Tab Bar
+  tabIconDefault: '#7A6A58',
+  tabIconSelected: '#251B10',
+};
+
+// Asymmetric Corner Radius [14, 0, 14, 14]
+export const Radius = {
+  button: {
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 14,
+    borderBottomLeftRadius: 14,
   },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+  card: 24,
+  small: 8,
+};
+
+export const Shadows = {
+  card: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
+  sidebar: {
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.03,
+    shadowRadius: 24,
+    elevation: 5,
+  }
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
+    sans: 'Pretendard',
+  },
+  android: {
+    sans: 'Pretendard',
   },
   default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    sans: 'Pretendard, Outfit, sans-serif',
   },
 });
