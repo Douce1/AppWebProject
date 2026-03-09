@@ -36,11 +36,10 @@ export function ProfileHero({ name, role, imageUrl, hint }: ProfileHeroProps) {
 
 const styles = StyleSheet.create({
     container: {
-        padding: 24,
-        paddingTop: 8, // Reduced top margin for safe area
+        padding: 20,
         backgroundColor: Colors.brandHoney,
-        borderBottomLeftRadius: 32,
-        borderBottomRightRadius: 32,
+        borderRadius: 24,
+        marginHorizontal: 16,
         marginBottom: 24,
     },
     row: {
