@@ -208,19 +208,7 @@ export default function AvailabilitySettingsScreen() {
     setAvailability(next);
 
     // 2) 백엔드에 UpsertMyAvailabilityDto 형태로 저장
-    const toIso = (date: string, time: string): string => {
-      const [hh, mm] = time.split(':').map((v) => Number(v));
-      const d = new Date(`${date}T00:00:00`);
-      d.setHours(hh, mm, 0, 0);
-      return d.toISOString();
-    };
-
-    const payloadSlots = Object.entries(next).flatMap(([date, slots]) =>
-      (slots ?? []).map((slot) => ({
-        availableStartAt: toIso(date, slot.start),
-        availableEndAt: toIso(date, slot.end),
-      })),
-    );
+    const payloadSlots = buildPayloadSlots(next);
 
     try {
       await putJson('/availability/me', { slots: payloadSlots });
@@ -243,6 +231,21 @@ export default function AvailabilitySettingsScreen() {
   const hasConfiguredInSelection = selectedDates.some(
     (date) => availability[date] && availability[date].length > 0,
   );
+
+  const toIso = (date: string, time: string): string => {
+    const [hh, mm] = time.split(':').map((v) => Number(v));
+    const d = new Date(`${date}T00:00:00`);
+    d.setHours(hh, mm, 0, 0);
+    return d.toISOString();
+  };
+
+  const buildPayloadSlots = (map: AvailabilityMap) =>
+    Object.entries(map).flatMap(([date, slots]) =>
+      (slots ?? []).map((slot) => ({
+        availableStartAt: toIso(date, slot.start),
+        availableEndAt: toIso(date, slot.end),
+      })),
+    );
 
   const allConfiguredSlots = useMemo(
     () =>
@@ -321,19 +324,32 @@ export default function AvailabilitySettingsScreen() {
                     {
                       text: '확인',
                       style: 'destructive',
-                      onPress: () => {
-                        setAvailability((prev) => {
-                          const next: AvailabilityMap = { ...prev };
-                          selectedDates.forEach((date) => {
-                            if (next[date]) {
-                              delete next[date];
-                            }
-                          });
-                          return next;
+                      onPress: async () => {
+                        // 1) 로컬 상태에서 선택된 날짜 삭제
+                        const next: AvailabilityMap = { ...availability };
+                        selectedDates.forEach((date) => {
+                          if (next[date]) {
+                            delete next[date];
+                          }
                         });
+                        setAvailability(next);
                         setSelectedDates([]);
                         setRangeStart(null);
                         setRangeText('');
+
+                        // 2) 백엔드에 전체 가용시간 상태를 다시 저장
+                        const payloadSlots = buildPayloadSlots(next);
+                        try {
+                          await putJson('/availability/me', { slots: payloadSlots });
+                          Alert.alert('삭제 완료', '선택한 날짜의 가능시간이 삭제되었습니다.');
+                        } catch (error) {
+                          // eslint-disable-next-line no-console
+                          console.log(
+                            '[AvailabilitySettingsScreen] failed to delete availability',
+                            error,
+                          );
+                          Alert.alert('삭제 실패', '가용시간 삭제 중 오류가 발생했습니다.');
+                        }
                       },
                     },
                   ],
