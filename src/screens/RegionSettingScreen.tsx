@@ -1,4 +1,4 @@
-﻿import { Colors } from '@/constants/theme';
+﻿import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Check, X } from 'lucide-react-native';
@@ -96,16 +96,16 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginBottom: 12 },
   tagContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   sidoTag: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#fff' },
-  sidoTagSelected: { backgroundColor: '#4F46E5', borderColor: '#4F46E5' },
+  sidoTagSelected: { backgroundColor: Colors.brandInk, borderColor: Colors.brandInk },
   tagCheck: { marginRight: 6 },
   sidoTagText: { fontSize: 14, color: '#374151' },
-  sidoTagTextSelected: { color: '#fff', fontWeight: '600' },
+  sidoTagTextSelected: { color: Colors.brandHoney, fontWeight: '600' },
   footer: { backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 130 },
   summaryArea: { marginBottom: 12 },
   summaryTitle: { fontSize: 14, fontWeight: '600', color: '#6B7280', marginBottom: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EEF2FF', paddingVertical: 6, paddingLeft: 12, paddingRight: 6, borderRadius: 16, marginRight: 8, marginBottom: 4 },
-  chipText: { fontSize: 13, color: '#4F46E5', fontWeight: '500', marginRight: 6 },
-  saveButton: { backgroundColor: '#4F46E5', padding: 16, borderRadius: 12, alignItems: 'center' },
-  saveButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceSoft, paddingVertical: 6, paddingLeft: 12, paddingRight: 6, borderRadius: 16, marginRight: 8, marginBottom: 4 },
+  chipText: { fontSize: 13, color: Colors.brandInk, fontWeight: '500', marginRight: 6 },
+  saveButton: { backgroundColor: Colors.brandInk, padding: 16, ...Radius.button, alignItems: 'center' },
+  saveButtonText: { color: Colors.brandHoney, fontSize: 16, fontWeight: 'bold' },
 });

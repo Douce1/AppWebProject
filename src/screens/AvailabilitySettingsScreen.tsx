@@ -1,4 +1,4 @@
-﻿import { Colors } from '@/constants/theme';
+﻿import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
@@ -103,7 +103,7 @@ export default function AvailabilitySettingsScreen() {
       const hasSlots = availability[date] && availability[date].length > 0;
       marked[date] = {
         selected: true,
-        selectedColor: '#4F46E5',
+        selectedColor: Colors.brandInk,
         selectedTextColor: '#FFFFFF',
         marked: hasSlots || marked[date]?.marked,
         dotColor: hasSlots || marked[date]?.marked ? '#10B981' : undefined,
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   section: { backgroundColor: 'white', marginHorizontal: 16, marginTop: 16, padding: 16, borderRadius: 12 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginBottom: 12 },
   timeHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  activeHint: { fontSize: 12, color: '#4F46E5', fontWeight: '600' },
+  activeHint: { fontSize: 12, color: Colors.brandInk, fontWeight: '600' },
   rangeText: { fontSize: 12, color: '#4B5563', marginTop: 4 },
   rangeInput: {
     marginTop: 4,
@@ -368,13 +368,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#4F46E5',
+    ...Radius.button,
+    backgroundColor: Colors.brandInk,
   },
   applyButtonDisabled: {
     backgroundColor: '#E5E7EB',
   },
-  applyButtonText: { color: '#FFFFFF', fontWeight: '700', marginLeft: 6 },
+  applyButtonText: { color: Colors.brandHoney, fontWeight: '700', marginLeft: 6 },
   applyButtonTextDisabled: { color: '#9CA3AF' },
   slotDisplayRow: { paddingVertical: 8 },
   slotDisplayText: { fontSize: 14, color: '#374151' },

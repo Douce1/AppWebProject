@@ -1,4 +1,4 @@
-﻿import { Colors } from '@/constants/theme';
+﻿import { Colors, Radius, Shadows } from '@/constants/theme';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Bell, ChevronLeft, FileText, Info, LogOut, Shield } from 'lucide-react-native';
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   section: { backgroundColor: 'white', marginHorizontal: 16, marginTop: 16, borderRadius: 12, overflow: 'hidden' },
   sectionTitle: { fontSize: 14, fontWeight: '600', color: '#6B7280', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
-  rowIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  rowIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.surfaceSoft, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   rowLabel: { flex: 1, fontSize: 16, color: '#374151', fontWeight: '500' },
   chevron: { fontSize: 18, color: '#9CA3AF' },
   versionText: { fontSize: 14, color: '#6B7280' },

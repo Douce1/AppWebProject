@@ -1,4 +1,4 @@
-﻿import { Colors } from '@/constants/theme';
+﻿import { Colors, Radius, Shadows } from '@/constants/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, BookOpen, CheckCircle2, Phone, User } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -143,28 +143,28 @@ export default function ClassDetailScreen() {
                             <Text style={styles.actionText}>강의 수고하셨습니다</Text>
                         </View>
                     ) : isReadyToReport ? (
-                        <Text style={styles.actionText}>강의 보고서 작성</Text>
+                        <Text style={[styles.actionText, { color: Colors.brandInk }]}>강의 보고서 작성</Text>
                     ) : isEndedClass ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <CheckCircle2 color="white" size={20} style={{ marginRight: 8 }} />
                             <Text style={styles.actionText}>종료 처리 중...</Text>
                         </View>
                     ) : isCanEndClass ? (
-                        <Text style={styles.actionText}>강의 종료</Text>
+                        <Text style={[styles.actionText, { color: Colors.brandInk }]}>강의 종료</Text>
                     ) : isArrived ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <CheckCircle2 color="white" size={20} style={{ marginRight: 8 }} />
                             <Text style={styles.actionText}>도착 완료 (강의 중)</Text>
                         </View>
                     ) : isCanArrive ? (
-                        <Text style={styles.actionText}>도착</Text>
+                        <Text style={[styles.actionText, { color: Colors.brandInk }]}>도착 확인</Text>
                     ) : isDeparted ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <CheckCircle2 color="white" size={20} style={{ marginRight: 8 }} />
                             <Text style={styles.actionText}>이동 중...</Text>
                         </View>
                     ) : (
-                        <Text style={styles.actionText}>출발</Text>
+                        <Text style={[styles.actionText, { color: Colors.brandInk }]}>출발</Text>
                     )}
                 </TouchableOpacity>
             </View>
@@ -217,24 +217,24 @@ const styles = StyleSheet.create({
     statusValue: { fontSize: 16, fontWeight: 'bold', color: '#6B7280' },
     statusValueActive: { color: '#10B981' },
     footer: { padding: 20, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#eee' },
-    checkInButton: { backgroundColor: '#3b82f6', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
-    checkedInButton: { backgroundColor: '#10B981', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
-    reportButtonStyles: { backgroundColor: '#E53E3E', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
-    doneButtonStyles: { backgroundColor: '#9CA3AF', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
-    reportButton: { backgroundColor: '#E53E3E', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
-    disabledButton: { backgroundColor: '#10B981', paddingVertical: 15, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+    checkInButton: { backgroundColor: '#FFF0C2', paddingVertical: 15, ...Radius.button, alignItems: 'center' },
+    checkedInButton: { backgroundColor: Colors.brandInk, opacity: 0.6, paddingVertical: 15, ...Radius.button, alignItems: 'center' },
+    reportButtonStyles: { backgroundColor: Colors.brandHoney, paddingVertical: 15, ...Radius.button, alignItems: 'center' },
+    doneButtonStyles: { backgroundColor: Colors.brandInk, opacity: 0.6, paddingVertical: 15, ...Radius.button, alignItems: 'center' },
+    reportButton: { backgroundColor: Colors.brandHoney, paddingVertical: 15, ...Radius.button, alignItems: 'center' },
+    disabledButton: { backgroundColor: Colors.brandInk, opacity: 0.6, paddingVertical: 15, ...Radius.button, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
     actionText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
 
     // Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
     modalContent: { backgroundColor: 'white', borderRadius: 16, padding: 20, width: '85%' },
     modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#333' },
-    reasonInput: { backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, height: 120, padding: 12, fontSize: 14 },
+    reasonInput: { backgroundColor: Colors.surfaceSoft, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, height: 120, padding: 12, fontSize: 14 },
     modalButtonRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 15 },
     cancelButton: { paddingVertical: 10, paddingHorizontal: 15, marginRight: 10 },
     cancelButtonText: { color: '#666', fontWeight: '600' },
-    submitReportButton: { backgroundColor: '#3b82f6', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 8 },
-    submitReportText: { color: 'white', fontWeight: 'bold' },
+    submitReportButton: { backgroundColor: Colors.brandInk, paddingVertical: 10, paddingHorizontal: 15, ...Radius.button },
+    submitReportText: { color: Colors.brandHoney, fontWeight: 'bold' },
 
     // Report viewer card
     reportCard: { backgroundColor: '#F0FDF4', borderRadius: 12, padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#BBF7D0' },

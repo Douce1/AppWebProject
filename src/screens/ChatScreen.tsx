@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     settingsIconContainer: { padding: 8 },
     tabContainer: { flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
     tabButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, marginRight: 8, backgroundColor: '#f0f0f0' },
-    activeTabButton: { backgroundColor: '#3b82f6' },
+    activeTabButton: { backgroundColor: Colors.brandInk },
     tabText: { fontSize: 13, color: '#666', fontWeight: '500' },
     activeTabText: { color: 'white', fontWeight: 'bold' },
     contentContainer: { flex: 1, padding: 15 },

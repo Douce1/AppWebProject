@@ -6,7 +6,7 @@ import { useChat } from '../context/ChatContext';
 import { useSchedule } from '../context/ScheduleContext';
 import { CalendarStrip } from '../components/molecules/CalendarStrip';
 import { LessonCard } from '../components/organisms/LessonCard';
-import { Colors } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 import { CheckinFlow } from '../components/organisms/CheckinFlow';
 
 const { width, height } = Dimensions.get('window');
@@ -137,7 +137,7 @@ export default function HomeScreen({ navigation }: any) {
         {/* Date Navigation Row */}
         <View style={styles.dateNavRow}>
           <TouchableOpacity onPress={() => scrollToIndex(currentIndex - 1)} style={styles.dateNavBtn}>
-            <ChevronLeft size={22} color={Colors.mutedForeground} />
+            <ChevronLeft size={22} color="#F3C742" />
           </TouchableOpacity>
           <TouchableOpacity onPress={goToToday} style={styles.dateNavCenter}>
             <Text style={styles.sectionTitle}>
@@ -146,7 +146,7 @@ export default function HomeScreen({ navigation }: any) {
             {dateStr !== todayStr && <Text style={styles.goTodayHint}>오늘로 이동</Text>}
           </TouchableOpacity>
           <TouchableOpacity onPress={() => scrollToIndex(currentIndex + 1)} style={styles.dateNavBtn}>
-            <ChevronRight size={22} color={Colors.mutedForeground} />
+            <ChevronRight size={22} color="#F3C742" />
           </TouchableOpacity>
         </View>
 
@@ -177,6 +177,8 @@ export default function HomeScreen({ navigation }: any) {
             let actionLabel = '출발';
             let actionDisabled = false;
 
+            let actionVariant: 'primary' | 'secondary' = 'primary';
+
             if (isReported) {
               statusStr = 'completed'; badgeLabelStr = '제출됨'; statusLabelStr = '수업 완료';
               actionLabel = '수고하셨습니다'; actionDisabled = true;
@@ -191,14 +193,17 @@ export default function HomeScreen({ navigation }: any) {
               actionLabel = '강의 종료';
             } else if (isArrived) {
               statusStr = 'confirmed'; badgeLabelStr = '도착 완료'; statusLabelStr = '강의 대기 중';
-              actionLabel = '도착 완료 (강의 전)'; actionDisabled = true;
+              actionLabel = '도착 완료 (강의 중)'; actionDisabled = true;
             } else if (isCanArrive) {
               statusStr = 'requested'; badgeLabelStr = '이동 중'; statusLabelStr = '도착 승인 대기';
-              actionLabel = '도착 확인';
+              actionLabel = '도착 확인'; actionVariant = 'secondary';
             } else if (isDeparted) {
               statusStr = 'requested'; badgeLabelStr = '이동 중'; statusLabelStr = '이동 중';
               actionLabel = '이동 중...'; actionDisabled = true;
+            } else {
+              actionVariant = 'secondary';
             }
+
 
             return (
               <LessonCard
@@ -211,6 +216,7 @@ export default function HomeScreen({ navigation }: any) {
                 time={c.time}
                 onPressCard={() => router.push({ pathname: '/class-detail' as any, params: { classInfo: JSON.stringify(c) } })}
                 primaryActionLabel={actionLabel}
+                primaryActionVariant={actionVariant}
                 primaryActionDisabled={actionDisabled}
                 onPrimaryAction={() => {
                   if (isReadyToReport && !isReported) {
@@ -422,7 +428,7 @@ export default function HomeScreen({ navigation }: any) {
                       setCalendarModalVisible(false);
                     }}
                   >
-                    <Text style={[styles.calCellText, isTodayStr && { color: '#3b82f6', fontWeight: 'bold' }, isSelected && { color: 'white' }]}>
+                    <Text style={[styles.calCellText, isTodayStr && { color: Colors.brandInk, fontWeight: 'bold' }, isSelected && { color: 'white' }]}>
                       {dateObj.getDate()}
                     </Text>
                     {hasClass && <View style={styles.redDot} />}
@@ -457,21 +463,21 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#333' },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
   dayContainer: { alignItems: 'center', paddingVertical: 10, paddingHorizontal: 5, borderRadius: 10, width: 40 },
-  todayContainer: { backgroundColor: '#2f95dc' },
+  todayContainer: { backgroundColor: Colors.brandInk },
   dayText: { fontSize: 13, color: '#666', marginBottom: 5 },
   dateText: { fontSize: 16, fontWeight: '600', color: '#333' },
   todayText: { color: 'white', fontWeight: 'bold' },
   classIndicator: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E53E3E', marginTop: 5 },
   scheduleListContainer: { marginTop: 20, flex: 1 },
   dateNavRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  dateNavBtn: { padding: 8, borderRadius: 20, backgroundColor: '#EEF2FF' },
+  dateNavBtn: { padding: 8, borderRadius: 20, backgroundColor: 'white', borderWidth: 1, borderColor: '#F3C742' },
   dateNavCenter: { flex: 1, alignItems: 'center' },
-  goTodayHint: { fontSize: 11, color: '#3b82f6', marginTop: 2 },
+  goTodayHint: { fontSize: 11, color: '#F3C742', marginTop: 2, fontWeight: 'bold' },
   classCard: { backgroundColor: 'white', padding: 15, borderRadius: 15, marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
   classTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#333' },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   classDetails: { fontSize: 14, color: '#666' },
-  checkInButton: { backgroundColor: '#2f95dc', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
+  checkInButton: { backgroundColor: Colors.brandInk, padding: 15, ...Radius.button, alignItems: 'center', marginTop: 10 },
   checkedInButton: { backgroundColor: '#10B981' },
   reportButtonStyles: { backgroundColor: '#E53E3E' },
   doneButtonStyles: { backgroundColor: '#9CA3AF' },
@@ -484,14 +490,14 @@ const styles = StyleSheet.create({
 
   // Right Sidebar Styles
   sidebarOverlay: { flex: 1, flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.5)' },
-  sidebarPanel: { width: width * 0.75, backgroundColor: 'white', height: '100%' },
-  sidebarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 60, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  sidebarTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  sidebarPanel: { width: width * 0.75, backgroundColor: '#FCF9F2', height: '100%' },
+  sidebarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 60, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+  sidebarTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.brandInk },
   sidebarContent: { padding: 15 },
-  notifItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
-  notifType: { fontSize: 12, color: '#3b82f6', fontWeight: 'bold', marginBottom: 4 },
+  notifItem: { backgroundColor: 'white', padding: 15, borderRadius: 15, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  notifType: { fontSize: 12, color: Colors.brandInk, fontWeight: 'bold', marginBottom: 4 },
   notifTitle: { fontSize: 15, color: '#333', marginBottom: 2 },
-  notifTime: { fontSize: 12, color: '#999' },
+  notifTime: { fontSize: 12, color: Colors.mutedForeground },
 
   // Calendar Modal Styles
   modalOverlayCen: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
@@ -503,7 +509,7 @@ const styles = StyleSheet.create({
   calGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start' },
   calCellEmpty: { width: '14.28%', height: 40, marginVertical: 2 },
   calCell: { width: '14.28%', height: 40, marginVertical: 2, justifyContent: 'center', alignItems: 'center', borderRadius: 20 },
-  calCellSelected: { backgroundColor: '#3b82f6' },
+  calCellSelected: { backgroundColor: Colors.brandInk },
   calCellText: { fontSize: 15, color: '#333' },
   redDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#E53E3E', position: 'absolute', bottom: 4 },
   selectedDateScroll: { marginTop: 15, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 15 },
@@ -515,10 +521,10 @@ const styles = StyleSheet.create({
   // Report Modal Styles
   reportModalContent: { backgroundColor: 'white', width: '90%', borderRadius: 16, padding: 20 },
   reportModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  reportModalTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  reportInput: { backgroundColor: '#F3F4F6', borderRadius: 12, padding: 15, minHeight: 120, fontSize: 15, marginBottom: 15 },
-  submitReportBtn: { backgroundColor: '#3b82f6', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  submitReportText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  reportModalTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.brandInk },
+  reportInput: { backgroundColor: Colors.surfaceSoft, borderRadius: 12, padding: 15, minHeight: 120, fontSize: 15, marginBottom: 15, borderWidth: 1, borderColor: Colors.border },
+  submitReportBtn: { backgroundColor: Colors.brandInk, paddingVertical: 14, ...Radius.button, alignItems: 'center' },
+  submitReportText: { color: Colors.brandHoney, fontSize: 16, fontWeight: 'bold' },
 
 
 });

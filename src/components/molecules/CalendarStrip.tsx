@@ -24,7 +24,7 @@ export function CalendarStrip({ dates, activeDateStr, onDateSelect, onViewAll, c
                 <Typography variant="subtitle1" weight="700">주간 일정</Typography>
                 {onViewAll && (
                     <TouchableOpacity onPress={onViewAll} style={styles.viewCalendarBtn}>
-                        <Typography variant="body2" color={Colors.colorInfo} weight="500">전체 일정 확인</Typography>
+                        <Typography variant="body2" color="#F3C742" weight="500">전체 일정 확인</Typography>
                     </TouchableOpacity>
                 )}
             </View>

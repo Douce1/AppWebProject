@@ -1,4 +1,4 @@
-﻿import { Colors } from '@/constants/theme';
+﻿import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { Filter, Check } from 'lucide-react-native';
@@ -213,7 +213,7 @@ export default function CareerSettingScreen() {
             style={styles.filterIconButton}
             onPress={() => setShowFilters((prev) => !prev)}
           >
-            <Filter color="#4F46E5" size={18} />
+            <Filter color={Colors.brandInk} size={18} />
           </TouchableOpacity>
         </View>
 
@@ -285,7 +285,7 @@ export default function CareerSettingScreen() {
                       onPress={() => setSelectedRegions([])}
                     >
                       <Text style={styles.dropdownText}>전체</Text>
-                      {selectedRegions.length === 0 && <Check color="#4F46E5" size={16} />}
+                      {selectedRegions.length === 0 && <Check color={Colors.brandInk} size={16} />}
                     </TouchableOpacity>
                     {regionOptions.map((r) => {
                       const isSelected = selectedRegions.includes(r);
@@ -296,7 +296,7 @@ export default function CareerSettingScreen() {
                           onPress={() => toggleRegion(r)}
                         >
                           <Text style={styles.dropdownText}>{r}</Text>
-                          {isSelected && <Check color="#4F46E5" size={16} />}
+                          {isSelected && <Check color={Colors.brandInk} size={16} />}
                         </TouchableOpacity>
                       );
                     })}
@@ -323,7 +323,7 @@ export default function CareerSettingScreen() {
                       onPress={() => setSelectedMuseums([])}
                     >
                       <Text style={styles.dropdownText}>전체</Text>
-                      {selectedMuseums.length === 0 && <Check color="#4F46E5" size={16} />}
+                      {selectedMuseums.length === 0 && <Check color={Colors.brandInk} size={16} />}
                     </TouchableOpacity>
                     {museumOptions.map((m) => {
                       const isSelected = selectedMuseums.includes(m);
@@ -334,7 +334,7 @@ export default function CareerSettingScreen() {
                           onPress={() => toggleMuseum(m)}
                         >
                           <Text style={styles.dropdownText}>{m}</Text>
-                          {isSelected && <Check color="#4F46E5" size={16} />}
+                          {isSelected && <Check color={Colors.brandInk} size={16} />}
                         </TouchableOpacity>
                       );
                     })}
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EEF2FF',
+    backgroundColor: Colors.surfaceSoft,
   },
   filterPanel: {
     borderRadius: 12,
@@ -523,9 +523,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: Colors.surfaceSoft,
     fontSize: 12,
-    color: '#4F46E5',
+    color: Colors.brandInk,
     overflow: 'hidden',
   },
   cardMetaText: { fontSize: 12, color: '#6B7280', marginTop: 2 },
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: Colors.surfaceSoft,
     marginRight: 8,
   },
   quickRangeText: {
@@ -615,15 +615,15 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     flex: 1,
-    borderRadius: 999,
-    backgroundColor: '#4F46E5',
+    ...Radius.button,
+    backgroundColor: Colors.brandInk,
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   searchButtonText: {
     fontSize: 14,
-    color: 'white',
+    color: Colors.brandHoney,
     fontWeight: '600',
   },
   filterActionRow: {

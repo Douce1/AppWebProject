@@ -21,6 +21,7 @@ interface LessonCardProps {
     primaryActionLabel?: string;
     onPrimaryAction?: () => void;
     primaryActionDisabled?: boolean;
+    primaryActionVariant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
     secondaryActionLabel?: string;
     onSecondaryAction?: () => void;
 }
@@ -39,6 +40,7 @@ export function LessonCard({
     primaryActionLabel,
     onPrimaryAction,
     primaryActionDisabled,
+    primaryActionVariant,
     secondaryActionLabel,
     onSecondaryAction,
 }: LessonCardProps) {
@@ -84,7 +86,7 @@ export function LessonCard({
                     )}
                     {primaryActionLabel && onPrimaryAction && (
                         <Button
-                            variant={primaryActionDisabled ? "ghost" : "primary"}
+                            variant={primaryActionDisabled ? "ghost" : (primaryActionVariant || "primary")}
                             disabled={primaryActionDisabled}
                             title={primaryActionLabel}
                             onPress={onPrimaryAction}

@@ -1,4 +1,4 @@
-﻿import { Colors } from '@/constants/theme';
+﻿import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { FileSignature, FileText, Bell, Settings } from 'lucide-react-native';
@@ -88,7 +88,7 @@ export default function DocsScreen() {
                     <>
                         {contractsLoading ? (
                             <View style={styles.loadingRow}>
-                                <ActivityIndicator size="small" color="#3b82f6" />
+                                <ActivityIndicator size="small" color={Colors.brandInk} />
                                 <Text style={styles.loadingText}>계약 목록 불러오는 중...</Text>
                             </View>
                         ) : contracts.length === 0 ? (
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     settingsIconContainer: { padding: 8 },
     tabContainer: { flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
     tabButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, marginRight: 8, backgroundColor: '#f0f0f0' },
-    activeTabButton: { backgroundColor: '#3b82f6' },
+    activeTabButton: { backgroundColor: Colors.brandInk },
     tabText: { fontSize: 13, color: '#666', fontWeight: '500' },
     activeTabText: { color: 'white', fontWeight: 'bold' },
     contentContainer: { padding: 15 },
@@ -199,15 +199,15 @@ const styles = StyleSheet.create({
     docInfo: { flex: 1 },
     docTitle: { fontSize: 15, fontWeight: '600', color: '#333', marginBottom: 4 },
     docDate: { fontSize: 12, color: '#666' },
-    signButton: { backgroundColor: '#3b82f6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-    signButtonText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
-    viewButton: { backgroundColor: '#f0f0f0', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-    viewButtonText: { color: '#666', fontWeight: 'bold', fontSize: 13 },
+    signButton: { backgroundColor: Colors.brandInk, paddingHorizontal: 12, paddingVertical: 6, ...Radius.button },
+    signButtonText: { color: Colors.brandHoney, fontWeight: 'bold', fontSize: 13 },
+    viewButton: { backgroundColor: Colors.surfaceSoft, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+    viewButtonText: { color: Colors.brandInk, fontWeight: 'bold', fontSize: 13 },
     loadingRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 8 },
     loadingText: { fontSize: 13, color: '#6B7280' },
     emptyText: { fontSize: 13, color: '#9CA3AF', padding: 16 },
 
-    requestCard: { backgroundColor: 'white', padding: 16, borderRadius: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, marginBottom: 16 },
+    requestCard: { backgroundColor: 'white', padding: 16, borderRadius: 16, ...Shadows.card, marginBottom: 16 },
     requestHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
     requestBadgeRow: { flexDirection: 'row', alignItems: 'center' },
     ddayBadge: { backgroundColor: '#FEE2E2', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
@@ -215,18 +215,18 @@ const styles = StyleSheet.create({
     requestStatusText: { marginLeft: 6, fontSize: 12, color: '#DC2626', fontWeight: '600' },
     requestMetaText: { fontSize: 11, color: '#9CA3AF' },
     requestTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 10 },
-    requestBody: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 12, marginBottom: 12 },
-    requestBullet: { fontSize: 13, color: '#4B5563', marginBottom: 4 },
+    requestBody: { backgroundColor: Colors.brandMint, borderRadius: 12, padding: 12, marginBottom: 12 },
+    requestBullet: { fontSize: 13, color: Colors.brandInk, marginBottom: 4 },
     requestActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-    acceptButton: { flex: 1, backgroundColor: '#10B981', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginRight: 8 },
-    acceptButtonText: { color: 'white', fontWeight: '700', fontSize: 14 },
-    rejectButton: { flex: 1, backgroundColor: '#FEE2E2', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginLeft: 8 },
-    rejectButtonText: { color: '#DC2626', fontWeight: '700', fontSize: 14 },
+    acceptButton: { flex: 1, backgroundColor: '#F3C742', paddingVertical: 10, ...Radius.button, alignItems: 'center', marginRight: 8 },
+    acceptButtonText: { color: '#251B10', fontWeight: '700', fontSize: 14 },
+    rejectButton: { flex: 1, backgroundColor: '#F2B8B5', paddingVertical: 10, ...Radius.button, alignItems: 'center', marginLeft: 8 },
+    rejectButtonText: { color: '#B42318', fontWeight: '700', fontSize: 14 },
 
     rejectInputContainer: { marginTop: 10 },
-    rejectInput: { backgroundColor: '#F3F4F6', borderRadius: 8, padding: 12, minHeight: 60, fontSize: 13, marginBottom: 10, textAlignVertical: 'top' },
-    cancelRejectButton: { flex: 1, backgroundColor: '#F3F4F6', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginRight: 8 },
-    cancelRejectButtonText: { color: '#4B5563', fontWeight: '700', fontSize: 14 },
-    submitRejectButton: { flex: 1, backgroundColor: '#DC2626', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginLeft: 8 },
-    submitRejectButtonText: { color: 'white', fontWeight: '700', fontSize: 14 },
+    rejectInput: { backgroundColor: Colors.surfaceSoft, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, padding: 12, minHeight: 60, fontSize: 13, marginBottom: 10, textAlignVertical: 'top' },
+    cancelRejectButton: { flex: 1, backgroundColor: Colors.surfaceSoft, paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginRight: 8 },
+    cancelRejectButtonText: { color: Colors.brandInk, fontWeight: '700', fontSize: 14 },
+    submitRejectButton: { flex: 1, backgroundColor: Colors.brandInk, paddingVertical: 10, ...Radius.button, alignItems: 'center', marginLeft: 8 },
+    submitRejectButtonText: { color: Colors.brandHoney, fontWeight: '700', fontSize: 14 },
 });

@@ -38,7 +38,10 @@ const styles = StyleSheet.create({
     container: {
         padding: 20,
         backgroundColor: Colors.brandHoney,
-        borderRadius: 24,
+        borderTopLeftRadius: 24,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+        borderTopRightRadius: 0,
         marginHorizontal: 16,
         marginBottom: 24,
     },

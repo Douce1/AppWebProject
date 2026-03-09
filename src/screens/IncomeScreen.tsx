@@ -1,9 +1,9 @@
-﻿import { Colors } from '@/constants/theme';
-import { useRouter } from 'expo-router';
+﻿import { useRouter } from 'expo-router';
 import { FileText, RefreshCcw, Settings, TrendingUp, X } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { IncomeOverviewCard } from '@/src/components/organisms/IncomeOverviewCard';
+import { Colors, Radius, Shadows } from '@/constants/theme';
+import { Button } from '@/src/components/atoms/Button';
 
 export default function IncomeScreen() {
     const router = useRouter();
@@ -14,52 +14,133 @@ export default function IncomeScreen() {
         { id: 2, month: '8월', amount: 3150000, date: '09.10 지급완료', hours: 65 }
     ];
 
+    const styles = useMemo(
+        () =>
+            StyleSheet.create({
+                container: { flex: 1, backgroundColor: Colors.background },
+                header: { paddingTop: 50, paddingBottom: 15, paddingHorizontal: 20, backgroundColor: Colors.background, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+                headerTitle: { fontSize: 24, fontWeight: 'bold', color: Colors.brandInk },
+                settingsIconContainer: { padding: 8 },
+                incomeCard: { backgroundColor: '#FFF0C2', margin: 15, borderRadius: 16, padding: 20, shadowColor: '#FFF0C2', shadowOpacity: 0.2, shadowRadius: 10, elevation: 4 },
+                incomeLabel: { color: Colors.brandInk, fontSize: 14, marginBottom: 4, fontWeight: '500' },
+                amountRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 5 },
+                amountText: { color: '#F3C742', fontSize: 32, fontWeight: 'bold' },
+                currencyText: { color: Colors.brandInk, fontSize: 18, marginLeft: 4, fontWeight: '600' },
+                taxDeductedText: { color: Colors.brandInk, fontSize: 14, marginBottom: 20, fontWeight: '500', opacity: 0.7 },
+                statsRow: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 10, padding: 12, marginBottom: 15 },
+                statBox: { flex: 1, alignItems: 'center' },
+                statLabel: { color: Colors.brandInk, fontSize: 12, marginBottom: 4, opacity: 0.7 },
+                statValue: { color: Colors.brandInk, fontSize: 16, fontWeight: 'bold' },
+                verticalDivider: { width: 1, backgroundColor: 'rgba(0,0,0,0.1)' },
+                increaseBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(243, 199, 66, 0.4)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+                increaseText: { color: Colors.brandInk, fontSize: 13, fontWeight: 'bold' },
+                divider: { height: 1, backgroundColor: 'rgba(0,0,0,0.1)', marginVertical: 15 },
+                paymentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+                paymentText: { color: Colors.brandInk, fontSize: 14, opacity: 0.8 },
+                historySection: { paddingHorizontal: 20, marginTop: 10, paddingBottom: 100 },
+                sectionTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.brandInk, marginBottom: 15 },
+                historyItem: { backgroundColor: 'white', padding: 15, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, ...Shadows.card },
+                historyIconBox: { backgroundColor: Colors.brandMint, padding: 10, borderRadius: 10, marginRight: 12 },
+                historyTitle: { fontSize: 15, fontWeight: '600', color: Colors.brandInk, marginBottom: 4 },
+                historyDate: { fontSize: 12, color: Colors.mutedForeground },
+                historyAmount: { fontSize: 16, fontWeight: 'bold', color: Colors.brandInk },
+                historyTaxAmount: { fontSize: 13, color: Colors.brandHoney, marginTop: 4, fontWeight: '500' },
+                modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+                modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 25, minHeight: 400 },
+                modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+                modalTitle: { fontSize: 20, fontWeight: 'bold', color: Colors.brandInk },
+                receiptBox: { backgroundColor: Colors.surfaceSoft, padding: 20, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, marginBottom: 25 },
+                receiptRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+                receiptRowBorder: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: Colors.border, borderStyle: 'dashed' },
+                receiptRowTotal: { marginTop: 15, paddingTop: 15, borderTopWidth: 2, borderTopColor: Colors.brandInk },
+                receiptLabel: { color: Colors.mutedForeground, fontSize: 14 },
+                receiptValue: { color: Colors.brandInk, fontSize: 14, fontWeight: '500' },
+                receiptTotalLabel: { color: Colors.brandInk, fontSize: 16, fontWeight: 'bold' },
+                receiptTotalValue: { color: Colors.brandHoney, fontSize: 18, fontWeight: 'bold' },
+                emptyHistoryText: { fontSize: 14, fontWeight: '500', color: Colors.mutedForeground, marginTop: 8 },
+            }),
+        [],
+    );
+
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>수입/정산</Text>
                 <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
-                    <Settings color="#666" size={26} />
+                    <Settings color={Colors.mutedForeground} size={26} />
                 </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => setSelectedDetail({ month: '10월', amount: 3450000, hours: 68 })}
-                style={{ paddingHorizontal: 15 }}
-            >
-                <IncomeOverviewCard
-                    title="이번 달 예상 수입 (세전)"
-                    amount="3,450,000"
-                    subtitle="실수령 예상 (3.3% 공제): 3,336,150원"
-                    dateStr="지급 예정일: 11월 10일"
-                />
-            </TouchableOpacity>
+            <View style={styles.incomeCard}>
+                <Text style={styles.incomeLabel}>이번 달 예상 수입 (세전)</Text>
+                <View style={styles.amountRow}>
+                    <Text style={styles.amountText}>3,450,000</Text>
+                    <Text style={styles.currencyText}>원</Text>
+                </View>
+
+                <Text style={styles.taxDeductedText}>실수령 예상 (3.3% 공제): 3,336,150원</Text>
+
+                <View style={styles.statsRow}>
+                    <View style={styles.statBox}>
+                        <Text style={styles.statLabel}>이번 달 근무</Text>
+                        <Text style={styles.statValue}>68시간</Text>
+                    </View>
+                    <View style={styles.verticalDivider} />
+                    <View style={styles.statBox}>
+                        <Text style={styles.statLabel}>지난 달 근무</Text>
+                        <Text style={styles.statValue}>62시간</Text>
+                    </View>
+                </View>
+
+                <View style={styles.increaseBadge}>
+                    <TrendingUp color={Colors.brandHoney} size={14} style={{ marginRight: 4 }} />
+                    <Text style={styles.increaseText}>근무 시간 6시간 증가</Text>
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.paymentRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <RefreshCcw color={Colors.brandInk} size={14} style={{ marginRight: 6 }} />
+                        <Text style={styles.paymentText}>지급 예정일: 11월 10일</Text>
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => setSelectedDetail({ month: '10월', amount: 3450000, hours: 68 })}
+                        style={{ paddingVertical: 5, paddingHorizontal: 10, backgroundColor: '#F3C742', borderRadius: 18 }}
+                    >
+                        <Text style={{ color: '#FFF0C2', fontWeight: 'bold', fontSize: 12.5 }}>상세보기 &gt;</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
 
             <View style={styles.historySection}>
                 <Text style={styles.sectionTitle}>정산 내역</Text>
 
-                {historyData.map(item => (
-                    <TouchableOpacity
-                        key={item.id}
-                        style={styles.historyItem}
-                        onPress={() => setSelectedDetail(item)}
-                    >
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <View style={styles.historyIconBox}>
-                                <FileText color="#3b82f6" size={20} />
+                {historyData.length === 0 ? (
+                    <Text style={[styles.sectionTitle, styles.emptyHistoryText]}>정산 내역이 없습니다.</Text>
+                ) : (
+                    historyData.map(item => (
+                        <TouchableOpacity
+                            key={item.id}
+                            style={styles.historyItem}
+                            onPress={() => setSelectedDetail(item)}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <View style={styles.historyIconBox}>
+                                    <FileText color={Colors.brandInk} size={20} />
+                                </View>
+                                <View>
+                                    <Text style={styles.historyTitle}>{item.month} 정산금</Text>
+                                    <Text style={styles.historyDate}>{item.date}</Text>
+                                </View>
                             </View>
-                            <View>
-                                <Text style={styles.historyTitle}>{item.month} 정산금</Text>
-                                <Text style={styles.historyDate}>{item.date}</Text>
+                            <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={styles.historyAmount}>+{(item.amount).toLocaleString()}원</Text>
+                                <Text style={styles.historyTaxAmount}>실수령: {(item.amount * 0.967).toLocaleString()}원</Text>
                             </View>
-                        </View>
-                        <View style={{ alignItems: 'flex-end' }}>
-                            <Text style={styles.historyAmount}>+{(item.amount).toLocaleString()}원</Text>
-                            <Text style={styles.historyTaxAmount}>실수령 {(item.amount * 0.967).toLocaleString()}원</Text>
-                        </View>
-                    </TouchableOpacity>
-                ))}
+                        </TouchableOpacity>
+                    ))
+                )}
             </View>
 
             {/* Detail Modal */}
@@ -74,7 +155,7 @@ export default function IncomeScreen() {
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>{selectedDetail?.month} 정산 상세 내역</Text>
                             <TouchableOpacity onPress={() => setSelectedDetail(null)}>
-                                <X size={24} color="#333" />
+                                <X size={24} color={Colors.brandInk} />
                             </TouchableOpacity>
                         </View>
 
@@ -88,7 +169,7 @@ export default function IncomeScreen() {
                                     <Text style={styles.receiptLabel}>기본 시급</Text>
                                     <Text style={styles.receiptValue}>50,000원</Text>
                                 </View>
-                                <View style={[styles.receiptRow, { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#e5e7eb', borderStyle: 'dashed' }]}>
+                                <View style={[styles.receiptRow, styles.receiptRowBorder]}>
                                     <Text style={styles.receiptLabel}>총 지급액 (세전)</Text>
                                     <Text style={styles.receiptValue}>{(selectedDetail.amount).toLocaleString()}원</Text>
                                 </View>
@@ -100,16 +181,19 @@ export default function IncomeScreen() {
                                     <Text style={styles.receiptLabel}>지방소득세 (0.3%)</Text>
                                     <Text style={styles.receiptValue}>-{Math.floor(selectedDetail.amount * 0.003).toLocaleString()}원</Text>
                                 </View>
-                                <View style={[styles.receiptRow, { marginTop: 15, paddingTop: 15, borderTopWidth: 2, borderTopColor: '#333' }]}>
+                                <View style={[styles.receiptRow, styles.receiptRowTotal]}>
                                     <Text style={styles.receiptTotalLabel}>실수령액 (세후)</Text>
                                     <Text style={styles.receiptTotalValue}>{(selectedDetail.amount * 0.967).toLocaleString()}원</Text>
                                 </View>
                             </View>
                         )}
 
-                        <TouchableOpacity style={styles.closeButton} onPress={() => setSelectedDetail(null)}>
-                            <Text style={styles.closeButtonText}>닫기</Text>
-                        </TouchableOpacity>
+                        <Button
+                            title="닫기"
+                            variant="primary"
+                            onPress={() => setSelectedDetail(null)}
+                            style={{ paddingVertical: 15 }}
+                        />
                     </View>
                 </View>
             </Modal>
@@ -117,49 +201,3 @@ export default function IncomeScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.background, paddingTop: 50 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 15 },
-    headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
-    settingsIconContainer: { padding: 8 },
-    incomeCard: { backgroundColor: '#1E3A8A', margin: 15, borderRadius: 16, padding: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 4 },
-    incomeLabel: { color: '#D1D5DB', fontSize: 14, marginBottom: 4 },
-    amountRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 5 },
-    amountText: { color: 'white', fontSize: 32, fontWeight: 'bold' },
-    currencyText: { color: 'white', fontSize: 18, marginLeft: 4, fontWeight: '600' },
-    taxDeductedText: { color: '#A7F3D0', fontSize: 14, marginBottom: 20, fontWeight: '500' },
-    statsRow: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: 12, marginBottom: 15 },
-    statBox: { flex: 1, alignItems: 'center' },
-    statLabel: { color: '#D1D5DB', fontSize: 12, marginBottom: 4 },
-    statValue: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-    verticalDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
-    increaseBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(16, 185, 129, 0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-    increaseText: { color: '#10B981', fontSize: 13, fontWeight: 'bold' },
-    divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 15 },
-    paymentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    paymentText: { color: '#E5E7EB', fontSize: 14 },
-    detailButton: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-    detailButtonText: { color: 'white', fontSize: 12, fontWeight: 'bold' },
-    historySection: { paddingHorizontal: 20, marginTop: 10, paddingBottom: 40 },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 15 },
-    historyItem: { backgroundColor: 'white', padding: 15, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 5, elevation: 1 },
-    historyIconBox: { backgroundColor: '#EFF6FF', padding: 10, borderRadius: 10, marginRight: 12 },
-    historyTitle: { fontSize: 15, fontWeight: '600', color: '#333', marginBottom: 4 },
-    historyDate: { fontSize: 12, color: '#6B7280' },
-    historyAmount: { fontSize: 16, fontWeight: 'bold', color: '#111827' },
-    historyTaxAmount: { fontSize: 13, color: '#10B981', marginTop: 4, fontWeight: '500' },
-
-    // Modal Styles
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 25, minHeight: 400 },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
-    receiptBox: { backgroundColor: '#F9FAFB', padding: 20, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 25 },
-    receiptRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-    receiptLabel: { color: '#6B7280', fontSize: 14 },
-    receiptValue: { color: '#374151', fontSize: 14, fontWeight: '500' },
-    receiptTotalLabel: { color: '#111827', fontSize: 16, fontWeight: 'bold' },
-    receiptTotalValue: { color: '#10B981', fontSize: 18, fontWeight: 'bold' },
-    closeButton: { backgroundColor: '#1E3A8A', paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
-    closeButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' }
-});

@@ -1,4 +1,4 @@
-﻿import { Colors } from '@/constants/theme';
+﻿import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, Modal, Pressable, Platform, KeyboardAvoidingView } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -166,7 +166,7 @@ export default function InstructorProfileScreen() {
             <View style={styles.divider} />
 
             <View style={styles.fieldRow}>
-              <User color="#4F46E5" size={20} />
+              <User color={Colors.brandInk} size={20} />
               <TextInput
                 style={styles.input}
                 value={name}
@@ -176,7 +176,7 @@ export default function InstructorProfileScreen() {
               />
             </View>
             <View style={styles.fieldRow}>
-              <Mail color="#4F46E5" size={20} />
+              <Mail color={Colors.brandInk} size={20} />
               <TextInput
                 style={styles.input}
                 value={email}
@@ -188,7 +188,7 @@ export default function InstructorProfileScreen() {
               />
             </View>
             <View style={styles.fieldRow}>
-              <Phone color="#4F46E5" size={20} />
+              <Phone color={Colors.brandInk} size={20} />
               <TextInput
                 style={styles.input}
                 value={phone}
@@ -199,7 +199,7 @@ export default function InstructorProfileScreen() {
               />
             </View>
             <View style={styles.fieldRow}>
-              <MapPin color="#4F46E5" size={20} />
+              <MapPin color={Colors.brandInk} size={20} />
               <TouchableOpacity
                 style={styles.addressCombo}
                 onPress={() => setAddressDropdownOpen(true)}
@@ -241,7 +241,7 @@ export default function InstructorProfileScreen() {
             <View style={styles.divider} />
             <Text style={styles.subSectionTitle}>학력</Text>
             <View style={styles.fieldRow}>
-              <GraduationCap color="#4F46E5" size={20} />
+              <GraduationCap color={Colors.brandInk} size={20} />
               <TextInput
                 style={[styles.input, styles.educationSingleInput]}
                 value={educationLine}
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   avatarWrap: { position: 'relative', marginBottom: 12 },
   avatar: { width: 100, height: 100, borderRadius: 50 },
   avatarPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
-  avatarBadge: { position: 'absolute', right: 0, bottom: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: '#4F46E5', alignItems: 'center', justifyContent: 'center' },
+  avatarBadge: { position: 'absolute', right: 0, bottom: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.brandInk, alignItems: 'center', justifyContent: 'center' },
   name: { fontSize: 22, fontWeight: 'bold', color: '#111827', marginBottom: 4 },
   subLabel: { fontSize: 12, color: '#9CA3AF', marginBottom: 16 },
   divider: { height: 1, backgroundColor: '#F3F4F6', alignSelf: 'stretch', marginVertical: 16 },
@@ -315,8 +315,8 @@ const styles = StyleSheet.create({
   certRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 12, marginBottom: 8 },
   certNameInput: { flex: 1, minWidth: 0 },
   certYearInput: { width: 72, marginLeft: 8 },
-  addCertButton: { backgroundColor: '#4F46E5', width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
-  tagRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch', paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#EEF2FF', borderRadius: 8, marginBottom: 6 },
+  addCertButton: { backgroundColor: Colors.brandInk, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  tagRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch', paddingVertical: 10, paddingHorizontal: 12, backgroundColor: Colors.surfaceSoft, borderRadius: 8, marginBottom: 6 },
   tagText: { fontSize: 14, color: '#374151', flex: 1 },
   addressCombo: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingLeft: 8 },
   addressComboText: { fontSize: 15, color: '#374151' },
@@ -324,11 +324,11 @@ const styles = StyleSheet.create({
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', paddingHorizontal: 24 },
   dropdownList: { backgroundColor: 'white', borderRadius: 12, overflow: 'hidden', maxHeight: 360 },
   dropdownItem: { paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  dropdownItemSelected: { backgroundColor: '#EEF2FF' },
+  dropdownItemSelected: { backgroundColor: Colors.surfaceSoft },
   dropdownItemText: { fontSize: 15, color: '#374151' },
-  dropdownItemTextSelected: { color: '#4F46E5', fontWeight: '700' },
+  dropdownItemTextSelected: { color: Colors.brandInk, fontWeight: '700' },
   inputMultiline: { minHeight: 60, textAlignVertical: 'top' },
-  saveButton: { backgroundColor: '#4F46E5', alignSelf: 'stretch', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16 },
+  saveButton: { backgroundColor: Colors.brandInk, alignSelf: 'stretch', padding: 16, ...Radius.button, alignItems: 'center', marginTop: 16 },
   saveButtonDisabled: { backgroundColor: '#E5E7EB' },
-  saveButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  saveButtonText: { color: Colors.brandHoney, fontSize: 16, fontWeight: 'bold' },
 });

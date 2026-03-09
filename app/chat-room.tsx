@@ -5,6 +5,7 @@ import { Animated, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSh
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChat } from '../src/context/ChatContext';
 import { useSchedule } from '../src/context/ScheduleContext';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 
 export default function ChatRoomScreen() {
     const router = useRouter();
@@ -107,10 +108,10 @@ export default function ChatRoomScreen() {
                                     <Text style={styles.proposalAcceptText}>수락</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={styles.proposalRejectBtn}
+                                    style={styles.proposalViewBtn}
                                     onPress={() => router.push({ pathname: '/(tabs)/docs', params: { targetTab: '요청/제안' } } as any)}
                                 >
-                                    <Text style={styles.proposalRejectText}>상세보기</Text>
+                                    <Text style={styles.proposalViewText}>상세보기</Text>
                                 </TouchableOpacity>
                             </View>
                         ) : (
@@ -211,21 +212,21 @@ const styles = StyleSheet.create({
     profilePlaceholder: { width: 36, marginRight: 8 },
 
     chatBubble: { maxWidth: '65%', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
-    theirBubble: { backgroundColor: 'white', borderTopLeftRadius: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
-    myBubble: { backgroundColor: '#3b82f6', borderTopRightRadius: 4 },
+    theirBubble: { backgroundColor: 'white', borderTopLeftRadius: 4, ...Shadows.card },
+    myBubble: { backgroundColor: Colors.brandInk, borderTopRightRadius: 4 },
     chatText: { fontSize: 15, color: '#111827', lineHeight: 22 },
-    myChatText: { color: 'white' },
+    myChatText: { color: Colors.brandCream },
     chatTime: { fontSize: 11, color: '#9CA3AF', marginHorizontal: 4, marginBottom: 4, flexShrink: 0 },
 
     inputContainer: { backgroundColor: 'white', paddingHorizontal: 15, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' },
-    inputRow: { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: '#F3F4F6', borderRadius: 24, paddingHorizontal: 15, paddingVertical: 8, maxHeight: 120 },
+    inputRow: { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: Colors.surfaceSoft, borderRadius: 24, paddingHorizontal: 15, paddingVertical: 8, maxHeight: 120 },
     chatInput: { flex: 1, fontSize: 15, color: '#111827', paddingTop: 8, paddingBottom: 8, maxHeight: 100 },
-    sendButton: { backgroundColor: '#3b82f6', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, marginLeft: 10, marginBottom: 2, justifyContent: 'center', alignItems: 'center' },
-    sendButtonDisabled: { backgroundColor: '#9CA3AF' },
-    sendButtonText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
+    sendButton: { backgroundColor: Colors.brandInk, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, marginLeft: 10, marginBottom: 2, justifyContent: 'center', alignItems: 'center' },
+    sendButtonDisabled: { backgroundColor: Colors.border },
+    sendButtonText: { color: Colors.brandHoney, fontWeight: 'bold', fontSize: 14 },
 
     // Proposal Banner
-    proposalBanner: { backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A', borderRadius: 14, padding: 15, marginBottom: 20 },
+    proposalBanner: { backgroundColor: Colors.brandCream, borderWidth: 1, borderColor: Colors.border, borderRadius: 14, padding: 15, marginBottom: 20 },
     proposalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
     proposalBadgeRow: { flexDirection: 'row', alignItems: 'center' },
     proposalDDay: { backgroundColor: '#FEE2E2', color: '#DC2626', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, fontSize: 12, fontWeight: 'bold', overflow: 'hidden' },
@@ -233,10 +234,12 @@ const styles = StyleSheet.create({
     proposalTitle: { fontSize: 15, fontWeight: 'bold', color: '#111827', marginBottom: 6 },
     proposalDesc: { fontSize: 13, color: '#6B7280', marginBottom: 14, lineHeight: 18 },
     proposalActions: { flexDirection: 'row', gap: 10 },
-    proposalAcceptBtn: { flex: 1, backgroundColor: '#3b82f6', paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-    proposalAcceptText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-    proposalRejectBtn: { flex: 1, backgroundColor: '#F3F4F6', paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-    proposalRejectText: { color: '#6B7280', fontWeight: '600', fontSize: 14 },
-    proposalResolved: { backgroundColor: '#F3F4F6', paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-    proposalResolvedText: { color: '#6B7280', fontWeight: 'bold', fontSize: 14 },
+    proposalAcceptBtn: { flex: 1, backgroundColor: '#F3C742', paddingVertical: 10, ...Radius.button, alignItems: 'center' },
+    proposalAcceptText: { color: Colors.brandInk, fontWeight: 'bold', fontSize: 14 },
+    proposalViewBtn: { flex: 1, backgroundColor: '#FFF0C2', paddingVertical: 10, ...Radius.button, alignItems: 'center' },
+    proposalViewText: { color: '#251B10', fontWeight: 'bold', fontSize: 14 },
+    proposalRejectBtn: { flex: 1, backgroundColor: '#F2B8B5', paddingVertical: 10, ...Radius.button, alignItems: 'center' },
+    proposalRejectText: { color: '#B42318', fontWeight: '600', fontSize: 14 },
+    proposalResolved: { backgroundColor: '#FFF0C2', paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+    proposalResolvedText: { color: '#251B10', fontWeight: 'bold', fontSize: 14 },
 });
