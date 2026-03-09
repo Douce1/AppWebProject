@@ -1,4 +1,4 @@
-﻿import { Colors, Radius, Shadows } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
@@ -13,6 +13,8 @@ import {
 import { Calendar } from 'react-native-calendars';
 import { Plus } from 'lucide-react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { apiClient } from '../api/apiClient';
+import { putJson } from '@/src/api/httpClient';
 
 export type TimeSlot = { start: string; end: string };
 type AvailabilityMap = Record<string, TimeSlot[]>; // key: YYYY-MM-DD
@@ -69,6 +71,46 @@ export default function AvailabilitySettingsScreen() {
   const [startTimeInput, setStartTimeInput] = useState('09:00');
   const [endTimeInput, setEndTimeInput] = useState('18:00');
   const [rangeText, setRangeText] = useState('');
+
+  // 초기 진입 시 백엔드에서 기존 가용시간을 불러와서 캘린더에 표시
+  useEffect(() => {
+    let mounted = true;
+
+    const loadAvailability = async () => {
+      try {
+        const slots = await apiClient.getAvailability();
+        if (!mounted) return;
+
+        const next: AvailabilityMap = {};
+
+        const pad = (n: number) => n.toString().padStart(2, '0');
+
+        slots.forEach((slot) => {
+          const start = new Date(slot.availableStartAt);
+          const end = new Date(slot.availableEndAt);
+          const dateKey = formatDate(start);
+
+          const startStr = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
+          const endStr = `${pad(end.getHours())}:${pad(end.getMinutes())}`;
+
+          const list = next[dateKey] ?? [];
+          list.push({ start: startStr, end: endStr });
+          next[dateKey] = list;
+        });
+
+        setAvailability(next);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.log('[AvailabilitySettingsScreen] failed to load availability', error);
+      }
+    };
+
+    void loadAvailability();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedDates.length) {
@@ -152,23 +194,47 @@ export default function AvailabilitySettingsScreen() {
     setRangeStart(null);
   };
 
-  const applyTimeToSelectedDates = () => {
+  const applyTimeToSelectedDates = async () => {
     if (!selectedDates.length) {
       Alert.alert('알림', '가능시간을 적용할 날짜를 먼저 선택해주세요.');
       return;
     }
-    setAvailability((prev) => {
-      const next: AvailabilityMap = { ...prev };
-      selectedDates.forEach((date) => {
-        next[date] = [{ start: startTimeInput, end: endTimeInput }];
-      });
-      return next;
+
+    // 1) 로컬 상태 업데이트
+    const next: AvailabilityMap = { ...availability };
+    selectedDates.forEach((date) => {
+      next[date] = [{ start: startTimeInput, end: endTimeInput }];
     });
+    setAvailability(next);
+
+    // 2) 백엔드에 UpsertMyAvailabilityDto 형태로 저장
+    const toIso = (date: string, time: string): string => {
+      const [hh, mm] = time.split(':').map((v) => Number(v));
+      const d = new Date(`${date}T00:00:00`);
+      d.setHours(hh, mm, 0, 0);
+      return d.toISOString();
+    };
+
+    const payloadSlots = Object.entries(next).flatMap(([date, slots]) =>
+      (slots ?? []).map((slot) => ({
+        availableStartAt: toIso(date, slot.start),
+        availableEndAt: toIso(date, slot.end),
+      })),
+    );
+
+    try {
+      await putJson('/availability/me', { slots: payloadSlots });
+      Alert.alert('등록 완료', '선택한 날짜의 가능시간이 저장되었습니다.');
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.log('[AvailabilitySettingsScreen] failed to save availability', error);
+      Alert.alert('저장 실패', '가용시간 저장 중 오류가 발생했습니다.');
+    }
+
     // 등록 후 선택 상태 초기화
     setSelectedDates([]);
     setRangeStart(null);
     setRangeText('');
-    Alert.alert('등록 완료', '선택한 날짜의 가능시간이 설정되었습니다.');
   };
 
   const currentSlots: TimeSlot[] = availability[focusedDate] ?? [];

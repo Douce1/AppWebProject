@@ -6,6 +6,8 @@ import { Phone, MapPin, Camera, UserCircle, GraduationCap, Plus, Trash2, Chevron
 import * as ImagePicker from 'expo-image-picker';
 import { useProfile } from '../context/ProfileContext';
 import { REGION_SIDO_GU } from '../data/regionData';
+import { apiClient } from '../api/apiClient';
+import { putJson } from '@/src/api/httpClient';
 
 const SIDO_LIST = REGION_SIDO_GU.map((r) => r.sido);
 
@@ -78,6 +80,71 @@ export default function InstructorProfileScreen() {
     setGraduationYear(education?.graduationYear ?? '');
   }, [education]);
 
+  // 초기 진입 시 백엔드 프로필을 불러와서 필드 초기화
+  useEffect(() => {
+    let mounted = true;
+
+    const loadProfile = async () => {
+      try {
+        const profile = await apiClient.getInstructorProfile();
+        if (!mounted) return;
+
+        setName(profile.name ?? '');
+        setEmail(profile.email ?? '');
+        setPhone(profile.phone ?? '');
+        // residenceArea는 주소(시도)로 사용
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anyProfile = profile as any;
+        setAddress(anyProfile.residenceArea ?? '');
+
+        const edu = anyProfile.education as
+          | { schoolName?: string; major?: string; graduationYear?: string }
+          | null
+          | undefined;
+        if (edu) {
+          const eduState = {
+            schoolName: edu.schoolName ?? '',
+            major: edu.major ?? '',
+            graduationYear: edu.graduationYear ?? '',
+          };
+          setEducation(eduState);
+          setSchoolName(eduState.schoolName);
+          setMajor(eduState.major);
+          setGraduationYear(eduState.graduationYear);
+        }
+
+        const backendCerts = anyProfile.certifications as
+          | { id: string; name: string; year: string }[]
+          | undefined;
+        if (backendCerts && backendCerts.length > 0) {
+          setCertifications(backendCerts.map((c) => ({
+            id: c.id,
+            name: c.name,
+            year: c.year,
+          })));
+        }
+
+        setSavedProfile({
+          photoUri: '', // photoUrl은 현재 UI에서 사용 안 함
+          name: profile.name ?? '',
+          email: profile.email ?? '',
+          phone: profile.phone ?? '',
+          address: anyProfile.residenceArea ?? '',
+        });
+      } catch (error) {
+        // 프로필을 못 불러와도 화면은 빈 상태로 유지
+        // eslint-disable-next-line no-console
+        console.log('[InstructorProfileScreen] failed to load profile', error);
+      }
+    };
+
+    void loadProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, [setCertifications, setEducation]);
+
   const isDirty =
     photoUri !== savedProfile.photoUri ||
     name !== savedProfile.name ||
@@ -105,15 +172,65 @@ export default function InstructorProfileScreen() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const nextProfile = { photoUri, name, email, phone, address };
-    setSavedProfile(nextProfile);
-    if (schoolName.trim()) {
-      setEducation({ schoolName: schoolName.trim(), major: major.trim(), graduationYear: graduationYear.trim() });
+
+    // 백엔드 UpdateMyInstructorProfileDto 형태에 맞춰 payload 구성
+    const payload: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      residenceArea?: string;
+      education?: {
+        schoolName: string;
+        major: string;
+        graduationYear: string;
+      } | null;
+      certifications?: { id: string; name: string; year: string }[];
+    } = {};
+
+    if (name.trim()) payload.name = name.trim();
+    if (email.trim()) payload.email = email.trim();
+    if (phone.trim()) payload.phone = phone.trim();
+    if (address.trim()) payload.residenceArea = address.trim();
+
+    if (schoolName.trim() || major.trim() || graduationYear.trim()) {
+      payload.education = {
+        schoolName: schoolName.trim(),
+        major: major.trim(),
+        graduationYear: graduationYear.trim(),
+      };
     } else {
-      setEducation(null);
+      payload.education = null;
     }
-    Alert.alert('저장 완료', '프로필이 저장되었습니다.');
+
+    if (certifications.length > 0) {
+      payload.certifications = certifications.map((c) => ({
+        id: c.id,
+        name: c.name,
+        year: c.year,
+      }));
+    }
+
+    try {
+      await putJson('/instructors/me', payload);
+
+      setSavedProfile(nextProfile);
+      if (schoolName.trim()) {
+        setEducation({
+          schoolName: schoolName.trim(),
+          major: major.trim(),
+          graduationYear: graduationYear.trim(),
+        });
+      } else {
+        setEducation(null);
+      }
+      Alert.alert('저장 완료', '프로필이 저장되었습니다.');
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.log('[InstructorProfileScreen] failed to save profile', error);
+      Alert.alert('저장 실패', '프로필 저장 중 오류가 발생했습니다.');
+    }
   };
 
   const addCertification = () => {

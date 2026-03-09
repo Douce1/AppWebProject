@@ -1,4 +1,4 @@
-﻿import { Colors } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useProfile } from '@/src/context/ProfileContext';
 import { apiClient } from '@/src/api/apiClient';
 import type { ApiCompany, ApiInstructorProfile } from '@/src/api/types';
@@ -20,17 +20,43 @@ export default function ProfileScreen() {
 
     useEffect(() => {
         let mounted = true;
-        Promise.all([apiClient.getInstructorProfile(), apiClient.getCompany()])
-            .then(([profile, companyInfo]) => {
-                if (!mounted) return;
-                setInstructor(profile);
-                setCompany(companyInfo);
-            })
-            .catch(() => {
-                if (!mounted) return;
-                setInstructor(null);
-                setCompany(null);
-            });
+
+        const load = async () => {
+            let nextInstructor: ApiInstructorProfile | null = null;
+            let nextCompany: ApiCompany | null = null;
+
+            try {
+                nextInstructor = await apiClient.getInstructorProfile();
+                // eslint-disable-next-line no-console
+                console.log('[ProfileScreen] loaded instructor', {
+                    instructorId: nextInstructor.instructorId,
+                    userId: nextInstructor.userId,
+                });
+            } catch (error) {
+                // eslint-disable-next-line no-console
+                console.log('[ProfileScreen] failed to load instructor', error);
+            }
+
+            try {
+                nextCompany = await apiClient.getCompany();
+                // eslint-disable-next-line no-console
+                console.log('[ProfileScreen] loaded company', {
+                    companyId: nextCompany.companyId,
+                    companyName: nextCompany.name,
+                });
+            } catch (error) {
+                // 회사가 없어도 나머지 정보는 보여줄 수 있도록 company만 null 처리
+                // eslint-disable-next-line no-console
+                console.log('[ProfileScreen] failed to load company', error);
+            }
+
+            if (!mounted) return;
+            setInstructor(nextInstructor);
+            setCompany(nextCompany);
+        };
+
+        void load();
+
         return () => {
             mounted = false;
         };
