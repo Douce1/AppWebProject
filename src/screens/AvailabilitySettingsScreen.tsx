@@ -302,6 +302,7 @@ export default function AvailabilitySettingsScreen() {
               value={startTimeInput}
               onChangeText={setStartTimeInput}
               placeholder="09:00"
+              placeholderTextColor={Colors.mutedForeground}
             />
             <Text style={styles.slotDash}>~</Text>
             <TextInput
@@ -309,6 +310,7 @@ export default function AvailabilitySettingsScreen() {
               value={endTimeInput}
               onChangeText={setEndTimeInput}
               placeholder="18:00"
+              placeholderTextColor={Colors.mutedForeground}
             />
           </View>
           <View style={styles.actionsRow}>
@@ -371,7 +373,7 @@ export default function AvailabilitySettingsScreen() {
               onPress={applyTimeToSelectedDates}
               disabled={!canApply}
             >
-              <Plus color={canApply ? '#FFFFFF' : '#9CA3AF'} size={20} />
+              <Plus color={canApply ? Colors.brandInk : '#9CA3AF'} size={20} />
               <Text style={[styles.applyButtonText, !canApply && styles.applyButtonTextDisabled]}>
                 등록
               </Text>
@@ -418,7 +420,17 @@ const styles = StyleSheet.create({
   },
   emptyText: { color: '#9CA3AF', fontSize: 14, marginBottom: 8 },
   slotRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  timeInput: { flex: 1, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, fontSize: 14 },
+  timeInput: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Radius.button,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: Colors.foreground,
+  },
   slotDash: { marginHorizontal: 8, color: '#6B7280', fontWeight: '600' },
   actionsRow: {
     flexDirection: 'row',
@@ -430,9 +442,9 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 6,
     paddingVertical: 12,
-    borderRadius: 10,
+    ...Radius.button,
     borderWidth: 1,
-    borderColor: '#F97373',
+    borderColor: Colors.colorError,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FEF2F2',
@@ -441,7 +453,7 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
     backgroundColor: '#FFF7ED',
   },
-  deleteButtonText: { fontSize: 14, fontWeight: '600', color: '#DC2626' },
+  deleteButtonText: { fontSize: 14, fontWeight: '600', color: Colors.colorError },
   deleteButtonTextDisabled: { color: '#FDA4A4' },
   applyButton: {
     flex: 1,
@@ -451,12 +463,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     ...Radius.button,
-    backgroundColor: Colors.brandInk,
+    backgroundColor: Colors.brandHoney,
   },
   applyButtonDisabled: {
     backgroundColor: '#E5E7EB',
   },
-  applyButtonText: { color: Colors.brandHoney, fontWeight: '700', marginLeft: 6 },
+  applyButtonText: { color: Colors.brandInk, fontWeight: '700', marginLeft: 6 },
   applyButtonTextDisabled: { color: '#9CA3AF' },
   slotDisplayRow: { paddingVertical: 8 },
   slotDisplayText: { fontSize: 14, color: '#374151' },
