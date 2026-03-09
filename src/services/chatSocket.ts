@@ -6,8 +6,10 @@
 const socketModule = require('socket.io-client');
 const io = socketModule.io || socketModule.default?.io || socketModule;
 
-const USE_MOCK = true;
-const SOCKET_URL = 'http://localhost:3000/chat'; // /chat 네임스페이스 필수
+import { API_BASE_URL } from '../api/httpClient';
+
+const USE_MOCK = false;
+const SOCKET_URL = `${API_BASE_URL}/chat`; // /chat 네임스페이스 필수
 
 // ---- Types ----
 

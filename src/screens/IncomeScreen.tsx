@@ -1,18 +1,17 @@
-﻿import { useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { FileText, RefreshCcw, Settings, TrendingUp, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Radius, Shadows } from '@/constants/theme';
 import { Button } from '@/src/components/atoms/Button';
+import { httpClient } from '@/src/api/httpClient';
 
 export default function IncomeScreen() {
     const router = useRouter();
     const [selectedDetail, setSelectedDetail] = useState<any>(null);
-
-    const historyData = [
-        { id: 1, month: '9월', amount: 3080000, date: '10.10 지급완료', hours: 62 },
-        { id: 2, month: '8월', amount: 3150000, date: '09.10 지급완료', hours: 65 }
-    ];
+    const [testMessage, setTestMessage] = useState<string | null>(null);
+    const [testError, setTestError] = useState<string | null>(null);
+    const [isTesting, setIsTesting] = useState(false);
 
     const styles = useMemo(
         () =>
@@ -62,6 +61,21 @@ export default function IncomeScreen() {
         [],
     );
 
+    const handleTestApiCall = async () => {
+        setIsTesting(true);
+        setTestError(null);
+        try {
+            const lessons = await httpClient.getLessons();
+            setTestMessage(`백엔드 연결 성공 (수업 ${lessons.length}개)`);
+        } catch (error) {
+            const message =
+                error instanceof Error ? error.message : '요청 중 알 수 없는 오류가 발생했습니다.';
+            setTestError(message);
+        } finally {
+            setIsTesting(false);
+        }
+    };
+
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
@@ -73,29 +87,9 @@ export default function IncomeScreen() {
 
             <View style={styles.incomeCard}>
                 <Text style={styles.incomeLabel}>이번 달 예상 수입 (세전)</Text>
-                <View style={styles.amountRow}>
-                    <Text style={styles.amountText}>3,450,000</Text>
-                    <Text style={styles.currencyText}>원</Text>
-                </View>
-
-                <Text style={styles.taxDeductedText}>실수령 예상 (3.3% 공제): 3,336,150원</Text>
-
-                <View style={styles.statsRow}>
-                    <View style={styles.statBox}>
-                        <Text style={styles.statLabel}>이번 달 근무</Text>
-                        <Text style={styles.statValue}>68시간</Text>
-                    </View>
-                    <View style={styles.verticalDivider} />
-                    <View style={styles.statBox}>
-                        <Text style={styles.statLabel}>지난 달 근무</Text>
-                        <Text style={styles.statValue}>62시간</Text>
-                    </View>
-                </View>
-
-                <View style={styles.increaseBadge}>
-                    <TrendingUp color={Colors.brandHoney} size={14} style={{ marginRight: 4 }} />
-                    <Text style={styles.increaseText}>근무 시간 6시간 증가</Text>
-                </View>
+                <Text style={[styles.taxDeductedText, { marginTop: 8 }]}>
+                    정산 데이터는 곧 백엔드 API와 연동될 예정입니다.
+                </Text>
 
                 <View style={styles.divider} />
 
@@ -116,31 +110,66 @@ export default function IncomeScreen() {
             <View style={styles.historySection}>
                 <Text style={styles.sectionTitle}>정산 내역</Text>
 
-                {historyData.length === 0 ? (
-                    <Text style={[styles.sectionTitle, styles.emptyHistoryText]}>정산 내역이 없습니다.</Text>
-                ) : (
-                    historyData.map(item => (
-                        <TouchableOpacity
-                            key={item.id}
-                            style={styles.historyItem}
-                            onPress={() => setSelectedDetail(item)}
+                <View
+                    style={{
+                        marginBottom: 12,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                    }}
+                >
+                    <Text style={{ fontSize: 13, color: Colors.mutedForeground }}>
+                        백엔드 /lessons API 연결 테스트
+                    </Text>
+                    <TouchableOpacity
+                        onPress={handleTestApiCall}
+                        disabled={isTesting}
+                        style={{
+                            paddingVertical: 6,
+                            paddingHorizontal: 10,
+                            borderRadius: 14,
+                            backgroundColor: Colors.brandMint,
+                            opacity: isTesting ? 0.6 : 1,
+                        }}
+                    >
+                        <Text
+                            style={{
+                                fontSize: 12,
+                                fontWeight: '600',
+                                color: Colors.brandInk,
+                            }}
                         >
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <View style={styles.historyIconBox}>
-                                    <FileText color={Colors.brandInk} size={20} />
-                                </View>
-                                <View>
-                                    <Text style={styles.historyTitle}>{item.month} 정산금</Text>
-                                    <Text style={styles.historyDate}>{item.date}</Text>
-                                </View>
-                            </View>
-                            <View style={{ alignItems: 'flex-end' }}>
-                                <Text style={styles.historyAmount}>+{(item.amount).toLocaleString()}원</Text>
-                                <Text style={styles.historyTaxAmount}>실수령: {(item.amount * 0.967).toLocaleString()}원</Text>
-                            </View>
-                        </TouchableOpacity>
-                    ))
+                            {isTesting ? '요청 중...' : '테스트 호출'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+                {testMessage && (
+                    <Text
+                        style={{
+                            fontSize: 12,
+                            color: Colors.brandMint,
+                            marginBottom: 8,
+                        }}
+                    >
+                        {testMessage}
+                    </Text>
                 )}
+                {testError && (
+                    <Text
+                        style={{
+                            fontSize: 12,
+                            color: 'red',
+                            marginBottom: 8,
+                        }}
+                    >
+                        {testError}
+                    </Text>
+                )}
+
+                <Text style={[styles.sectionTitle, styles.emptyHistoryText]}>
+                    정산 내역은 아직 API에 연결되지 않았습니다.
+                </Text>
             </View>
 
             {/* Detail Modal */}

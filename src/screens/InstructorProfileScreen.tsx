@@ -1,4 +1,4 @@
-﻿import { Colors, Radius, Shadows } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, Modal, Pressable, Platform, KeyboardAvoidingView } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -39,25 +39,21 @@ function parseEducationLine(text: string): { schoolName: string; major: string; 
   return { schoolName, major, graduationYear };
 }
 
-// 샘플 데이터 (주소는 시도만)
-const SAMPLE_PROFILE = {
-  photoUri: '' as string,
-  name: '김태완',
-  email: 'kim.taewan@megastudy.co.kr',
-  phone: '010-1234-5678',
-  address: '서울',
-};
-type Profile = typeof SAMPLE_PROFILE;
-
 export default function InstructorProfileScreen() {
   const { education, setEducation, certifications, setCertifications } = useProfile();
 
-  const [photoUri, setPhotoUri] = useState(SAMPLE_PROFILE.photoUri);
-  const [name, setName] = useState(SAMPLE_PROFILE.name);
-  const [email, setEmail] = useState(SAMPLE_PROFILE.email);
-  const [phone, setPhone] = useState(SAMPLE_PROFILE.phone);
-  const [address, setAddress] = useState(SAMPLE_PROFILE.address);
-  const [savedProfile, setSavedProfile] = useState<Profile>(SAMPLE_PROFILE);
+  const [photoUri, setPhotoUri] = useState<string>('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [savedProfile, setSavedProfile] = useState({
+    photoUri: '',
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+  });
 
   const [schoolName, setSchoolName] = useState(education?.schoolName ?? '');
   const [major, setMajor] = useState(education?.major ?? '');
