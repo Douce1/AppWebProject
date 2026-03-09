@@ -56,6 +56,9 @@ export default function InstructorProfileScreen() {
     phone: '',
     address: '',
   });
+  const [savedCertifications, setSavedCertifications] = useState<
+    { id: string; name: string; year: string }[]
+  >([]);
 
   const [schoolName, setSchoolName] = useState(education?.schoolName ?? '');
   const [major, setMajor] = useState(education?.major ?? '');
@@ -113,15 +116,19 @@ export default function InstructorProfileScreen() {
           setGraduationYear(eduState.graduationYear);
         }
 
-        const backendCerts = anyProfile.certifications as
-          | { id: string; name: string; year: string }[]
-          | undefined;
-        if (backendCerts && backendCerts.length > 0) {
-          setCertifications(backendCerts.map((c) => ({
+        const backendCerts = (anyProfile.certifications ??
+          []) as { id: string; name: string; year: string }[];
+        if (backendCerts.length > 0) {
+          const mapped = backendCerts.map((c) => ({
             id: c.id,
             name: c.name,
             year: c.year,
-          })));
+          }));
+          setCertifications(mapped);
+          setSavedCertifications(mapped);
+        } else {
+          setCertifications([]);
+          setSavedCertifications([]);
         }
 
         setSavedProfile({
@@ -145,6 +152,14 @@ export default function InstructorProfileScreen() {
     };
   }, [setCertifications, setEducation]);
 
+  const certificationsKey = certifications
+    .map((c) => `${c.id}|${c.name}|${c.year}`)
+    .join(';');
+  const savedCertificationsKey = savedCertifications
+    .map((c) => `${c.id}|${c.name}|${c.year}`)
+    .join(';');
+  const hasCertificationChanges = certificationsKey !== savedCertificationsKey;
+
   const isDirty =
     photoUri !== savedProfile.photoUri ||
     name !== savedProfile.name ||
@@ -153,7 +168,8 @@ export default function InstructorProfileScreen() {
     address !== savedProfile.address ||
     education?.schoolName !== schoolName.trim() ||
     education?.major !== major.trim() ||
-    education?.graduationYear !== graduationYear.trim();
+    education?.graduationYear !== graduationYear.trim() ||
+    hasCertificationChanges;
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -177,22 +193,25 @@ export default function InstructorProfileScreen() {
 
     // 백엔드 UpdateMyInstructorProfileDto 형태에 맞춰 payload 구성
     const payload: {
-      name?: string;
-      email?: string;
-      phone?: string;
-      residenceArea?: string;
-      education?: {
-        schoolName: string;
-        major: string;
-        graduationYear: string;
-      } | null;
+      name: string;
+      email: string;
+      phone: string;
+      residenceArea: string;
+      education:
+        | {
+            schoolName: string;
+            major: string;
+            graduationYear: string;
+          }
+        | null;
       certifications?: { id: string; name: string; year: string }[];
-    } = {};
-
-    if (name.trim()) payload.name = name.trim();
-    if (email.trim()) payload.email = email.trim();
-    if (phone.trim()) payload.phone = phone.trim();
-    if (address.trim()) payload.residenceArea = address.trim();
+    } = {
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      residenceArea: address.trim(),
+      education: null,
+    };
 
     if (schoolName.trim() || major.trim() || graduationYear.trim()) {
       payload.education = {
@@ -200,8 +219,6 @@ export default function InstructorProfileScreen() {
         major: major.trim(),
         graduationYear: graduationYear.trim(),
       };
-    } else {
-      payload.education = null;
     }
 
     if (certifications.length > 0) {
@@ -216,6 +233,7 @@ export default function InstructorProfileScreen() {
       await putJson('/instructors/me', payload);
 
       setSavedProfile(nextProfile);
+      setSavedCertifications(certifications);
       if (schoolName.trim()) {
         setEducation({
           schoolName: schoolName.trim(),
@@ -235,7 +253,10 @@ export default function InstructorProfileScreen() {
 
   const addCertification = () => {
     if (!certName.trim()) return;
-    setCertifications([...certifications, { id: Date.now().toString(), name: certName.trim(), year: certYear.trim() }]);
+    setCertifications([
+      ...certifications,
+      { id: Date.now().toString(), name: certName.trim(), year: certYear.trim() },
+    ]);
     setCertName('');
     setCertYear('');
   };
@@ -387,7 +408,9 @@ export default function InstructorProfileScreen() {
             </View>
             {certifications.map((item) => (
               <View key={item.id} style={styles.tagRow}>
-                <Text style={styles.tagText}>{item.name} ({item.year})</Text>
+                <Text style={styles.tagText}>
+                  {item.name} ({item.year})
+                </Text>
                 <TouchableOpacity onPress={() => removeCertification(item.id)}>
                   <Trash2 color="#9CA3AF" size={18} />
                 </TouchableOpacity>
