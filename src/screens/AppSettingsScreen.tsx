@@ -1,17 +1,15 @@
-﻿import { Colors, Radius, Shadows } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Bell, ChevronLeft, FileText, Info, LogOut, Shield } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
-const SAMPLE_SETTINGS = {
-  notificationsEnabled: true,
-  appVersion: '1.0.0',
-};
+const INITIAL_NOTIFICATIONS_ENABLED = true;
+const APP_VERSION = '1.0.0';
 
 export default function AppSettingsScreen() {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(SAMPLE_SETTINGS.notificationsEnabled);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(INITIAL_NOTIFICATIONS_ENABLED);
   const router = useRouter();
   const navigation = useNavigation();
   const params = useLocalSearchParams();
@@ -77,7 +75,7 @@ export default function AppSettingsScreen() {
             <Info color="#4F46E5" size={22} />
           </View>
           <Text style={styles.rowLabel}>앱 버전</Text>
-          <Text style={styles.versionText}>{`v${SAMPLE_SETTINGS.appVersion}`}</Text>
+          <Text style={styles.versionText}>{`v${APP_VERSION}`}</Text>
         </View>
       </View>
 

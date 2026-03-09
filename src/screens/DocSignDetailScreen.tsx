@@ -1,4 +1,4 @@
-﻿import { Colors } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { SignaturePad } from '../components/molecules/SignaturePad';
@@ -8,14 +8,14 @@ export default function DocSignDetailScreen() {
 
   const handleSign = (sig: string) => {
     setSignature(sig);
-    Alert.alert('서명 완료', '전자 서명이 완료되었습니다.\n(현재는 샘플 동작입니다.)');
+    Alert.alert('서명 완료', '전자 서명이 완료되었습니다.');
   };
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.title}>(샘플) 개인정보 수집 동의서</Text>
-        <Text style={styles.subTitle}>(샘플) 메가강남본원 ・ 2023 하반기</Text>
+        <Text style={styles.title}>개인정보 수집 동의서</Text>
+        <Text style={styles.subTitle}>기관명 및 기간 정보는 실제 계약서에서 제공됩니다.</Text>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>동의 내용</Text>
@@ -29,9 +29,9 @@ export default function DocSignDetailScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>서명 대상 정보</Text>
-          <Text style={styles.item}>(샘플) ・ 이름: 김사원</Text>
-          <Text style={styles.item}>(샘플) ・ 소속: 메가강남본원</Text>
-          <Text style={styles.item}>(샘플) ・ 계약 기간: 2023-09-01 ~ 2024-02-28</Text>
+          <Text style={styles.item}>・ 이름: (계약서 기준)</Text>
+          <Text style={styles.item}>・ 소속: (계약서 기준)</Text>
+          <Text style={styles.item}>・ 계약 기간: (계약서 기준)</Text>
         </View>
 
         <View style={styles.signatureSection}>

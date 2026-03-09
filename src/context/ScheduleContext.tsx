@@ -67,15 +67,7 @@ const ScheduleContext = createContext<ScheduleContextType>({
 export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [classes, setClasses] = useState<ClassSession[]>([]);
 
-    const [notifications, setNotifications] = useState<AppNotification[]>([
-        {
-            id: '2',
-            type: '📄 요청/제안',
-            title: '(샘플) 강남본원 회화 신규 강의 배정 제안',
-            time: '어제',
-            target: { pathname: '/(tabs)/docs', params: { targetTab: '요청/제안' } },
-        }
-    ]);
+    const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
     const [proposalStatus, setProposalStatus] = useState<'미응답' | '수락' | '거절'>('미응답');
     const isProposalResolved = proposalStatus !== '미응답';
@@ -86,17 +78,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const resolveProposal = (status: '수락' | '거절' = '수락') => {
         setProposalStatus(status);
-        // 제안 알림 자동 제거 (알림 id: '2')
-        setNotifications(prev => prev.filter(n => n.id !== '2'));
-        if (status === '수락') {
-            addClass({
-                id: 'proposed-1',
-                title: '(샘플) 고3 EBS 파이널 문풀',
-                date: '(샘플) 2026-03-10',
-                location: '(샘플) 강남본원 3관 302호',
-                time: '(샘플) 18:00 - 20:00'
-            });
-        }
+        // 제안 상태만 업데이트하고, 더 이상 샘플 수업/알림은 추가하지 않는다.
     };
 
     const addClass = (newClass: ClassSession) => {

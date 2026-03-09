@@ -1,4 +1,4 @@
-﻿import { Colors, Shadows } from '@/constants/theme';
+import { Colors, Shadows } from '@/constants/theme';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -107,6 +107,15 @@ export default function DocContractDetailScreen() {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>{getContractErrorMessage(errorCode ?? undefined)}</Text>
+      </View>
+    );
+  }
+
+  // 방어 코드: 런타임에서 contract 필드가 누락된 경우를 대비
+  if (!detail.contract) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{getContractErrorMessage('CONTRACT_NOT_FOUND')}</Text>
       </View>
     );
   }

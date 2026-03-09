@@ -1,4 +1,4 @@
-﻿import { Colors, Radius, Shadows } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { FileSignature, FileText, Bell, Settings } from 'lucide-react-native';
@@ -133,14 +133,10 @@ export default function DocsScreen() {
                             <Text style={styles.requestMetaText}>{proposalStatus === '미응답' ? '미응답' : `${proposalStatus} 완료`}</Text>
                         </View>
 
-                        <Text style={styles.requestTitle}>(샘플) 강남본원 화요일 신규 강의 배정 제안</Text>
+                        <Text style={styles.requestTitle}>제안 상세는 곧 연동될 예정입니다.</Text>
 
                         <View style={styles.requestBody}>
-                            <Text style={styles.requestBullet}>(샘플) · 강의명: 고2 EBS 수능특강 문학</Text>
-                            <Text style={styles.requestBullet}>(샘플) · 날짜: 2026-03-10</Text>
-                            <Text style={styles.requestBullet}>(샘플) · 시간: 18:00 ~ 20:00</Text>
-                            <Text style={styles.requestBullet}>(샘플) · 장소: 강남본원 3관 302호</Text>
-                            <Text style={styles.requestBullet}>(샘플) · 시급: 50,000원 / 1시간</Text>
+                            <Text style={styles.requestBullet}>실제 수업 제안이 도착하면 이 영역에 상세 정보가 표시됩니다.</Text>
                         </View>
 
                         {proposalStatus === '미응답' && !isRejecting && (

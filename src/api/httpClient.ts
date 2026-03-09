@@ -1,6 +1,3 @@
-// httpClient: 실제 백엔드 API 호출용 껍데기 구현.
-// 엔드포인트 경로는 free-b/docs/mock-api-contract.md 에 정의된 것만 사용합니다.
-
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
@@ -41,6 +38,10 @@ function normalizeAndroidLocalhost(url: string): string {
     .replace('://127.0.0.1', '://10.0.2.2');
 }
 
+function trimTrailingSlash(url: string): string {
+  return url.replace(/\/+$/, '');
+}
+
 function resolveBaseUrl(): string {
   const configuredUrl =
     process.env.EXPO_PUBLIC_API_URL ??
@@ -48,17 +49,19 @@ function resolveBaseUrl(): string {
     extra.apiUrl ??
     'http://localhost:3000';
 
-  if (Platform.OS === 'android') {
-    return normalizeAndroidLocalhost(configuredUrl);
-  }
+  const base = Platform.OS === 'android'
+    ? normalizeAndroidLocalhost(configuredUrl)
+    : configuredUrl;
 
-  return configuredUrl;
+  return trimTrailingSlash(base);
 }
 
 const BASE_URL = resolveBaseUrl();
-const USE_MOCK_AUTH = extra.useMockAuth ?? true;
+export const API_BASE_URL = BASE_URL;
 
-type ApiError = Error & { code?: string; status?: number };
+const USE_MOCK_AUTH = extra.useMockAuth ?? false;
+
+export type ApiError = Error & { code?: string; status?: number };
 type AuthFailureHandler = () => void | Promise<void>;
 
 interface RefreshLoginResponse {
@@ -86,7 +89,10 @@ export function setAuthFailureHandler(handler: AuthFailureHandler): void {
 }
 
 async function buildApiError(response: Response, path: string): Promise<ApiError> {
-  const body = (await response.json().catch(() => ({}))) as { code?: string; message?: string };
+  const body = (await response.json().catch(() => ({}))) as {
+    code?: string;
+    message?: string;
+  };
   const err = new Error(
     body.message ?? body.code ?? `HTTP error ${response.status} for ${path}`,
   ) as ApiError;
@@ -195,8 +201,10 @@ export async function deleteJson<T>(path: string): Promise<T> {
   return requestJson<T>(path, { method: 'DELETE' });
 }
 
-// 강의 이력 뷰 변환은 mockClient와 동일한 규칙 사용
-function toLectureHistoryView(lessons: ApiLesson[], reports: ApiLessonReport[]): LectureRecordView[] {
+function toLectureHistoryView(
+  lessons: ApiLesson[],
+  reports: ApiLessonReport[],
+): LectureRecordView[] {
   return lessons.map((lesson) => {
     const startDate = new Date(lesson.startsAt);
     const endDate = new Date(lesson.endsAt);
@@ -257,7 +265,6 @@ export const httpClient = {
   },
 
   async getInstructorProfile(): Promise<ApiInstructorProfile> {
-    // 실제 엔드포인트가 정의되면 '/instructors/me' 등으로 교체
     return getJson<ApiInstructorProfile>('/instructors/me');
   },
 
@@ -278,15 +285,28 @@ export const httpClient = {
   },
 
   async getContract(contractId: string): Promise<ApiContractDetail> {
-    return getJson<ApiContractDetail>(`/contracts/${encodeURIComponent(contractId)}`);
+    return getJson<ApiContractDetail>(
+      `/contracts/${encodeURIComponent(contractId)}`,
+    );
   },
 
-  async getContractVersion(contractId: string, version: number): Promise<ApiContractVersion> {
-    return getJson<ApiContractVersion>(`/contracts/${encodeURIComponent(contractId)}/versions/${version}`);
+  async getContractVersion(
+    contractId: string,
+    version: number,
+  ): Promise<ApiContractVersion> {
+    return getJson<ApiContractVersion>(
+      `/contracts/${encodeURIComponent(contractId)}/versions/${version}`,
+    );
   },
 
-  async submitContractSignature(contractId: string, payload: SubmitContractSignaturePayload): Promise<ApiContractDetail> {
-    return postJson<ApiContractDetail>(`/contracts/${encodeURIComponent(contractId)}/sign`, payload);
+  async submitContractSignature(
+    contractId: string,
+    payload: SubmitContractSignaturePayload,
+  ): Promise<ApiContractDetail> {
+    return postJson<ApiContractDetail>(
+      `/contracts/${encodeURIComponent(contractId)}/sign`,
+      payload,
+    );
   },
 
   async getAttendanceEvents(): Promise<ApiAttendanceEvent[]> {
@@ -298,11 +318,13 @@ export const httpClient = {
   },
 
   async getLectureHistory(): Promise<LectureRecordView[]> {
-    const [lessons, reports] = await Promise.all([this.getLessons(), this.getLessonReports()]);
+    const [lessons, reports] = await Promise.all([
+      this.getLessons(),
+      this.getLessonReports(),
+    ]);
     return toLectureHistoryView(lessons, reports);
   },
 
-  // ---- Chat ----
   async getChatRooms(): Promise<ApiChatRoom[]> {
     return getJson<ApiChatRoom[]>('/chat/rooms');
   },
