@@ -126,29 +126,28 @@ export default function AvailabilitySettingsScreen() {
   const markedDates: MarkedDates = useMemo(() => {
     const marked: MarkedDates = {};
 
-    // 1) 기본: 가능시간이 설정된 날짜는 초록색 "설정 완료" 상태( + 초록 점 )
+    // 1) 서버에 이미 저장된 "설정 완료" 날짜들 → 보조 동작 버튼 색
     Object.keys(availability).forEach((date) => {
       const hasSlots = availability[date] && availability[date].length > 0;
       if (!hasSlots) return;
       marked[date] = {
         selected: true,
-        selectedColor: '#10B981',
-        selectedTextColor: '#FFFFFF',
+        selectedColor: '#FFF0C2', // Button secondary background
+        selectedTextColor: Colors.brandInk,
         marked: true,
-        dotColor: '#10B981',
+        dotColor: Colors.brandHoney,
       };
     });
 
-    // 2) 현재 작업 범위로 선택된 날짜들은 모두 보라색 "작업 중" 상태로 덮어씀
-    //    이미 설정된 날짜라면 초록색 점(dot)으로 "설정됨" 상태를 함께 표시
+    // 2) 현재 선택/편집 중인 날짜들 → 주요 동작 버튼 색
     selectedDates.forEach((date) => {
       const hasSlots = availability[date] && availability[date].length > 0;
       marked[date] = {
         selected: true,
-        selectedColor: Colors.brandInk,
-        selectedTextColor: '#FFFFFF',
+        selectedColor: Colors.brandHoney, // Button primary background
+        selectedTextColor: Colors.brandInk,
         marked: hasSlots || marked[date]?.marked,
-        dotColor: hasSlots || marked[date]?.marked ? '#10B981' : undefined,
+        dotColor: Colors.brandHoney,
       };
     });
 
