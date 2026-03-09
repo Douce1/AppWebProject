@@ -44,14 +44,15 @@ const styles = StyleSheet.create({
     overlay: {
         flex: 1,
         backgroundColor: 'rgba(37, 27, 16, 0.4)', // brandInk with opacity
-        justifyContent: 'center',
+        justifyContent: 'flex-end',
         alignItems: 'center',
-        padding: 24,
     },
     modalContent: {
         backgroundColor: Colors.card,
-        borderRadius: Radius.card,
-        padding: 24,
+        borderTopLeftRadius: Radius.card,
+        borderTopRightRadius: Radius.card,
+        padding: 32,
+        paddingBottom: 48,
         width: '100%',
         alignItems: 'center',
         ...Shadows.card,
@@ -63,13 +64,13 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.surfaceSoft,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 20,
     },
     title: {
-        marginBottom: 8,
+        marginBottom: 12,
     },
     desc: {
-        marginBottom: 24,
+        marginBottom: 32,
         lineHeight: 24,
     },
     actionRow: {

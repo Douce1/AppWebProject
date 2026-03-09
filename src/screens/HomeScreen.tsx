@@ -1,9 +1,13 @@
-import { useRouter } from 'expo-router';
+﻿import { useRouter } from 'expo-router';
 import { Bell, CalendarIcon as Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, MapPin, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useRef, useState } from 'react';
 import { Dimensions, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useChat } from '../context/ChatContext';
 import { useSchedule } from '../context/ScheduleContext';
+import { CalendarStrip } from '../components/molecules/CalendarStrip';
+import { LessonCard } from '../components/organisms/LessonCard';
+import { Colors } from '@/constants/theme';
+import { CheckinFlow } from '../components/organisms/CheckinFlow';
 
 const { width, height } = Dimensions.get('window');
 
@@ -23,6 +27,7 @@ function buildDateList() {
 }
 
 const DATE_LIST = buildDateList();
+
 
 export default function HomeScreen({ navigation }: any) {
   const router = useRouter();
@@ -53,7 +58,6 @@ export default function HomeScreen({ navigation }: any) {
     d.setDate(today.getDate() - dayOfWeek + i);
     return d;
   });
-  const getWeekDayStr = (d: Date) => ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
 
   // Carousel state
   const flatListRef = useRef<FlatList>(null);
@@ -68,10 +72,6 @@ export default function HomeScreen({ navigation }: any) {
 
   // Jump to today
   const goToToday = useCallback(() => scrollToIndex(TODAY_INDEX), [scrollToIndex]);
-
-  // Chevron buttons
-  const goToPrev = useCallback(() => scrollToIndex(currentIndex - 1), [currentIndex, scrollToIndex]);
-  const goToNext = useCallback(() => scrollToIndex(currentIndex + 1), [currentIndex, scrollToIndex]);
 
   // When weekly calendar bar is tapped, jump to that date
   const jumpToDate = useCallback((dateStr: string) => {
@@ -94,16 +94,26 @@ export default function HomeScreen({ navigation }: any) {
     index,
   }), []);
 
-  // Report modal
+  // Report & Checkin modals
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [reportText, setReportText] = useState('');
+
+  const [checkinModalVisible, setCheckinModalVisible] = useState(false);
+  const [currentCheckinId, setCurrentCheckinId] = useState<string | null>(null);
+  const [isEndingFlow, setIsEndingFlow] = useState(false);
 
   const submitReport = () => {
     if (currentReportId) submitClassReport(currentReportId, reportText);
     setReportModalVisible(false);
     setReportText('');
     setCurrentReportId(null);
+  };
+
+  const confirmCheckin = () => {
+    if (currentCheckinId) handleClassAction(currentCheckinId);
+    setCheckinModalVisible(false);
+    setCurrentCheckinId(null);
   };
 
   // Monthly calendar grid
@@ -126,8 +136,8 @@ export default function HomeScreen({ navigation }: any) {
       <View style={{ width, flex: 1, paddingHorizontal: 15 }}>
         {/* Date Navigation Row */}
         <View style={styles.dateNavRow}>
-          <TouchableOpacity onPress={goToPrev} style={styles.dateNavBtn}>
-            <ChevronLeft size={22} color="#3b82f6" />
+          <TouchableOpacity onPress={() => scrollToIndex(currentIndex - 1)} style={styles.dateNavBtn}>
+            <ChevronLeft size={22} color={Colors.mutedForeground} />
           </TouchableOpacity>
           <TouchableOpacity onPress={goToToday} style={styles.dateNavCenter}>
             <Text style={styles.sectionTitle}>
@@ -135,8 +145,8 @@ export default function HomeScreen({ navigation }: any) {
             </Text>
             {dateStr !== todayStr && <Text style={styles.goTodayHint}>오늘로 이동</Text>}
           </TouchableOpacity>
-          <TouchableOpacity onPress={goToNext} style={styles.dateNavBtn}>
-            <ChevronRight size={22} color="#3b82f6" />
+          <TouchableOpacity onPress={() => scrollToIndex(currentIndex + 1)} style={styles.dateNavBtn}>
+            <ChevronRight size={22} color={Colors.mutedForeground} />
           </TouchableOpacity>
         </View>
 
@@ -161,64 +171,64 @@ export default function HomeScreen({ navigation }: any) {
               hasEnded = true;
             }
 
-            return (
-              <TouchableOpacity
-                key={c.id}
-                style={styles.classCard}
-                onPress={() => router.push({ pathname: '/class-detail' as any, params: { classInfo: JSON.stringify(c) } })}
-              >
-                <Text style={styles.classTitle}>{c.title}</Text>
-                <View style={styles.row}>
-                  <MapPin size={16} color="gray" />
-                  <Text style={styles.classDetails}> {c.location}</Text>
-                </View>
-                <View style={styles.row}>
-                  <Clock size={16} color="gray" />
-                  <Text style={styles.classDetails}> {c.time}</Text>
-                </View>
+            let statusStr: 'requested' | 'confirmed' | 'canceled' | 'completed' = 'confirmed';
+            let badgeLabelStr = '확정됨';
+            let statusLabelStr = '수업 확정';
+            let actionLabel = '출발';
+            let actionDisabled = false;
 
-                <TouchableOpacity
-                  style={[
-                    styles.checkInButton,
-                    (isDeparted && !isCanArrive) && styles.checkedInButton,
-                    (isCanArrive && !isArrived) && styles.checkInButton,
-                    (isArrived && !isCanEndClass) && styles.checkedInButton,
-                    (isCanEndClass && !isEndedClass) && styles.checkInButton,
-                    (isEndedClass && !isReadyToReport) && styles.checkedInButton,
-                    (isReadyToReport && !isReported) && styles.reportButtonStyles,
-                    (isReported) && styles.doneButtonStyles
-                  ]}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    if (isReadyToReport && !isReported) {
-                      setCurrentReportId(c.id);
-                      setReportModalVisible(true);
-                    } else {
-                      handleClassAction(c.id);
-                    }
-                  }}
-                  activeOpacity={0.7}
-                  disabled={isReported || (isDeparted && !isCanArrive) || (isArrived && !isCanEndClass) || (isEndedClass && !isReadyToReport)}
-                >
-                  {isReported ? (
-                    <View style={styles.row}><CheckCircle2 color="white" size={18} /><Text style={[styles.checkInText, { marginLeft: 4 }]}>강의 수고하셨습니다!</Text></View>
-                  ) : isReadyToReport ? (
-                    <Text style={styles.checkInText}>강의 보고서 작성</Text>
-                  ) : isEndedClass ? (
-                    <View style={styles.row}><CheckCircle2 color="white" size={18} /><Text style={[styles.checkInText, { marginLeft: 4 }]}>종료 처리 중...</Text></View>
-                  ) : isCanEndClass ? (
-                    <Text style={styles.checkInText}>강의 종료</Text>
-                  ) : isArrived ? (
-                    <View style={styles.row}><CheckCircle2 color="white" size={18} /><Text style={[styles.checkInText, { marginLeft: 4 }]}>도착 완료 (강의 중)</Text></View>
-                  ) : isCanArrive ? (
-                    <Text style={styles.checkInText}>도착</Text>
-                  ) : isDeparted ? (
-                    <View style={styles.row}><CheckCircle2 color="white" size={18} /><Text style={[styles.checkInText, { marginLeft: 4 }]}>이동 중...</Text></View>
-                  ) : (
-                    <Text style={styles.checkInText}>출발</Text>
-                  )}
-                </TouchableOpacity>
-              </TouchableOpacity>
+            if (isReported) {
+              statusStr = 'completed'; badgeLabelStr = '제출됨'; statusLabelStr = '수업 완료';
+              actionLabel = '수고하셨습니다'; actionDisabled = true;
+            } else if (isReadyToReport) {
+              statusStr = 'requested'; badgeLabelStr = '작성 대기'; statusLabelStr = '보고서 작성 필요';
+              actionLabel = '강의 보고서 작성';
+            } else if (isEndedClass) {
+              statusStr = 'completed'; badgeLabelStr = '종료 됨'; statusLabelStr = '종료 처리 중';
+              actionLabel = '종료 처리 중...'; actionDisabled = true;
+            } else if (isCanEndClass) {
+              statusStr = 'confirmed'; badgeLabelStr = '강의 중'; statusLabelStr = '수업 진행';
+              actionLabel = '강의 종료';
+            } else if (isArrived) {
+              statusStr = 'confirmed'; badgeLabelStr = '도착 완료'; statusLabelStr = '강의 대기 중';
+              actionLabel = '도착 완료 (강의 전)'; actionDisabled = true;
+            } else if (isCanArrive) {
+              statusStr = 'requested'; badgeLabelStr = '이동 중'; statusLabelStr = '도착 승인 대기';
+              actionLabel = '도착 확인';
+            } else if (isDeparted) {
+              statusStr = 'requested'; badgeLabelStr = '이동 중'; statusLabelStr = '이동 중';
+              actionLabel = '이동 중...'; actionDisabled = true;
+            }
+
+            return (
+              <LessonCard
+                key={c.id}
+                status={statusStr}
+                badgeLabel={badgeLabelStr}
+                statusLabel={statusLabelStr}
+                title={c.title}
+                location={c.location}
+                time={c.time}
+                onPressCard={() => router.push({ pathname: '/class-detail' as any, params: { classInfo: JSON.stringify(c) } })}
+                primaryActionLabel={actionLabel}
+                primaryActionDisabled={actionDisabled}
+                onPrimaryAction={() => {
+                  if (isReadyToReport && !isReported) {
+                    setCurrentReportId(c.id);
+                    setReportModalVisible(true);
+                  } else if (isCanArrive) {
+                    setCurrentCheckinId(c.id);
+                    setIsEndingFlow(false);
+                    setCheckinModalVisible(true);
+                  } else if (isCanEndClass) {
+                    setCurrentCheckinId(c.id);
+                    setIsEndingFlow(true);
+                    setCheckinModalVisible(true);
+                  } else {
+                    handleClassAction(c.id);
+                  }
+                }}
+              />
             );
           })}
           {dayClasses.length === 0 && (
@@ -229,7 +239,15 @@ export default function HomeScreen({ navigation }: any) {
         </ScrollView>
       </View>
     );
-  }, [classes, readyToReportIds, endedClassIds, canEndClassIds, arrivedIds, canArriveIds, departedIds, reportedIds, todayStr, goToPrev, goToNext, goToToday, handleClassAction, router]);
+  }, [classes, readyToReportIds, endedClassIds, canEndClassIds, arrivedIds, canArriveIds, departedIds, reportedIds, todayStr, goToToday, handleClassAction, router, currentIndex, scrollToIndex]);
+
+  // compute classes dict for CalendarStrip indicator
+  const classesForDates = classes.reduce((acc, c) => {
+    acc[c.date] = true;
+    return acc;
+  }, {} as Record<string, boolean>);
+
+  const currentClassName = classes.find(c => c.id === currentCheckinId)?.title || '';
 
   return (
     <View style={styles.container}>
@@ -239,9 +257,9 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.topBarIcons}>
           <TouchableOpacity onPress={() => setSidePanelVisible(true)} style={styles.settingsIconContainer}>
             <Bell color="#666" size={26} />
-            {notifications.filter(n => n.type !== '💬 신규메시지').length + unreadCount > 0 && (
+            {notifications.filter(n => n.type !== '채팅 신규메시지').length + unreadCount > 0 && (
               <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>{notifications.filter(n => n.type !== '💬 신규메시지').length + unreadCount}</Text>
+                <Text style={styles.bellBadgeText}>{notifications.filter(n => n.type !== '채팅 신규메시지').length + unreadCount}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -252,36 +270,15 @@ export default function HomeScreen({ navigation }: any) {
       </View>
 
       {/* Weekly Schedule */}
-      <View style={styles.calendarContainer}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>📅 주간일정</Text>
-          <TouchableOpacity onPress={() => { setCalendarModalVisible(true); setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1)); }} style={styles.viewCalendarBtn}>
-            <Calendar size={16} color="#3b82f6" style={{ marginRight: 4 }} />
-            <Text style={styles.viewAllText}>전체 일정 확인</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.weekRow}>
-          {weekDates.map((date, idx) => {
-            const dateStr = toLocalISOString(date);
-            const isSelected = dateStr === activeDate;
-            const hasClass = classes.some(c => c.date === dateStr);
+      <CalendarStrip
+        dates={weekDates}
+        activeDateStr={activeDate}
+        onDateSelect={jumpToDate}
+        classesForDates={classesForDates}
+        onViewAll={() => { setCalendarModalVisible(true); setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1)); }}
+      />
 
-            return (
-              <TouchableOpacity
-                key={idx}
-                style={[styles.dayContainer, isSelected && styles.todayContainer]}
-                onPress={() => jumpToDate(dateStr)}
-              >
-                <Text style={[styles.dayText, isSelected && styles.todayText]}>{getWeekDayStr(date)}</Text>
-                <Text style={[styles.dateText, isSelected && styles.todayText]}>{date.getDate()}</Text>
-                {hasClass && <View style={styles.classIndicator} />}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Schedule Carousel — FlatList with pagingEnabled */}
+      {/* Schedule Carousel -> FlatList with pagingEnabled */}
       <FlatList
         ref={flatListRef}
         data={DATE_LIST}
@@ -340,7 +337,7 @@ export default function HomeScreen({ navigation }: any) {
           <View style={styles.sidebarPanel}>
             <View style={styles.sidebarHeader}>
               <Text style={styles.sidebarTitle}>
-                알림 센터 ({notifications.filter(n => n.type !== '💬 신규메시지').length + unreadCount})
+                알림 센터 ({notifications.filter(n => n.type !== '채팅 신규메시지').length + unreadCount})
               </Text>
               <TouchableOpacity onPress={() => setSidePanelVisible(false)}>
                 <X size={24} color="#333" />
@@ -358,12 +355,12 @@ export default function HomeScreen({ navigation }: any) {
                     router.push({ pathname: '/chat-room', params: { roomId: msg.roomId } } as any);
                   }}
                 >
-                  <Text style={styles.notifType}>💬 신규메시지 ({msg.senderName})</Text>
-                  <Text style={styles.notifTitle}>관리자님: {msg.content}</Text>
+                  <Text style={styles.notifType}>채팅 신규메시지 ({msg.senderName})</Text>
+                  <Text style={styles.notifTitle}>관리자: {msg.content}</Text>
                   <Text style={styles.notifTime}>{new Date(msg.sentAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
                 </TouchableOpacity>
               ))}
-              {notifications.filter(n => n.type !== '💬 신규메시지').map((notif: any) => (
+              {notifications.filter(n => n.type !== '채팅 신규메시지').map((notif: any) => (
                 <TouchableOpacity
                   key={notif.id}
                   style={styles.notifItem}
@@ -378,7 +375,7 @@ export default function HomeScreen({ navigation }: any) {
                   <Text style={styles.notifTime}>{notif.time}</Text>
                 </TouchableOpacity>
               ))}
-              {notifications.filter(n => n.type !== '💬 신규메시지').length === 0 && unreadCount === 0 && (
+              {notifications.filter(n => n.type !== '채팅 신규메시지').length === 0 && unreadCount === 0 && (
                 <Text style={styles.emptyText}>새로운 알림이 없습니다.</Text>
               )}
             </ScrollView>
@@ -436,12 +433,21 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
+
+      {/* Checkin / End Class Modal */}
+      <CheckinFlow
+        visible={checkinModalVisible}
+        className={currentClassName}
+        isEndClass={isEndingFlow}
+        onConfirm={confirmCheckin}
+        onCancel={() => setCheckinModalVisible(false)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f7fa', paddingTop: 50 },
+  container: { flex: 1, backgroundColor: Colors.background, paddingTop: 50 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 15 },
   topBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
   topBarIcons: { flexDirection: 'row', alignItems: 'center' },

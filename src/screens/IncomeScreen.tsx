@@ -1,7 +1,9 @@
+﻿import { Colors } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { FileText, RefreshCcw, Settings, TrendingUp, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { IncomeOverviewCard } from '@/src/components/organisms/IncomeOverviewCard';
 
 export default function IncomeScreen() {
     const router = useRouter();
@@ -21,47 +23,18 @@ export default function IncomeScreen() {
                 </TouchableOpacity>
             </View>
 
-            <View style={styles.incomeCard}>
-                <Text style={styles.incomeLabel}>이번 달 예상 수입 (세전)</Text>
-                <View style={styles.amountRow}>
-                    <Text style={styles.amountText}>3,450,000</Text>
-                    <Text style={styles.currencyText}>원</Text>
-                </View>
-
-                <Text style={styles.taxDeductedText}>실수령 예상 (3.3% 공제): 3,336,150원</Text>
-
-                <View style={styles.statsRow}>
-                    <View style={styles.statBox}>
-                        <Text style={styles.statLabel}>이번 달 근무</Text>
-                        <Text style={styles.statValue}>68시간</Text>
-                    </View>
-                    <View style={styles.verticalDivider} />
-                    <View style={styles.statBox}>
-                        <Text style={styles.statLabel}>지난 달 근무</Text>
-                        <Text style={styles.statValue}>62시간</Text>
-                    </View>
-                </View>
-
-                <View style={styles.increaseBadge}>
-                    <TrendingUp color="#10B981" size={14} style={{ marginRight: 4 }} />
-                    <Text style={styles.increaseText}>근무 시간 6시간 증가</Text>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.paymentRow}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <RefreshCcw color="#9CA3AF" size={14} style={{ marginRight: 6 }} />
-                        <Text style={styles.paymentText}>지급 예정일: 11월 10일</Text>
-                    </View>
-                    <TouchableOpacity
-                        style={styles.detailButton}
-                        onPress={() => setSelectedDetail({ month: '10월', amount: 3450000, hours: 68 })}
-                    >
-                        <Text style={styles.detailButtonText}>상세보기 {'>'}</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
+            <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => setSelectedDetail({ month: '10월', amount: 3450000, hours: 68 })}
+                style={{ paddingHorizontal: 15 }}
+            >
+                <IncomeOverviewCard
+                    title="이번 달 예상 수입 (세전)"
+                    amount="3,450,000"
+                    subtitle="실수령 예상 (3.3% 공제): 3,336,150원"
+                    dateStr="지급 예정일: 11월 10일"
+                />
+            </TouchableOpacity>
 
             <View style={styles.historySection}>
                 <Text style={styles.sectionTitle}>정산 내역</Text>
@@ -83,7 +56,7 @@ export default function IncomeScreen() {
                         </View>
                         <View style={{ alignItems: 'flex-end' }}>
                             <Text style={styles.historyAmount}>+{(item.amount).toLocaleString()}원</Text>
-                            <Text style={styles.historyTaxAmount}>실수령: {(item.amount * 0.967).toLocaleString()}원</Text>
+                            <Text style={styles.historyTaxAmount}>실수령 {(item.amount * 0.967).toLocaleString()}원</Text>
                         </View>
                     </TouchableOpacity>
                 ))}
@@ -145,7 +118,7 @@ export default function IncomeScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f7fa' },
+    container: { flex: 1, backgroundColor: Colors.background },
     header: { paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20, backgroundColor: 'white', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
     settingsIconContainer: { padding: 8 },

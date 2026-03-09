@@ -1,3 +1,4 @@
+﻿import { Colors } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, Modal, Pressable, Platform, KeyboardAvoidingView } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -8,11 +9,11 @@ import { REGION_SIDO_GU } from '../data/regionData';
 
 const SIDO_LIST = REGION_SIDO_GU.map((r) => r.sido);
 
-/** 학력 표시 포맷: "학교명, 전공, 졸업연도" */
+/** 학력 표시 포맷: "학교명 전공, 졸업연도" */
 const formatEducation = (school: string, major: string, year: string) =>
   [school.trim(), major.trim(), year.trim()].filter(Boolean).join(', ');
 
-/** 한 줄 입력을 학교/전공/졸업연도로 파싱 (끝에서 4자리 숫자 = 연도, 그 앞 = 전공, 나머지 = 학교) */
+/** 한 줄 입력된 학교/전공/졸업연도로 파싱 (끝에 4자리 숫자 = 연도, 그 앞 = 전공, 나머지 = 학교) */
 function parseEducationLine(text: string): { schoolName: string; major: string; graduationYear: string } {
   const parts = text.split(',').map((p) => p.trim());
   let graduationYear = '';
@@ -38,7 +39,7 @@ function parseEducationLine(text: string): { schoolName: string; major: string; 
   return { schoolName, major, graduationYear };
 }
 
-// 샘플 데이터 (주소는 시·도만)
+// 샘플 데이터 (주소는 시도만)
 const SAMPLE_PROFILE = {
   photoUri: '' as string,
   name: '김태완',
@@ -146,149 +147,149 @@ export default function InstructorProfileScreen() {
         extraHeight={Platform.OS === 'ios' ? 100 : 80}
       >
         <View style={styles.card}>
-        <View style={styles.cardInner}>
-          <TouchableOpacity onPress={pickImage} style={styles.avatarWrap}>
-            {photoUri ? (
-              <Image source={{ uri: photoUri }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Camera color="#9CA3AF" size={32} />
+          <View style={styles.cardInner}>
+            <TouchableOpacity onPress={pickImage} style={styles.avatarWrap}>
+              {photoUri ? (
+                <Image source={{ uri: photoUri }} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Camera color="#9CA3AF" size={32} />
+                </View>
+              )}
+              <View style={styles.avatarBadge}>
+                <Camera color="#fff" size={14} />
               </View>
-            )}
-            <View style={styles.avatarBadge}>
-              <Camera color="#fff" size={14} />
+            </TouchableOpacity>
+            <Text style={styles.name}>{name} 강사님</Text>
+            <Text style={styles.subLabel}>프로필 사진 탭하여 변경</Text>
+
+            <View style={styles.divider} />
+
+            <View style={styles.fieldRow}>
+              <User color="#4F46E5" size={20} />
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="이름"
+                placeholderTextColor="#9CA3AF"
+              />
             </View>
-          </TouchableOpacity>
-          <Text style={styles.name}>{name} 강사님</Text>
-          <Text style={styles.subLabel}>프로필 사진을 탭하여 변경</Text>
-
-          <View style={styles.divider} />
-
-          <View style={styles.fieldRow}>
-            <User color="#4F46E5" size={20} />
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="이름"
-              placeholderTextColor="#9CA3AF"
-            />
-          </View>
-          <View style={styles.fieldRow}>
-            <Mail color="#4F46E5" size={20} />
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="이메일"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-          <View style={styles.fieldRow}>
-            <Phone color="#4F46E5" size={20} />
-            <TextInput
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="전화번호"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="phone-pad"
-            />
-          </View>
-          <View style={styles.fieldRow}>
-            <MapPin color="#4F46E5" size={20} />
-            <TouchableOpacity
-              style={styles.addressCombo}
-              onPress={() => setAddressDropdownOpen(true)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.addressComboText, !address && styles.addressComboPlaceholder]}>
-                {address || '시·도 선택'}
-              </Text>
-              <ChevronDown color="#6B7280" size={20} />
-            </TouchableOpacity>
-          </View>
-
-          <Modal
-            visible={addressDropdownOpen}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setAddressDropdownOpen(false)}
-          >
-            <Pressable style={styles.modalBackdrop} onPress={() => setAddressDropdownOpen(false)}>
-              <View style={styles.dropdownList}>
-                {SIDO_LIST.map((sido) => (
-                  <TouchableOpacity
-                    key={sido}
-                    style={[styles.dropdownItem, address === sido && styles.dropdownItemSelected]}
-                    onPress={() => {
-                      setAddress(sido);
-                      setAddressDropdownOpen(false);
-                    }}
-                  >
-                    <Text style={[styles.dropdownItemText, address === sido && styles.dropdownItemTextSelected]}>
-                      {sido}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </Pressable>
-          </Modal>
-
-          <View style={styles.divider} />
-          <Text style={styles.subSectionTitle}>학력</Text>
-          <View style={styles.fieldRow}>
-            <GraduationCap color="#4F46E5" size={20} />
-            <TextInput
-              style={[styles.input, styles.educationSingleInput]}
-              value={educationLine}
-              onChangeText={setEducationFromLine}
-              placeholder="학교명, 전공, 졸업연도"
-              placeholderTextColor="#9CA3AF"
-            />
-          </View>
-
-          <Text style={styles.subSectionTitle}>자격증</Text>
-          <View style={styles.certRow}>
-            <TextInput
-              style={[styles.input, styles.certNameInput]}
-              value={certName}
-              onChangeText={setCertName}
-              placeholder="자격증명"
-              placeholderTextColor="#9CA3AF"
-            />
-            <TextInput
-              style={[styles.input, styles.certYearInput]}
-              value={certYear}
-              onChangeText={setCertYear}
-              placeholder="취득연도"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="number-pad"
-            />
-            <TouchableOpacity style={styles.addCertButton} onPress={addCertification}>
-              <Plus color="#fff" size={20} />
-            </TouchableOpacity>
-          </View>
-          {certifications.map((item) => (
-            <View key={item.id} style={styles.tagRow}>
-              <Text style={styles.tagText}>{item.name} ({item.year})</Text>
-              <TouchableOpacity onPress={() => removeCertification(item.id)}>
-                <Trash2 color="#9CA3AF" size={18} />
+            <View style={styles.fieldRow}>
+              <Mail color="#4F46E5" size={20} />
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="이메일"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+            <View style={styles.fieldRow}>
+              <Phone color="#4F46E5" size={20} />
+              <TextInput
+                style={styles.input}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="전화번호"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="phone-pad"
+              />
+            </View>
+            <View style={styles.fieldRow}>
+              <MapPin color="#4F46E5" size={20} />
+              <TouchableOpacity
+                style={styles.addressCombo}
+                onPress={() => setAddressDropdownOpen(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.addressComboText, !address && styles.addressComboPlaceholder]}>
+                  {address || '시도 선택'}
+                </Text>
+                <ChevronDown color="#6B7280" size={20} />
               </TouchableOpacity>
             </View>
-          ))}
 
-          <TouchableOpacity
-            style={[styles.saveButton, !isDirty && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={!isDirty}
-          >
-            <Text style={styles.saveButtonText}>저장</Text>
-          </TouchableOpacity>
+            <Modal
+              visible={addressDropdownOpen}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setAddressDropdownOpen(false)}
+            >
+              <Pressable style={styles.modalBackdrop} onPress={() => setAddressDropdownOpen(false)}>
+                <View style={styles.dropdownList}>
+                  {SIDO_LIST.map((sido) => (
+                    <TouchableOpacity
+                      key={sido}
+                      style={[styles.dropdownItem, address === sido && styles.dropdownItemSelected]}
+                      onPress={() => {
+                        setAddress(sido);
+                        setAddressDropdownOpen(false);
+                      }}
+                    >
+                      <Text style={[styles.dropdownItemText, address === sido && styles.dropdownItemTextSelected]}>
+                        {sido}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Pressable>
+            </Modal>
+
+            <View style={styles.divider} />
+            <Text style={styles.subSectionTitle}>학력</Text>
+            <View style={styles.fieldRow}>
+              <GraduationCap color="#4F46E5" size={20} />
+              <TextInput
+                style={[styles.input, styles.educationSingleInput]}
+                value={educationLine}
+                onChangeText={setEducationFromLine}
+                placeholder="학교명 전공, 졸업연도"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            <Text style={styles.subSectionTitle}>자격증</Text>
+            <View style={styles.certRow}>
+              <TextInput
+                style={[styles.input, styles.certNameInput]}
+                value={certName}
+                onChangeText={setCertName}
+                placeholder="자격증명"
+                placeholderTextColor="#9CA3AF"
+              />
+              <TextInput
+                style={[styles.input, styles.certYearInput]}
+                value={certYear}
+                onChangeText={setCertYear}
+                placeholder="취득연도"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="number-pad"
+              />
+              <TouchableOpacity style={styles.addCertButton} onPress={addCertification}>
+                <Plus color="#fff" size={20} />
+              </TouchableOpacity>
+            </View>
+            {certifications.map((item) => (
+              <View key={item.id} style={styles.tagRow}>
+                <Text style={styles.tagText}>{item.name} ({item.year})</Text>
+                <TouchableOpacity onPress={() => removeCertification(item.id)}>
+                  <Trash2 color="#9CA3AF" size={18} />
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            <TouchableOpacity
+              style={[styles.saveButton, !isDirty && styles.saveButtonDisabled]}
+              onPress={handleSave}
+              disabled={!isDirty}
+            >
+              <Text style={styles.saveButtonText}>저장</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
       </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
@@ -296,7 +297,7 @@ export default function InstructorProfileScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flex: 1, backgroundColor: '#f5f7fa' },
+  container: { flex: 1, backgroundColor: Colors.background },
   scrollContent: { paddingBottom: 320 },
   card: { margin: 16, backgroundColor: 'white', borderRadius: 20, padding: 24, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 16, elevation: 4 },
   cardInner: { alignItems: 'center' },

@@ -1,3 +1,4 @@
+﻿import { Colors } from '@/constants/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, BookOpen, CheckCircle2, Phone, User } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -85,7 +86,7 @@ export default function ClassDetailScreen() {
 
                     <View style={styles.infoRow}>
                         <BookOpen size={20} color="#666" />
-                        <Text style={styles.infoText}>진도: 미적분 기초 응용반</Text>
+                        <Text style={styles.infoText}>진도: 미적분 기초 적용반</Text>
                     </View>
 
                     <View style={styles.statusBox}>
@@ -107,7 +108,7 @@ export default function ClassDetailScreen() {
                     <View style={styles.reportCard}>
                         <View style={styles.reportCardHeader}>
                             <CheckCircle2 size={18} color="#10B981" />
-                            <Text style={styles.reportCardTitle}>작성된 강의 보고서</Text>
+                            <Text style={styles.reportCardTitle}>작성한 강의 보고서</Text>
                         </View>
                         <Text style={styles.reportCardText}>{getClassReport(classInfo.id)}</Text>
                     </View>
@@ -139,7 +140,7 @@ export default function ClassDetailScreen() {
                     {isReported ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <CheckCircle2 color="white" size={20} style={{ marginRight: 8 }} />
-                            <Text style={styles.actionText}>강의 수고하셨습니다!</Text>
+                            <Text style={styles.actionText}>강의 수고하셨습니다</Text>
                         </View>
                     ) : isReadyToReport ? (
                         <Text style={styles.actionText}>강의 보고서 작성</Text>
@@ -202,7 +203,7 @@ export default function ClassDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f7fa' },
+    container: { flex: 1, backgroundColor: Colors.background },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 15, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' },
     backButton: { padding: 5 },
     headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },

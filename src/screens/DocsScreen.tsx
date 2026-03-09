@@ -1,3 +1,4 @@
+﻿import { Colors } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { FileSignature, FileText, Bell, Settings } from 'lucide-react-native';
@@ -6,14 +7,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSchedule } from '../context/ScheduleContext';
 import { apiClient } from '../api/apiClient';
 import type { ApiContract, ContractStatus } from '../api/types';
+import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
 
 export default function DocsScreen() {
     const insets = useSafeAreaInsets();
     const { proposalStatus, resolveProposal } = useSchedule();
     const router = useRouter();
     const params = useLocalSearchParams();
-    const [selectedTab, setSelectedTab] = useState((params.targetTab as string) || '서류');
+
     const tabs = ['서류', '계약', '요청/제안'];
+    const initialTabIndex = params.targetTab ? tabs.indexOf(params.targetTab as string) : 0;
+    const [selectedTabIndex, setSelectedTabIndex] = useState(initialTabIndex >= 0 ? initialTabIndex : 0);
+    const selectedTab = tabs[selectedTabIndex];
 
     const [isRejecting, setIsRejecting] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
@@ -57,7 +62,7 @@ export default function DocsScreen() {
 
     return (
         <View style={[styles.container, { paddingTop: Math.max(50, insets.top) }]}>
-            {/* Top Bar with Settings - 대시보드와 동일한 디자인 */}
+            {/* Top Bar with Settings */}
             <View style={styles.topBar}>
                 <Text style={styles.topBarTitle}>서류/계약</Text>
                 <View style={styles.topBarIcons}>
@@ -67,18 +72,12 @@ export default function DocsScreen() {
                 </View>
             </View>
 
-            {/* Top Tabs */}
-            <View style={styles.tabContainer}>
-                {tabs.map(tab => (
-                    <TouchableOpacity
-                        key={tab}
-                        style={[styles.tabButton, selectedTab === tab && styles.activeTabButton]}
-                        onPress={() => setSelectedTab(tab)}
-                    >
-                        <Text style={[styles.tabText, selectedTab === tab && styles.activeTabText]}>{tab}</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
+            {/* Top Tabs (Segmented) */}
+            <SegmentedTabs
+                tabs={tabs}
+                activeIndex={selectedTabIndex}
+                onChange={setSelectedTabIndex}
+            />
 
             <ScrollView style={styles.contentContainer}>
                 {selectedTab === '서류' && (
@@ -129,7 +128,7 @@ export default function DocsScreen() {
                                     </View>
                                 )}
                                 <Bell color="#EF4444" size={16} style={{ marginLeft: proposalStatus === '미응답' ? 6 : 0 }} />
-                                <Text style={styles.requestStatusText}>요청 건</Text>
+                                <Text style={styles.requestStatusText}>제안 건</Text>
                             </View>
                             <Text style={styles.requestMetaText}>{proposalStatus === '미응답' ? '미응답' : `${proposalStatus} 완료`}</Text>
                         </View>
@@ -137,11 +136,11 @@ export default function DocsScreen() {
                         <Text style={styles.requestTitle}>(샘플) 강남본원 화요일 신규 강의 배정 제안</Text>
 
                         <View style={styles.requestBody}>
-                            <Text style={styles.requestBullet}>(샘플) · 강의명: 고3 EBS 파이널 문풀</Text>
+                            <Text style={styles.requestBullet}>(샘플) · 강의명: 고2 EBS 수능특강 문학</Text>
                             <Text style={styles.requestBullet}>(샘플) · 날짜: 2026-03-10</Text>
                             <Text style={styles.requestBullet}>(샘플) · 시간: 18:00 ~ 20:00</Text>
                             <Text style={styles.requestBullet}>(샘플) · 장소: 강남본원 3관 302호</Text>
-                            <Text style={styles.requestBullet}>(샘플) · 페이: 50,000원 / 1시간</Text>
+                            <Text style={styles.requestBullet}>(샘플) · 시급: 50,000원 / 1시간</Text>
                         </View>
 
                         {proposalStatus === '미응답' && !isRejecting && (
@@ -182,7 +181,7 @@ export default function DocsScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f7fa' },
+    container: { flex: 1, backgroundColor: Colors.background },
     topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 15 },
     topBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827', lineHeight: 32 },
     topBarIcons: { flexDirection: 'row', alignItems: 'center' },

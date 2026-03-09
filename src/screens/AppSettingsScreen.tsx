@@ -1,10 +1,10 @@
+﻿import { Colors } from '@/constants/theme';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Bell, ChevronLeft, FileText, Info, LogOut, Shield } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
-// 샘플 데이터
 const SAMPLE_SETTINGS = {
   notificationsEnabled: true,
   appVersion: '1.0.0',
@@ -63,14 +63,14 @@ export default function AppSettingsScreen() {
             <FileText color="#4F46E5" size={22} />
           </View>
           <Text style={styles.rowLabel}>서비스 이용약관</Text>
-          <Text style={styles.chevron}>›</Text>
+          <Text style={styles.chevron}>{'>'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.row} onPress={() => openLink('https://example.com/privacy')}>
           <View style={styles.rowIcon}>
             <Shield color="#4F46E5" size={22} />
           </View>
           <Text style={styles.rowLabel}>개인정보 처리방침</Text>
-          <Text style={styles.chevron}>›</Text>
+          <Text style={styles.chevron}>{'>'}</Text>
         </TouchableOpacity>
         <View style={styles.row}>
           <View style={styles.rowIcon}>
@@ -90,7 +90,7 @@ export default function AppSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f7fa' },
+  container: { flex: 1, backgroundColor: Colors.background },
   section: { backgroundColor: 'white', marginHorizontal: 16, marginTop: 16, borderRadius: 12, overflow: 'hidden' },
   sectionTitle: { fontSize: 14, fontWeight: '600', color: '#6B7280', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6' },

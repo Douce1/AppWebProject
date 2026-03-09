@@ -1,3 +1,4 @@
+﻿import { Colors } from '@/constants/theme';
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -27,7 +28,7 @@ export default function LectureHistoryDetailScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.card}>
-          <Text style={styles.emptyText}>강의 상세 정보를 불러올 수 없습니다.</Text>
+          <Text style={styles.emptyText}>媛뺤쓽 ?곸꽭 ?뺣낫瑜?遺덈윭?????놁뒿?덈떎.</Text>
         </View>
       </View>
     );
@@ -51,16 +52,16 @@ export default function LectureHistoryDetailScreen() {
         </View>
 
         <View style={styles.durationCard}>
-          <Text style={styles.durationLabel}>총 강의 시간</Text>
-          <Text style={styles.durationValue}>{lecture.durationHours}시간</Text>
+          <Text style={styles.durationLabel}>珥?媛뺤쓽 ?쒓컙</Text>
+          <Text style={styles.durationValue}>{lecture.durationHours}?쒓컙</Text>
         </View>
 
         <View style={styles.notesCard}>
-          <Text style={styles.notesLabel}>특이 사항</Text>
+          <Text style={styles.notesLabel}>?뱀씠 ?ы빆</Text>
           <Text style={styles.notesValue}>
             {lecture.notes && lecture.notes.trim().length > 0
               ? lecture.notes
-              : '등록된 특이 사항이 없습니다.'}
+              : '?깅줉???뱀씠 ?ы빆???놁뒿?덈떎.'}
           </Text>
         </View>
       </View>
@@ -69,7 +70,7 @@ export default function LectureHistoryDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f7fa', padding: 16 },
+  container: { flex: 1, backgroundColor: Colors.background, padding: 16 },
   card: {
     backgroundColor: 'white',
     borderRadius: 16,
@@ -146,4 +147,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
 

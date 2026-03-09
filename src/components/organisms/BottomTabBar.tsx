@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Colors } from '@/constants/theme';
+import { Colors, Shadows } from '@/constants/theme';
 import { Typography } from '../atoms/Typography';
 import { Home, MessageCircle, FileText, DollarSign, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,8 +10,8 @@ export function BottomTabBar({ state, descriptors, navigation }: BottomTabBarPro
     const insets = useSafeAreaInsets();
 
     return (
-        <View style={[styles.safeArea, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-            <View style={styles.container}>
+        <View style={[styles.absoluteWrapper, { bottom: Math.max(insets.bottom, 16) }]}>
+            <View style={styles.pillContainer}>
                 {state.routes.map((route, index) => {
                     const { options } = descriptors[route.key];
                     const label =
@@ -75,15 +75,18 @@ export function BottomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        backgroundColor: Colors.card,
-        borderTopWidth: 1,
-        borderTopColor: Colors.brandSand,
+    absoluteWrapper: {
+        position: 'absolute',
+        left: 20,
+        right: 20,
+        backgroundColor: 'transparent',
     },
-    container: {
+    pillContainer: {
         flexDirection: 'row',
-        height: 60,
+        height: 68,
         backgroundColor: Colors.card,
+        borderRadius: 34,
+        ...Shadows.sidebar,
     },
     tab: {
         flex: 1,

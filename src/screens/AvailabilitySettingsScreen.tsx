@@ -1,3 +1,4 @@
+﻿import { Colors } from '@/constants/theme';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
@@ -25,7 +26,7 @@ type Marking = {
 };
 type MarkedDates = Record<string, Marking>;
 
-// 초기값: 디폴트 가용시간 없이 시작
+// 초기값 디폴트: 가능시간 없이 시작
 const SAMPLE_AVAILABILITY: AvailabilityMap = {};
 
 function formatDate(date: Date): string {
@@ -83,7 +84,7 @@ export default function AvailabilitySettingsScreen() {
   const markedDates: MarkedDates = useMemo(() => {
     const marked: MarkedDates = {};
 
-    // 1) 기본: 가용시간이 설정된 날짜는 초록색 "설정 완료" 스타일 + 초록 점
+    // 1) 기본: 가능시간이 설정된 날짜는 초록색 "설정 완료" 상태( + 초록 점 )
     Object.keys(availability).forEach((date) => {
       const hasSlots = availability[date] && availability[date].length > 0;
       if (!hasSlots) return;
@@ -96,7 +97,7 @@ export default function AvailabilitySettingsScreen() {
       };
     });
 
-    // 2) 현재 작업 범위로 선택된 날짜들은 모두 보라색 "작업 중" 스타일로 덮어씀
+    // 2) 현재 작업 범위로 선택된 날짜들은 모두 보라색 "작업 중" 상태로 덮어씀
     //    이미 설정된 날짜라면 초록색 점(dot)으로 "설정됨" 상태를 함께 표시
     selectedDates.forEach((date) => {
       const hasSlots = availability[date] && availability[date].length > 0;
@@ -119,7 +120,7 @@ export default function AvailabilitySettingsScreen() {
 
     // 범위 시작이 아직 없을 때
     if (!rangeStart) {
-      // 이미 설정된 날짜를 탭하면 해당 시간 값으로 수정 모드 진입 + 선택 시작
+      // 이미 설정된 날짜를 누르면 해당 시간 값으로 수정 모드 진입 + 선택 시작
       if (hasSlots) {
         const firstSlot = availability[date][0];
         setStartTimeInput(firstSlot.start);
@@ -153,7 +154,7 @@ export default function AvailabilitySettingsScreen() {
 
   const applyTimeToSelectedDates = () => {
     if (!selectedDates.length) {
-      Alert.alert('알림', '가용시간을 적용할 날짜를 먼저 선택해주세요.');
+      Alert.alert('알림', '가능시간을 적용할 날짜를 먼저 선택해주세요.');
       return;
     }
     setAvailability((prev) => {
@@ -167,7 +168,7 @@ export default function AvailabilitySettingsScreen() {
     setSelectedDates([]);
     setRangeStart(null);
     setRangeText('');
-    Alert.alert('저장 완료', '선택한 날짜에 가용시간이 설정되었습니다.');
+    Alert.alert('등록 완료', '선택한 날짜의 가능시간이 설정되었습니다.');
   };
 
   const currentSlots: TimeSlot[] = availability[focusedDate] ?? [];
@@ -205,7 +206,7 @@ export default function AvailabilitySettingsScreen() {
         extraScrollHeight={40}
       >
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>가용 날짜 선택 (오늘 ~ 2개월)</Text>
+          <Text style={styles.sectionTitle}>가능 날짜 선택 (오늘 ~ 2개월)</Text>
           <Calendar
             minDate={minDate}
             maxDate={maxDate}
@@ -217,9 +218,9 @@ export default function AvailabilitySettingsScreen() {
         <View style={styles.section}>
           <View style={styles.timeHeaderRow}>
             <View>
-              <Text style={styles.sectionTitle}>가용시간 일괄 설정</Text>
+              <Text style={styles.sectionTitle}>가능시간 일괄 설정</Text>
               <Text style={styles.rangeText}>
-                {rangeText || '선택된 기간이 없습니다.'}
+                {rangeText || '선택한 기간이 없습니다.'}
               </Text>
             </View>
             {canApply && (
@@ -247,8 +248,8 @@ export default function AvailabilitySettingsScreen() {
               onPress={() => {
                 if (!hasConfiguredInSelection) return;
                 Alert.alert(
-                  '가용시간 삭제',
-                  '선택한 날짜의 가용시간을 모두 삭제하시겠습니까?',
+                  '가능시간 삭제',
+                  '선택한 날짜의 가능시간을 모두 삭제하시겠습니까?',
                   [
                     { text: '취소', style: 'cancel' },
                     {
@@ -280,7 +281,7 @@ export default function AvailabilitySettingsScreen() {
                   !hasConfiguredInSelection && styles.deleteButtonTextDisabled,
                 ]}
               >
-                취소
+                삭제
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -297,9 +298,9 @@ export default function AvailabilitySettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>등록된 가용시간</Text>
+          <Text style={styles.sectionTitle}>등록된 가능시간</Text>
           {allConfiguredSlots.length === 0 ? (
-            <Text style={styles.emptyText}>등록된 가용시간이 없습니다.</Text>
+            <Text style={styles.emptyText}>등록된 가능시간이 없습니다.</Text>
           ) : (
             allConfiguredSlots.map((item, index) => (
               <View key={`${item.date}-${index}`} style={styles.slotDisplayRow}>
@@ -317,7 +318,7 @@ export default function AvailabilitySettingsScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flex: 1, backgroundColor: '#f5f7fa' },
+  container: { flex: 1, backgroundColor: Colors.background },
   section: { backgroundColor: 'white', marginHorizontal: 16, marginTop: 16, padding: 16, borderRadius: 12 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginBottom: 12 },
   timeHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },

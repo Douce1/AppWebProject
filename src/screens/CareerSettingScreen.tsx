@@ -1,3 +1,4 @@
+﻿import { Colors } from '@/constants/theme';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { Filter, Check } from 'lucide-react-native';
@@ -7,7 +8,7 @@ import { apiClient } from '../api/apiClient';
 type LectureRecord = {
   id: string;
   date: string; // YYYY-MM-DD
-  region: string; // 시·도
+  region: string; // 권역/지역
   museum: string; // 박물관/기관명
   title: string;
   durationHours: number; // 강의 시간(시간 단위)
@@ -46,7 +47,7 @@ export default function CareerSettingScreen() {
   const startDate = new Date(endY, endM - 1, 1);
   const defaultStartYm = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
 
-  // 입력용 필터 상태 (연월/지역/박물관)
+  // 입력 중인 필터 상태 (년월/지역/박물관)
   const [startYearMonth, setStartYearMonth] = useState<string | null>(defaultStartYm);
   const [endYearMonth, setEndYearMonth] = useState<string | null>(defaultEndYm);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
@@ -54,7 +55,7 @@ export default function CareerSettingScreen() {
   const [regionDropdownOpen, setRegionDropdownOpen] = useState(false);
   const [museumDropdownOpen, setMuseumDropdownOpen] = useState(false);
 
-  // 실제로 적용된 필터 상태 (조회 버튼 눌렀을 때만 반영)
+  // 실제로 적용된 필터 상태 (조회 버튼 누를 때만 반영)
   const [appliedStartYearMonth, setAppliedStartYearMonth] = useState<string | null>(defaultStartYm);
   const [appliedEndYearMonth, setAppliedEndYearMonth] = useState<string | null>(defaultEndYm);
   const [appliedRegions, setAppliedRegions] = useState<string[]>([]);
@@ -83,7 +84,7 @@ export default function CareerSettingScreen() {
         );
       })
       .catch(() => {
-        // 실패 시에는 빈 배열 유지 (UI는 "검색 결과가 없습니다" 처리)
+        // 실패 시에는 빈 배열 유지 (UI에서 "검색 결과가 없습니다" 처리)
       });
     return () => {
       mounted = false;
@@ -184,7 +185,7 @@ export default function CareerSettingScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      {/* 1. 써머리 영역 (초기/필터 후 모두 노출) */}
+      {/* 1. 요약 영역 (초기/필터 후 모두 노출) */}
       <View style={styles.summarySection}>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>총 강의 건수</Text>
@@ -195,8 +196,8 @@ export default function CareerSettingScreen() {
           <Text style={styles.summaryValue}>{summary.totalHours}시간</Text>
         </View>
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>지역 수</Text>
-          <Text style={styles.summaryValue}>{summary.regionCount}개 시·도</Text>
+          <Text style={styles.summaryLabel}>지역(권역)</Text>
+          <Text style={styles.summaryValue}>{summary.regionCount}개 권역</Text>
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>박물관 수</Text>
@@ -204,7 +205,7 @@ export default function CareerSettingScreen() {
         </View>
       </View>
 
-      {/* 2. 그리드(리스트) 영역 + 필터 아이콘 */}
+      {/* 2. 그리드 리스트 영역 + 필터 아이콘 */}
       <View style={styles.listSection}>
         <View style={styles.listHeaderRow}>
           <Text style={styles.sectionTitle}>강의 이력</Text>
@@ -218,7 +219,7 @@ export default function CareerSettingScreen() {
 
         {showFilters && (
           <View style={styles.filterPanel}>
-            <Text style={styles.filterPanelTitle}>기간 필터 (연·월)</Text>
+            <Text style={styles.filterPanelTitle}>기간 필터 (년-월)</Text>
             <View style={styles.filterRow}>
               <View style={styles.inputGroup}>
                 <TextInput
@@ -398,7 +399,7 @@ export default function CareerSettingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f7fa' },
+  container: { flex: 1, backgroundColor: Colors.background },
   section: {
     backgroundColor: 'white',
     marginHorizontal: 16,

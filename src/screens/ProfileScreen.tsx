@@ -1,11 +1,13 @@
+﻿import { Colors } from '@/constants/theme';
 import { useProfile } from '@/src/context/ProfileContext';
 import { apiClient } from '@/src/api/apiClient';
 import type { ApiCompany, ApiInstructorProfile } from '@/src/api/types';
 import { useRouter } from 'expo-router';
-import { Briefcase, Camera, ChevronRight, Clock, MapPin, Settings, UserCircle } from 'lucide-react-native';
+import { Briefcase, ChevronRight, Clock, MapPin, Settings, UserCircle } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ProfileHero } from '@/src/components/organisms/ProfileHero';
 
 export default function ProfileScreen() {
     const insets = useSafeAreaInsets();
@@ -25,7 +27,6 @@ export default function ProfileScreen() {
                 setCompany(companyInfo);
             })
             .catch(() => {
-                // 실패 시에는 샘플 텍스트 대신 최소한의 기본 문구만 표시
                 if (!mounted) return;
                 setInstructor(null);
                 setCompany(null);
@@ -37,7 +38,7 @@ export default function ProfileScreen() {
 
     return (
         <ScrollView style={[styles.container, { paddingTop: Math.max(50, insets.top) }]}>
-            {/* Top Bar - 대시보드와 동일한 디자인/위치 */}
+            {/* Top Bar */}
             <View style={styles.topBar}>
                 <Text style={styles.topBarTitle}>내 정보</Text>
                 <View style={styles.topBarIcons}>
@@ -46,33 +47,14 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
-            <View style={styles.header}>
-                <TouchableOpacity
-                    activeOpacity={0.9}
-                    onPress={() => router.push('/(tabs)/profile/instructor')}
-                    style={styles.profileCard}
-                >
-                    <View style={styles.profileInfo}>
-                        <View style={styles.avatarWrapper}>
-                            <View style={styles.avatarPlaceholder}>
-                                <Camera color="#9CA3AF" size={28} />
-                            </View>
-                            <View style={styles.avatarBadge}>
-                                <Camera color="#ffffff" size={16} />
-                            </View>
-                        </View>
-                        <View style={styles.profileTextWrap}>
-                            <Text style={styles.nameText}>
-                                {instructor ? `${instructor.name} 강사님` : '강사님'}
-                            </Text>
-                            {company && (
-                                <Text style={styles.subText}>{company.name} 소속</Text>
-                            )}
-                            <Text style={styles.helperText}>프로필 사진을 탭하여 변경</Text>
-                        </View>
-                    </View>
-                </TouchableOpacity>
-            </View>
+
+            <TouchableOpacity activeOpacity={0.9} onPress={() => router.push('/(tabs)/profile/instructor')}>
+                <ProfileHero
+                    name={instructor ? `${instructor.name} 강사님` : '강사님'}
+                    role={company ? `${company.name} 소속` : '프리랜서'}
+                    hint="프로필 사진 및 이름 변경"
+                />
+            </TouchableOpacity>
 
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>설정</Text>
@@ -89,7 +71,7 @@ export default function ProfileScreen() {
                     <View style={styles.menuIconContainer}>
                         <Clock color="#4F46E5" size={20} />
                     </View>
-                    <Text style={styles.menuText}>가용시간 설정</Text>
+                    <Text style={styles.menuText}>가능시간 설정</Text>
                     <ChevronRight color="#CBD5E1" size={20} />
                 </TouchableOpacity>
 
@@ -117,7 +99,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f7fa' },
+    container: { flex: 1, backgroundColor: Colors.background },
     topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 15 },
     topBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827', lineHeight: 32 },
     topBarIcons: { flexDirection: 'row', alignItems: 'center' },

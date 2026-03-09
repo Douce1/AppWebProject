@@ -1,19 +1,22 @@
+﻿import { Colors } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { Flame, Settings } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useChat } from '../context/ChatContext';
+import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
 
 export default function ChatScreen({ navigation }: any) {
     const router = useRouter();
     const { chatRooms } = useChat();
-    const [selectedTab, setSelectedTab] = useState('전체 메시지');
+    const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
-    const tabs = ['전체 메시지', '안읽은 메시지'];
+    const tabs = ['?꾩껜 硫붿떆吏', '?덉씫? 硫붿떆吏'];
+    const selectedTab = tabs[selectedTabIndex];
 
     // Filter rooms based on selected tab
     const getFilteredRooms = () => {
-        if (selectedTab === '안읽은 메시지') {
+        if (selectedTab === '?덉씫? 硫붿떆吏') {
             return chatRooms.filter(room => room.unreadCount > 0);
         }
         return chatRooms;
@@ -26,7 +29,7 @@ export default function ChatScreen({ navigation }: any) {
             return (
                 <View style={styles.emptyContainer}>
                     <Text style={styles.emptyText}>
-                        {selectedTab === '안읽은 메시지' ? '안읽은 메시지가 없습니다.' : '참여 중인 채팅방이 없습니다.'}
+                        {selectedTab === '?덉씫? 硫붿떆吏' ? '?덉씫? 硫붿떆吏媛 ?놁뒿?덈떎.' : '李몄뿬 以묒씤 梨꾪똿諛⑹씠 ?놁뒿?덈떎.'}
                     </Text>
                 </View>
             );
@@ -45,7 +48,7 @@ export default function ChatScreen({ navigation }: any) {
                         </View>
                         <View style={styles.roomInfo}>
                             <View style={styles.roomHeaderRow}>
-                                <Text style={styles.roomName}>{room.title ?? '주제 없음'}</Text>
+                                <Text style={styles.roomName}>{room.title ?? '二쇱젣 ?놁쓬'}</Text>
                                 <Text style={styles.roomTime}>{new Date(room.lastMessage?.sentAt ?? room.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
                             </View>
                             <View style={styles.roomMessageRow}>
@@ -67,24 +70,18 @@ export default function ChatScreen({ navigation }: any) {
         <View style={styles.container}>
             {/* Top Bar with Settings */}
             <View style={styles.topBar}>
-                <Text style={styles.topBarTitle}>채팅</Text>
+                <Text style={styles.topBarTitle}>梨꾪똿</Text>
                 <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
                     <Settings color="#666" size={26} />
                 </TouchableOpacity>
             </View>
 
-            {/* Top Tabs */}
-            <View style={styles.tabContainer}>
-                {tabs.map(tab => (
-                    <TouchableOpacity
-                        key={tab}
-                        style={[styles.tabButton, selectedTab === tab && styles.activeTabButton]}
-                        onPress={() => setSelectedTab(tab)}
-                    >
-                        <Text style={[styles.tabText, selectedTab === tab && styles.activeTabText]}>{tab}</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
+            {/* Top Tabs (Segmented) */}
+            <SegmentedTabs
+                tabs={tabs}
+                activeIndex={selectedTabIndex}
+                onChange={setSelectedTabIndex}
+            />
 
             <View style={styles.contentContainer}>
                 {renderChatRooms()}
@@ -94,7 +91,7 @@ export default function ChatScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f7fa', paddingTop: 50 },
+    container: { flex: 1, backgroundColor: Colors.background, paddingTop: 50 },
     topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 10 },
     topBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
     settingsIconContainer: { padding: 8 },
@@ -120,3 +117,4 @@ const styles = StyleSheet.create({
     unreadBadge: { backgroundColor: '#E53E3E', borderRadius: 12, minWidth: 24, paddingHorizontal: 6, paddingVertical: 2, justifyContent: 'center', alignItems: 'center' },
     unreadText: { color: 'white', fontSize: 12, fontWeight: 'bold' }
 });
+

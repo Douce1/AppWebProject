@@ -1,3 +1,4 @@
+﻿import { Colors, Shadows } from '@/constants/theme';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -195,7 +196,7 @@ export default function DocContractDetailScreen() {
               activeOpacity={0.7}
             >
               <View style={[styles.checkbox, consentGiven && styles.checkboxChecked]} />
-              <Text style={styles.checkLabel}>동의합니다</Text>
+              <Text style={styles.checkLabel}>동의합니다.</Text>
             </TouchableOpacity>
             {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
             <View style={styles.modalActions}>
@@ -226,41 +227,50 @@ export default function DocContractDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f7fa' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f7fa', padding: 20 },
-  loadingText: { marginTop: 8, fontSize: 13, color: '#6B7280' },
-  errorText: { fontSize: 15, color: '#DC2626', textAlign: 'center' },
+  container: { flex: 1, backgroundColor: Colors.background, paddingVertical: 24 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background, padding: 20 },
+  loadingText: { marginTop: 8, fontSize: 13, color: Colors.mutedForeground },
+  errorText: { fontSize: 15, color: Colors.colorError, textAlign: 'center' },
   card: {
-    margin: 16,
-    backgroundColor: 'white',
+    marginHorizontal: 16,
+    marginBottom: 48,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
+    padding: 32,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.09,
+    shadowRadius: 16,
     elevation: 3,
+    gap: 24,
   },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#111827', marginBottom: 4 },
-  subTitle: { fontSize: 13, color: '#6B7280', marginBottom: 16 },
-  section: { marginTop: 12 },
-  sectionTitle: { fontSize: 15, fontWeight: '600', color: '#374151', marginBottom: 6 },
-  paragraph: { fontSize: 13, color: '#4B5563', lineHeight: 20, marginBottom: 4 },
-  signButton: { marginTop: 20, backgroundColor: '#3b82f6', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  signButtonText: { color: 'white', fontWeight: '700', fontSize: 15 },
+  title: { fontSize: 24, fontWeight: 'bold', color: Colors.brandInk, marginBottom: 4 },
+  subTitle: { fontSize: 14, color: Colors.mutedForeground, marginBottom: 16 },
+  section: {
+    backgroundColor: Colors.surfaceSoft,
+    borderRadius: 8,
+    padding: 16,
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  sectionTitle: { fontSize: 15, fontWeight: '600', color: Colors.brandInk, marginBottom: 8 },
+  paragraph: { fontSize: 13, color: Colors.mutedForeground, lineHeight: 20, marginBottom: 4 },
+  signButton: { marginTop: 20, backgroundColor: Colors.brandInk, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  signButtonText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
-  modalBox: { backgroundColor: 'white', borderRadius: 16, padding: 20 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 },
-  consentIntro: { fontSize: 13, color: '#6B7280', marginBottom: 8 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(37,27,16,0.5)', justifyContent: 'center', padding: 24 },
+  modalBox: { backgroundColor: 'white', borderRadius: 16, padding: 24, ...Shadows.card },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.brandInk, marginBottom: 12 },
+  consentIntro: { fontSize: 13, color: Colors.mutedForeground, marginBottom: 8 },
   consentText: { fontSize: 13, color: '#374151', lineHeight: 20, marginBottom: 16 },
-  checkRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  checkRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   checkbox: { width: 22, height: 22, borderWidth: 2, borderColor: '#9CA3AF', borderRadius: 4, marginRight: 10 },
-  checkboxChecked: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
+  checkboxChecked: { backgroundColor: Colors.brandInk, borderColor: Colors.brandInk },
   checkLabel: { fontSize: 15, color: '#374151', fontWeight: '500' },
-  submitError: { fontSize: 13, color: '#DC2626', marginBottom: 12 },
+  submitError: { fontSize: 13, color: Colors.colorError, marginBottom: 12 },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  cancelButton: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#F3F4F6', alignItems: 'center' },
-  cancelButtonText: { fontSize: 15, fontWeight: '600', color: '#4B5563' },
-  submitButton: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#3b82f6', alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  cancelButton: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: Colors.surfaceSoft, alignItems: 'center' },
+  cancelButtonText: { fontSize: 15, fontWeight: '600', color: Colors.brandInk },
+  submitButton: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: Colors.brandInk, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
   submitButtonText: { fontSize: 15, fontWeight: '600', color: 'white' },
 });

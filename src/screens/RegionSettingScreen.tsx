@@ -1,10 +1,11 @@
+﻿import { Colors } from '@/constants/theme';
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Check, X } from 'lucide-react-native';
 import { useProfile } from '../context/ProfileContext';
 import { REGION_SIDO_GU } from '../data/regionData';
 
-/** 저장값이 "시도 구" 형식이면 시·도만 반환 (기존 데이터 호환) */
+/** 단일값인 "시도 구" 형식일면 "시도"만 반환 (기존 데이터 호환) */
 function toSidoOnly(value: string): string {
   const space = value.indexOf(' ');
   return space > 0 ? value.slice(0, space) : value;
@@ -48,7 +49,7 @@ export default function RegionSettingScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>희망 지역 (시·도만 선택, 다중 선택 가능)</Text>
+        <Text style={styles.sectionTitle}>희망 지역 ("시도"만 선택, 다중 선택 가능)</Text>
         <View style={styles.tagContainer}>
           {SIDO_LIST.map((sido) => {
             const active = selected.has(sido);
@@ -69,7 +70,7 @@ export default function RegionSettingScreen() {
 
       <View style={styles.footer}>
         <View style={styles.summaryArea}>
-          <Text style={styles.summaryTitle}>선택된 지역</Text>
+          <Text style={styles.summaryTitle}>선택한 지역</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
             {selectedList.map((r) => (
               <View key={r} style={styles.chip}>
@@ -90,7 +91,7 @@ export default function RegionSettingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f7fa' },
+  container: { flex: 1, backgroundColor: Colors.background },
   section: { flex: 1, padding: 16 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginBottom: 12 },
   tagContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

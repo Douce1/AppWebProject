@@ -32,42 +32,42 @@ export function Typography({
 
 const styles = StyleSheet.create({
     h1: {
-        fontFamily: Fonts.default.sans,
+        fontFamily: 'Pretendard-Bold',
         fontSize: 32,
         fontWeight: '700',
     },
     h2: {
-        fontFamily: Fonts.default.sans,
+        fontFamily: 'Pretendard-Bold',
         fontSize: 24,
         fontWeight: '700',
     },
     h3: {
-        fontFamily: Fonts.default.sans,
+        fontFamily: 'Pretendard-Bold',
         fontSize: 20,
         fontWeight: '700',
     },
     subtitle1: {
-        fontFamily: Fonts.default.sans,
+        fontFamily: 'Pretendard-SemiBold',
         fontSize: 18,
         fontWeight: '600',
     },
     subtitle2: {
-        fontFamily: Fonts.default.sans,
+        fontFamily: 'Pretendard-SemiBold',
         fontSize: 16,
         fontWeight: '600',
     },
     body1: {
-        fontFamily: Fonts.default.sans,
+        fontFamily: 'Pretendard-Regular',
         fontSize: 15,
         fontWeight: 'normal',
     },
     body2: {
-        fontFamily: Fonts.default.sans,
+        fontFamily: 'Pretendard-Regular',
         fontSize: 14,
         fontWeight: 'normal',
     },
     caption: {
-        fontFamily: Fonts.default.sans,
+        fontFamily: 'Pretendard-Regular',
         fontSize: 12,
         fontWeight: 'normal',
     },

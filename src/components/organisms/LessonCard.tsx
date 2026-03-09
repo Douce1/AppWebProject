@@ -101,12 +101,14 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor: Colors.card,
         borderRadius: Radius.card,
-        padding: 20,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        padding: 24,
         marginBottom: 16,
         ...Shadows.card,
     },
     badgeGroup: {
-        marginBottom: 12,
+        marginBottom: 16,
     },
     title: {
         marginBottom: 16,
