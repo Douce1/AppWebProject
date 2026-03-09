@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   tagCheck: { marginRight: 6 },
   sidoTagText: { fontSize: 14, color: '#374151' },
   sidoTagTextSelected: { color: '#fff', fontWeight: '600' },
-  footer: { backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
+  footer: { backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 100 },
   summaryArea: { marginBottom: 12 },
   summaryTitle: { fontSize: 14, fontWeight: '600', color: '#6B7280', marginBottom: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

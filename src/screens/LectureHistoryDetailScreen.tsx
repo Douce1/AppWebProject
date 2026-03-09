@@ -19,8 +19,8 @@ export default function LectureHistoryDetailScreen() {
     typeof params.lecture === 'string'
       ? params.lecture
       : Array.isArray(params.lecture)
-      ? params.lecture[0]
-      : null;
+        ? params.lecture[0]
+        : null;
 
   const lecture: LectureDetail | null = lectureString ? JSON.parse(lectureString) : null;
 
@@ -28,7 +28,7 @@ export default function LectureHistoryDetailScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.card}>
-          <Text style={styles.emptyText}>媛뺤쓽 ?곸꽭 ?뺣낫瑜?遺덈윭?????놁뒿?덈떎.</Text>
+          <Text style={styles.emptyText}>강의 상세 정보를 불러올 수 없습니다.</Text>
         </View>
       </View>
     );
@@ -52,16 +52,16 @@ export default function LectureHistoryDetailScreen() {
         </View>
 
         <View style={styles.durationCard}>
-          <Text style={styles.durationLabel}>珥?媛뺤쓽 ?쒓컙</Text>
-          <Text style={styles.durationValue}>{lecture.durationHours}?쒓컙</Text>
+          <Text style={styles.durationLabel}>총 강의 시간</Text>
+          <Text style={styles.durationValue}>{lecture.durationHours}시간</Text>
         </View>
 
         <View style={styles.notesCard}>
-          <Text style={styles.notesLabel}>?뱀씠 ?ы빆</Text>
+          <Text style={styles.notesLabel}>특이 사항</Text>
           <Text style={styles.notesValue}>
             {lecture.notes && lecture.notes.trim().length > 0
               ? lecture.notes
-              : '?깅줉???뱀씠 ?ы빆???놁뒿?덈떎.'}
+              : '등록된 특이 사항이 없습니다.'}
           </Text>
         </View>
       </View>
@@ -147,5 +147,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-
-

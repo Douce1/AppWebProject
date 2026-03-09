@@ -37,7 +37,7 @@ export function ProfileHero({ name, role, imageUrl, hint }: ProfileHeroProps) {
 const styles = StyleSheet.create({
     container: {
         padding: 24,
-        paddingTop: 60, // Top margin for safe area
+        paddingTop: 8, // Reduced top margin for safe area
         backgroundColor: Colors.brandHoney,
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
@@ -49,16 +49,18 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     textContainer: {
-        flex: 1,
+        flex: 1, // Ensure the container can shrink
     },
     nameRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
         marginBottom: 4,
+        flexWrap: 'wrap', // Allow wrapping for long names and badges
     },
     name: {
         color: Colors.brandInk,
+        flexShrink: 1, // Allow text to shrink to fit
     },
     hint: {
         opacity: 0.8,

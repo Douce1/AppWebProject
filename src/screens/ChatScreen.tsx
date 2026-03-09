@@ -11,12 +11,12 @@ export default function ChatScreen({ navigation }: any) {
     const { chatRooms } = useChat();
     const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
-    const tabs = ['?꾩껜 硫붿떆吏', '?덉씫? 硫붿떆吏'];
+    const tabs = ['전체 메시지', '안읽은 메시지'];
     const selectedTab = tabs[selectedTabIndex];
 
     // Filter rooms based on selected tab
     const getFilteredRooms = () => {
-        if (selectedTab === '?덉씫? 硫붿떆吏') {
+        if (selectedTab === '안읽은 메시지') {
             return chatRooms.filter(room => room.unreadCount > 0);
         }
         return chatRooms;
@@ -29,7 +29,7 @@ export default function ChatScreen({ navigation }: any) {
             return (
                 <View style={styles.emptyContainer}>
                     <Text style={styles.emptyText}>
-                        {selectedTab === '?덉씫? 硫붿떆吏' ? '?덉씫? 硫붿떆吏媛 ?놁뒿?덈떎.' : '李몄뿬 以묒씤 梨꾪똿諛⑹씠 ?놁뒿?덈떎.'}
+                        {selectedTab === '안읽은 메시지' ? '안읽은 메시지가 없습니다.' : '참여 중인 채팅방이 없습니다.'}
                     </Text>
                 </View>
             );
@@ -48,7 +48,7 @@ export default function ChatScreen({ navigation }: any) {
                         </View>
                         <View style={styles.roomInfo}>
                             <View style={styles.roomHeaderRow}>
-                                <Text style={styles.roomName}>{room.title ?? '二쇱젣 ?놁쓬'}</Text>
+                                <Text style={styles.roomName}>{room.title ?? '주제 없음'}</Text>
                                 <Text style={styles.roomTime}>{new Date(room.lastMessage?.sentAt ?? room.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
                             </View>
                             <View style={styles.roomMessageRow}>
@@ -70,7 +70,7 @@ export default function ChatScreen({ navigation }: any) {
         <View style={styles.container}>
             {/* Top Bar with Settings */}
             <View style={styles.topBar}>
-                <Text style={styles.topBarTitle}>梨꾪똿</Text>
+                <Text style={styles.topBarTitle}>채팅</Text>
                 <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
                     <Settings color="#666" size={26} />
                 </TouchableOpacity>
