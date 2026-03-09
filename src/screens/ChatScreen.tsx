@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     // Room List Styles
     chatScroll: { flex: 1 },
     roomItem: { flexDirection: 'row', backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10 },
-    roomProfilePic: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+    roomProfilePic: { width: 50, height: 50, borderRadius: 25, backgroundColor: Colors.brandCream, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
     roomInfo: { flex: 1, justifyContent: 'center' },
     roomHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
     roomName: { fontSize: 16, fontWeight: 'bold', color: '#111827' },

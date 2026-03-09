@@ -21,10 +21,9 @@ export function CalendarStrip({ dates, activeDateStr, onDateSelect, onViewAll, c
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.headerRow}>
-                <Typography variant="subtitle1" weight="700">📅 주간 일정</Typography>
+                <Typography variant="subtitle1" weight="700">주간 일정</Typography>
                 {onViewAll && (
                     <TouchableOpacity onPress={onViewAll} style={styles.viewCalendarBtn}>
-                        <CalendarIcon size={16} color={Colors.colorInfo} style={{ marginRight: 4 }} />
                         <Typography variant="body2" color={Colors.colorInfo} weight="500">전체 일정 확인</Typography>
                     </TouchableOpacity>
                 )}
@@ -65,6 +64,11 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
         borderRadius: Radius.card,
         ...Shadows.card,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 6,
     },
     headerRow: {
         flexDirection: 'row',

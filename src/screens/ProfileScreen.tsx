@@ -61,7 +61,7 @@ export default function ProfileScreen() {
 
                 <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/instructor')}>
                     <View style={styles.menuIconContainer}>
-                        <UserCircle color="#4F46E5" size={20} />
+                        <UserCircle color={Colors.brandInk} size={20} />
                     </View>
                     <Text style={styles.menuText}>강사 프로필 설정</Text>
                     <ChevronRight color="#CBD5E1" size={20} />
@@ -69,7 +69,7 @@ export default function ProfileScreen() {
 
                 <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/availability')}>
                     <View style={styles.menuIconContainer}>
-                        <Clock color="#4F46E5" size={20} />
+                        <Clock color={Colors.brandInk} size={20} />
                     </View>
                     <Text style={styles.menuText}>가능시간 설정</Text>
                     <ChevronRight color="#CBD5E1" size={20} />
@@ -77,7 +77,7 @@ export default function ProfileScreen() {
 
                 <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/career')}>
                     <View style={styles.menuIconContainer}>
-                        <Briefcase color="#4F46E5" size={20} />
+                        <Briefcase color={Colors.brandInk} size={20} />
                     </View>
                     <Text style={styles.menuText}>강의 이력</Text>
                     <ChevronRight color="#CBD5E1" size={20} />
@@ -85,7 +85,7 @@ export default function ProfileScreen() {
 
                 <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/region')}>
                     <View style={styles.menuIconContainer}>
-                        <MapPin color="#4F46E5" size={20} />
+                        <MapPin color={Colors.brandInk} size={20} />
                     </View>
                     <View style={styles.menuTextWrap}>
                         <Text style={styles.menuText}>희망 지역</Text>
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     section: { paddingHorizontal: 15, paddingVertical: 20, marginTop: 10 },
     sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#6B7280', marginBottom: 15 },
     menuItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 5, elevation: 1 },
-    menuIconContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', marginRight: 15 },
+    menuIconContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.brandCream, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
     menuText: { flex: 1, fontSize: 16, color: '#374151', fontWeight: '500' },
     menuTextWrap: { flex: 1 },
     regionSummary: { fontSize: 12, color: '#6B7280', marginTop: 2 },

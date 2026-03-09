@@ -86,6 +86,8 @@ const styles = StyleSheet.create({
         height: 68,
         backgroundColor: Colors.card,
         borderRadius: 34,
+        borderWidth: 1,
+        borderColor: '#E5E7EB', // Added border
         ...Shadows.sidebar,
     },
     tab: {
