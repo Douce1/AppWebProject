@@ -1,4 +1,4 @@
-﻿import { Colors, Radius, Shadows } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Check, X } from 'lucide-react-native';
@@ -93,19 +93,50 @@ export default function RegionSettingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   section: { flex: 1, padding: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: Colors.foreground, marginBottom: 12 },
   tagContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  sidoTag: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#fff' },
-  sidoTagSelected: { backgroundColor: Colors.brandInk, borderColor: Colors.brandInk },
+  sidoTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Radius.button,
+  },
+  sidoTagSelected: { backgroundColor: Colors.brandHoney, borderColor: Colors.brandHoney },
   tagCheck: { marginRight: 6 },
-  sidoTagText: { fontSize: 14, color: '#374151' },
-  sidoTagTextSelected: { color: Colors.brandHoney, fontWeight: '600' },
-  footer: { backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 130 },
+  sidoTagText: { fontSize: 14, color: Colors.foreground },
+  sidoTagTextSelected: { color: Colors.brandInk, fontWeight: '600' },
+  footer: {
+    backgroundColor: Colors.card,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 130,
+  },
   summaryArea: { marginBottom: 12 },
   summaryTitle: { fontSize: 14, fontWeight: '600', color: '#6B7280', marginBottom: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceSoft, paddingVertical: 6, paddingLeft: 12, paddingRight: 6, borderRadius: 16, marginRight: 8, marginBottom: 4 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceSoft,
+    paddingVertical: 6,
+    paddingLeft: 12,
+    paddingRight: 6,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 4,
+  },
   chipText: { fontSize: 13, color: Colors.brandInk, fontWeight: '500', marginRight: 6 },
-  saveButton: { backgroundColor: Colors.brandInk, padding: 16, ...Radius.button, alignItems: 'center' },
-  saveButtonText: { color: Colors.brandHoney, fontSize: 16, fontWeight: 'bold' },
+  saveButton: {
+    backgroundColor: Colors.brandHoney,
+    padding: 16,
+    ...Radius.button,
+    alignItems: 'center',
+  },
+  saveButtonText: { color: Colors.brandInk, fontSize: 16, fontWeight: 'bold' },
 });

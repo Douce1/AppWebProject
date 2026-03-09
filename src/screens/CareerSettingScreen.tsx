@@ -1,4 +1,4 @@
-﻿import { Colors, Radius, Shadows } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { Filter, Check } from 'lucide-react-native';
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   filterLabel: { fontSize: 11, color: '#6B7280', marginBottom: 2 },
-  filterValue: { fontSize: 14, color: '#111827', fontWeight: '500' },
+  filterValue: { fontSize: 14, color: Colors.foreground, fontWeight: '500' },
   resetButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -534,14 +534,15 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   textInput: {
-    borderRadius: 999,
+    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#111827',
-    backgroundColor: 'white',
+    borderColor: Colors.border,
+    ...Radius.button,
+    minHeight: 48,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: Colors.foreground,
   },
   quickRangeButtons: {
     flexDirection: 'row',
@@ -561,13 +562,13 @@ const styles = StyleSheet.create({
   },
   selectorPill: {
     flex: 1,
-    borderRadius: 999,
+    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Colors.border,
+    ...Radius.button,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     marginRight: 0,
-    backgroundColor: 'white',
   },
   comboContainer: {
     flex: 1,
@@ -579,10 +580,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: 'white',
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
     maxHeight: 180,
     overflow: 'hidden',
+    ...Shadows.card,
   },
   dropdownAbsolute: {
     position: 'absolute',
@@ -607,23 +609,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   dropdownItemSelected: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: Colors.surfaceSoft,
   },
   dropdownText: {
     fontSize: 13,
-    color: '#111827',
+    color: Colors.foreground,
   },
   searchButton: {
     flex: 1,
     ...Radius.button,
-    backgroundColor: Colors.brandInk,
+    backgroundColor: Colors.brandHoney,
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   searchButtonText: {
     fontSize: 14,
-    color: Colors.brandHoney,
+    color: Colors.brandInk,
     fontWeight: '600',
   },
   filterActionRow: {

@@ -1,4 +1,4 @@
-﻿import { Colors } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -72,18 +72,15 @@ export default function LectureHistoryDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background, padding: 16 },
   card: {
-    backgroundColor: 'white',
-    borderRadius: 16,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.card,
     padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    ...Shadows.card,
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
+    color: Colors.foreground,
     marginBottom: 16,
   },
   metaRow: {
@@ -95,55 +92,55 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: Colors.surfaceSoft,
     marginRight: 8,
     marginBottom: 8,
   },
   chipText: {
     fontSize: 12,
-    color: '#4B5563',
+    color: Colors.foreground,
   },
   durationCard: {
     marginTop: 4,
     paddingVertical: 16,
     paddingHorizontal: 14,
     borderRadius: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.surfaceAlt,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Colors.border,
   },
   durationLabel: {
     fontSize: 13,
-    color: '#6B7280',
+    color: Colors.mutedForeground,
     marginBottom: 4,
   },
   durationValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
+    color: Colors.foreground,
   },
   notesCard: {
     marginTop: 16,
     paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.surfaceAlt,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Colors.border,
   },
   notesLabel: {
     fontSize: 13,
-    color: '#6B7280',
+    color: Colors.mutedForeground,
     marginBottom: 6,
   },
   notesValue: {
     fontSize: 14,
-    color: '#111827',
+    color: Colors.foreground,
     lineHeight: 20,
   },
   emptyText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: Colors.mutedForeground,
     textAlign: 'center',
   },
 });
