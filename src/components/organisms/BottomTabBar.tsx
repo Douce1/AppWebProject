@@ -1,13 +1,16 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Colors } from '@/constants/theme';
 import { Typography } from '../atoms/Typography';
 import { Home, MessageCircle, FileText, DollarSign, User } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function BottomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+    const insets = useSafeAreaInsets();
+
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.safeArea, { paddingBottom: Math.max(insets.bottom, 10) }]}>
             <View style={styles.container}>
                 {state.routes.map((route, index) => {
                     const { options } = descriptors[route.key];
@@ -53,7 +56,7 @@ export function BottomTabBar({ state, descriptors, navigation }: BottomTabBarPro
                             accessibilityRole="button"
                             accessibilityState={isFocused ? { selected: true } : {}}
                             accessibilityLabel={options.tabBarAccessibilityLabel}
-                            testID={options.tabBarTestID}
+                            testID={(options as any).tabBarTestID}
                             onPress={onPress}
                             onLongPress={onLongPress}
                             style={styles.tab}
@@ -67,7 +70,7 @@ export function BottomTabBar({ state, descriptors, navigation }: BottomTabBarPro
                     );
                 })}
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 

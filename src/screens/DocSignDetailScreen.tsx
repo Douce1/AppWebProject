@@ -1,8 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { SignaturePad } from '../components/molecules/SignaturePad';
 
 export default function DocSignDetailScreen() {
-  const handleSign = () => {
+  const [signature, setSignature] = useState<string | null>(null);
+
+  const handleSign = (sig: string) => {
+    setSignature(sig);
     Alert.alert('서명 완료', '전자 서명이 완료되었습니다.\n(현재는 샘플 동작입니다.)');
   };
 
@@ -31,9 +35,10 @@ export default function DocSignDetailScreen() {
           <Text style={styles.item}>(샘플) · 계약 기간: 2023-09-01 ~ 2024-02-28</Text>
         </View>
 
-        <TouchableOpacity style={styles.signButton} onPress={handleSign}>
-          <Text style={styles.signButtonText}>전자 서명하기</Text>
-        </TouchableOpacity>
+        <View style={styles.signatureSection}>
+          <Text style={styles.sectionTitle}>서명 영역</Text>
+          <SignaturePad onOK={handleSign} />
+        </View>
       </View>
     </ScrollView>
   );
@@ -57,13 +62,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '600', color: '#374151', marginBottom: 6 },
   paragraph: { fontSize: 13, color: '#4B5563', lineHeight: 20, marginBottom: 6 },
   item: { fontSize: 13, color: '#4B5563', marginBottom: 2 },
-  signButton: {
+  signatureSection: {
     marginTop: 24,
-    backgroundColor: '#3b82f6',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
   },
-  signButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
 });
 
