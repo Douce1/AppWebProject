@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Bell, ChevronLeft, FileText, Info, LogOut, Shield } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { clearTokens } from '../store/authStore';
 
 const PUSH_NOTIFICATIONS_KEY = 'pushNotificationsEnabled';
 const APP_VERSION = '1.0.0';
@@ -54,10 +55,19 @@ export default function AppSettingsScreen() {
     }
   };
 
+  const handleConfirmLogout = async () => {
+    try {
+      await clearTokens();
+      router.replace('/login');
+    } catch {
+      Alert.alert('로그아웃 실패', '로그아웃 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  };
+
   const handleLogout = () => {
     Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
       { text: '취소', style: 'cancel' },
-      { text: '로그아웃', style: 'destructive', onPress: () => Alert.alert('로그아웃 완료') },
+      { text: '로그아웃', style: 'destructive', onPress: () => { void handleConfirmLogout(); } },
     ]);
   };
 
