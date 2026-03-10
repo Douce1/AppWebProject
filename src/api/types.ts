@@ -136,15 +136,24 @@ export interface ApiContractDetail {
   contract: ApiContract;
   currentVersion: ApiContractVersion | null;
   signatures: ApiContractSignature[];
-  /** 강사가 다음 서명할 때 필요한 토큰 (상태 SENT이고 강사 차례일 때만) */
+  /**
+   * (이전 버전 호환용) 서버가 여전히 signTokenId를 내려줄 수 있지만,
+   * 서명 요청은 항상 reauth를 거쳐 signToken 기반으로 진행한다.
+   */
   signTokenId?: string | null;
 }
 
-/** 서명 제출 요청 body */
+/** reauth 응답: 서명 세션 토큰 */
+export interface ApiContractReauthResponse {
+  signToken: string;
+  expiresAt: string; // ISO
+}
+
+/** 서명 제출 요청 body (reauth → signToken 기반) */
 export interface SubmitContractSignaturePayload {
   consentGiven: boolean;
   consentTextVersion: string;
-  signTokenId: string;
+  signToken: string;
   /** 클라이언트에서 채우거나 백엔드가 무시할 수 있음 */
   ipHash?: string;
   userAgent?: string;

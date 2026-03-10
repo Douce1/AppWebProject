@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { apiClient } from '../api/apiClient';
-import { getContractErrorMessage } from '../api/contractErrors';
+import { getContractErrorMessage, SIGN_TOKEN_EXPIRED } from '../api/contractErrors';
 import type { ApiContractDetail } from '../api/types';
 
 function parseContentJson(contentJson: string | undefined): { title: string; content: string }[] {
@@ -38,6 +38,10 @@ export default function DocContractDetailScreen() {
   const [consentTextVersion] = useState('1.0');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitErrorCode, setSubmitErrorCode] = useState<string | null>(null);
+  const [signToken, setSignToken] = useState<string | null>(null);
+  const [signTokenExpiresAt, setSignTokenExpiresAt] = useState<string | null>(null);
+  const [reauthLoading, setReauthLoading] = useState(false);
 
   const loadContract = useCallback(async () => {
     if (!contractId) {
@@ -63,31 +67,67 @@ export default function DocContractDetailScreen() {
     loadContract();
   }, [loadContract]);
 
-  const handleOpenSign = () => {
+  const handleOpenSign = async () => {
+    if (!contractId) return;
     setConsentGiven(false);
     setSubmitError(null);
-    setSignModalVisible(true);
+    setSubmitErrorCode(null);
+    setReauthLoading(true);
+    try {
+      const { signToken, expiresAt } = await apiClient.reauthContract(contractId);
+      setSignToken(signToken);
+      setSignTokenExpiresAt(expiresAt);
+      setSignModalVisible(true);
+    } catch (err: unknown) {
+      const e = err as Error & { code?: string; status?: number };
+      Alert.alert('서명 준비 실패', getContractErrorMessage(e?.code, e?.status));
+    } finally {
+      setReauthLoading(false);
+    }
+  };
+
+  const handleRetryReauth = async () => {
+    if (!contractId) return;
+    setReauthLoading(true);
+    try {
+      const { signToken, expiresAt } = await apiClient.reauthContract(contractId);
+      setSignToken(signToken);
+      setSignTokenExpiresAt(expiresAt);
+      setSubmitError(null);
+      setSubmitErrorCode(null);
+    } catch (err: unknown) {
+      const e = err as Error & { code?: string; status?: number };
+      setSubmitError(getContractErrorMessage(e?.code, e?.status));
+      setSubmitErrorCode(e?.code ?? null);
+    } finally {
+      setReauthLoading(false);
+    }
   };
 
   const handleSubmitSign = async () => {
-    if (!contractId || !detail?.signTokenId) return;
+    if (!contractId || !signToken) return;
     if (!consentGiven) {
       setSubmitError(getContractErrorMessage('CONSENT_REQUIRED'));
+      setSubmitErrorCode('CONSENT_REQUIRED');
       return;
     }
     setSubmitting(true);
     setSubmitError(null);
+    setSubmitErrorCode(null);
     try {
-      const updated = await apiClient.submitContractSignature(contractId, {
+      const updated = await apiClient.signContract(contractId, {
         consentGiven: true,
         consentTextVersion,
-        signTokenId: detail.signTokenId!,
+        signToken,
       });
       setDetail(updated);
       setSignModalVisible(false);
+      setSignToken(null);
+      setSignTokenExpiresAt(null);
       Alert.alert('서명 완료', '계약서에 서명이 반영되었습니다.');
     } catch (err: unknown) {
       const e = err as Error & { code?: string; status?: number };
+      setSubmitErrorCode(e?.code ?? null);
       setSubmitError(getContractErrorMessage(e?.code, e?.status));
     } finally {
       setSubmitting(false);
@@ -120,9 +160,9 @@ export default function DocContractDetailScreen() {
     );
   }
 
-  const { contract, currentVersion, signatures, signTokenId } = detail;
+  const { contract, currentVersion, signatures } = detail;
   const sections = parseContentJson(currentVersion?.contentJson);
-  const canSign = contract.status === 'SENT' && signTokenId;
+  const canSign = contract.status === 'SENT';
 
   const statusLabel =
     contract.status === 'FULLY_SIGNED'
@@ -182,8 +222,16 @@ export default function DocContractDetailScreen() {
           )}
 
           {canSign && (
-            <TouchableOpacity style={styles.signButton} onPress={handleOpenSign}>
-              <Text style={styles.signButtonText}>서명하기</Text>
+            <TouchableOpacity
+              style={styles.signButton}
+              onPress={handleOpenSign}
+              disabled={reauthLoading}
+            >
+              {reauthLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.signButtonText}>서명하기</Text>
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -196,6 +244,11 @@ export default function DocContractDetailScreen() {
             <Text style={styles.consentIntro}>
               아래 동의 내용을 확인하고 체크한 후 서명을 진행해 주세요.
             </Text>
+            {signTokenExpiresAt ? (
+              <Text style={styles.tokenExpireText}>
+                서명 세션 만료 시각: {new Date(signTokenExpiresAt).toLocaleString()}
+              </Text>
+            ) : null}
             <Text style={styles.consentText}>
               본인은 위 계약 내용을 확인하였으며, 이에 동의하여 전자 서명합니다. (동의문 버전: {consentTextVersion})
             </Text>
@@ -208,6 +261,17 @@ export default function DocContractDetailScreen() {
               <Text style={styles.checkLabel}>동의합니다.</Text>
             </TouchableOpacity>
             {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
+            {submitErrorCode === SIGN_TOKEN_EXPIRED && (
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={handleRetryReauth}
+                disabled={reauthLoading || submitting}
+              >
+                <Text style={styles.retryButtonText}>
+                  {reauthLoading ? '다시 인증 중...' : '다시 인증하기'}
+                </Text>
+              </TouchableOpacity>
+            )}
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelButton}
@@ -271,12 +335,23 @@ const styles = StyleSheet.create({
   modalBox: { backgroundColor: 'white', borderRadius: 16, padding: 24, ...Shadows.card },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.brandInk, marginBottom: 12 },
   consentIntro: { fontSize: 13, color: Colors.mutedForeground, marginBottom: 8 },
+  tokenExpireText: { fontSize: 11, color: Colors.mutedForeground, marginBottom: 4 },
   consentText: { fontSize: 13, color: '#374151', lineHeight: 20, marginBottom: 16 },
   checkRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   checkbox: { width: 22, height: 22, borderWidth: 2, borderColor: '#9CA3AF', borderRadius: 4, marginRight: 10 },
   checkboxChecked: { backgroundColor: Colors.brandInk, borderColor: Colors.brandInk },
   checkLabel: { fontSize: 15, color: '#374151', fontWeight: '500' },
   submitError: { fontSize: 13, color: Colors.colorError, marginBottom: 12 },
+  retryButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.brandInk,
+    marginBottom: 8,
+  },
+  retryButtonText: { fontSize: 12, color: Colors.brandInk, fontWeight: '600' },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelButton: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: Colors.surfaceSoft, alignItems: 'center' },
   cancelButtonText: { fontSize: 15, fontWeight: '600', color: Colors.brandInk },

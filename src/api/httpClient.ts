@@ -10,6 +10,7 @@ import {
   ApiCompany,
   ApiContract,
   ApiContractDetail,
+  ApiContractReauthResponse,
   ApiContractVersion,
   ApiInstructorProfile,
   ApiLesson,
@@ -330,6 +331,20 @@ export const httpClient = {
   },
 
   async submitContractSignature(
+    contractId: string,
+    payload: SubmitContractSignaturePayload,
+  ): Promise<ApiContractDetail> {
+    // submitContractSignature는 signContract의 별칭으로 유지 (호환용)
+    return this.signContract(contractId, payload);
+  },
+
+  async reauthContract(contractId: string): Promise<ApiContractReauthResponse> {
+    return postJson<ApiContractReauthResponse>(
+      `/contracts/${encodeURIComponent(contractId)}/reauth`,
+    );
+  },
+
+  async signContract(
     contractId: string,
     payload: SubmitContractSignaturePayload,
   ): Promise<ApiContractDetail> {
