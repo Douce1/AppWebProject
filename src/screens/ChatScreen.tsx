@@ -1,10 +1,11 @@
 import { Colors } from '@/constants/theme';
 import { useRouter } from 'expo-router';
-import { Bell, Flame, Settings } from 'lucide-react-native';
+import { Flame } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useChat } from '../context/ChatContext';
 import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
+import { NotificationTopBar } from '@/src/components/organisms/NotificationTopBar';
 
 export default function ChatScreen({ navigation }: any) {
     const router = useRouter();
@@ -68,24 +69,7 @@ export default function ChatScreen({ navigation }: any) {
 
     return (
         <View style={styles.container}>
-            {/* Top Bar with Settings */}
-            <View style={styles.topBar}>
-                <Text style={styles.topBarTitle}>채팅</Text>
-                <View style={styles.topBarIcons}>
-                    <TouchableOpacity
-                        onPress={() => router.push('/' as any)}
-                        style={styles.settingsIconContainer}
-                    >
-                        <Bell color="#666" size={26} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => router.push('/settings' as any)}
-                        style={styles.settingsIconContainer}
-                    >
-                        <Settings color="#666" size={26} />
-                    </TouchableOpacity>
-                </View>
-            </View>
+            <NotificationTopBar title="채팅" />
 
             {/* Top Tabs (Segmented) */}
             <SegmentedTabs
@@ -103,10 +87,6 @@ export default function ChatScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background, paddingTop: 50 },
-    topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, marginBottom: 10 },
-    topBarTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
-    topBarIcons: { flexDirection: 'row', alignItems: 'center' },
-    settingsIconContainer: { padding: 8 },
     tabContainer: { flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
     tabButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, marginRight: 8, backgroundColor: '#f0f0f0' },
     activeTabButton: { backgroundColor: '#F3C742', borderTopRightRadius: 0 },

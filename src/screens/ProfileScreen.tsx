@@ -3,11 +3,12 @@ import { useProfile } from '@/src/context/ProfileContext';
 import { apiClient } from '@/src/api/apiClient';
 import type { ApiCompany, ApiInstructorProfile } from '@/src/api/types';
 import { useRouter } from 'expo-router';
-import { Bell, Briefcase, ChevronRight, Clock, MapPin, Settings, UserCircle } from 'lucide-react-native';
+import { Briefcase, ChevronRight, Clock, MapPin, Settings, UserCircle } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProfileHero } from '@/src/components/organisms/ProfileHero';
+import { NotificationTopBar } from '@/src/components/organisms/NotificationTopBar';
 
 export default function ProfileScreen() {
     const insets = useSafeAreaInsets();
@@ -64,24 +65,7 @@ export default function ProfileScreen() {
 
     return (
         <ScrollView style={[styles.container, { paddingTop: Math.max(50, insets.top) }]}>
-            {/* Top Bar */}
-            <View style={styles.topBar}>
-                <Text style={styles.topBarTitle}>내 정보</Text>
-                <View style={styles.topBarIcons}>
-                    <TouchableOpacity
-                        onPress={() => router.push('/' as any)}
-                        style={styles.settingsIconContainer}
-                    >
-                        <Bell color="#666" size={26} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => router.push('/settings' as any)}
-                        style={styles.settingsIconContainer}
-                    >
-                        <Settings color="#666" size={26} />
-                    </TouchableOpacity>
-                </View>
-            </View>
+            <NotificationTopBar title="내 정보" />
 
             <TouchableOpacity activeOpacity={0.9} onPress={() => router.push('/profile/instructor')}>
                 <ProfileHero
