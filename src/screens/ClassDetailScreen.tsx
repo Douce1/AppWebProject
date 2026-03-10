@@ -1,15 +1,19 @@
-﻿import { Colors, Radius, Shadows } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, BookOpen, CheckCircle2, Phone, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSchedule } from '../context/ScheduleContext';
+import { apiClient } from '../api/apiClient';
 
 export default function ClassDetailScreen() {
     const params = useLocalSearchParams();
     const classInfoString = typeof params.classInfo === 'string' ? params.classInfo : (Array.isArray(params.classInfo) ? params.classInfo[0] : null);
     const classInfo = classInfoString ? JSON.parse(classInfoString) : {};
+    const requestIdParam = typeof params.requestId === 'string'
+        ? params.requestId
+        : (Array.isArray(params.requestId) ? params.requestId[0] : undefined);
 
     const { classes, departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport, getClassReport } = useSchedule();
     const router = useRouter();
@@ -26,6 +30,16 @@ export default function ClassDetailScreen() {
     // Modal state for Report
     const [reportModalVisible, setReportModalVisible] = useState(false);
     const [reportText, setReportText] = useState('');
+
+    // Modal state for Request Rejection
+    const [rejectModalVisible, setRejectModalVisible] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
+
+    // Lesson request 상태 (이 화면에서만 로컬로 추적)
+    const [requestStatus, setRequestStatus] = useState<'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | null>(
+        requestIdParam ? 'PENDING' : null,
+    );
+    const [requestLoading, setRequestLoading] = useState(false);
 
     // Time logic for "강의 보고서 작성"
     const now = new Date();
@@ -60,6 +74,54 @@ export default function ClassDetailScreen() {
         router.back();
     };
 
+    const handleAcceptRequest = async () => {
+        if (!requestIdParam || requestStatus && requestStatus !== 'PENDING') return;
+        setRequestLoading(true);
+        try {
+            const updated = await apiClient.respondToRequest(requestIdParam, { action: 'ACCEPT' });
+            setRequestStatus(updated.status);
+            Alert.alert('요청 수락 완료', '수업 요청을 수락했습니다.');
+        } catch (err: unknown) {
+            const e = err as Error & { status?: number; message?: string };
+            if (e.status === 409) {
+                Alert.alert('요청 처리 실패', '이미 응답된 요청입니다.');
+            } else {
+                Alert.alert('요청 처리 실패', e.message ?? '요청을 처리하는 중 오류가 발생했습니다.');
+            }
+        } finally {
+            setRequestLoading(false);
+        }
+    };
+
+    const handleRejectRequest = async () => {
+        if (!requestIdParam || requestStatus && requestStatus !== 'PENDING') return;
+        const trimmed = rejectReason.trim();
+        if (!trimmed) {
+            Alert.alert('알림', '거절 사유를 입력해주세요.');
+            return;
+        }
+        setRequestLoading(true);
+        try {
+            const updated = await apiClient.respondToRequest(requestIdParam, {
+                action: 'REJECT',
+                rejectionReason: trimmed,
+            });
+            setRequestStatus(updated.status);
+            setRejectModalVisible(false);
+            setRejectReason('');
+            Alert.alert('요청 거절 완료', '수업 요청을 거절했습니다.');
+        } catch (err: unknown) {
+            const e = err as Error & { status?: number; message?: string };
+            if (e.status === 409) {
+                Alert.alert('요청 처리 실패', '이미 응답된 요청입니다.');
+            } else {
+                Alert.alert('요청 처리 실패', e.message ?? '요청을 처리하는 중 오류가 발생했습니다.');
+            }
+        } finally {
+            setRequestLoading(false);
+        }
+    };
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -73,6 +135,33 @@ export default function ClassDetailScreen() {
             <ScrollView style={styles.content}>
                 <View style={styles.card}>
                     <Text style={styles.classTitle}>{classInfo.title}</Text>
+
+                    {requestIdParam && requestStatus && requestStatus === 'PENDING' && (
+                        <View style={styles.requestCard}>
+                            <Text style={styles.requestTitle}>수업 제안 응답</Text>
+                            <Text style={styles.requestDescription}>
+                                이 수업 제안에 대해 수락 또는 거절을 선택해 주세요.
+                            </Text>
+                            <View style={styles.requestActions}>
+                                <TouchableOpacity
+                                    style={[styles.requestButton, styles.requestAcceptButton]}
+                                    onPress={handleAcceptRequest}
+                                    disabled={requestLoading}
+                                >
+                                    <Text style={styles.requestAcceptText}>
+                                        {requestLoading ? '처리 중...' : '수락'}
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.requestButton, styles.requestRejectButton]}
+                                    onPress={() => setRejectModalVisible(true)}
+                                    disabled={requestLoading}
+                                >
+                                    <Text style={styles.requestRejectText}>거절</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
 
                     <View style={styles.infoRow}>
                         <User size={20} color="#666" />
@@ -198,6 +287,42 @@ export default function ClassDetailScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Request Reject Modal */}
+            <Modal
+                visible={rejectModalVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setRejectModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>수업 요청 거절</Text>
+                        <TextInput
+                            style={styles.reasonInput}
+                            placeholder="거절 사유를 입력해주세요"
+                            value={rejectReason}
+                            onChangeText={setRejectReason}
+                            multiline={true}
+                            textAlignVertical="top"
+                        />
+                        <View style={styles.modalButtonRow}>
+                            <TouchableOpacity style={styles.cancelButton} onPress={() => setRejectModalVisible(false)}>
+                                <Text style={styles.cancelButtonText}>취소</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.submitReportButton}
+                                onPress={handleRejectRequest}
+                                disabled={requestLoading}
+                            >
+                                <Text style={styles.submitReportText}>
+                                    {requestLoading ? '처리 중...' : '거절 완료'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -241,4 +366,22 @@ const styles = StyleSheet.create({
     reportCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
     reportCardTitle: { fontSize: 15, fontWeight: '700', color: '#065F46', marginLeft: 8 },
     reportCardText: { fontSize: 14, color: '#1F2937', lineHeight: 22 },
+    // Request card
+    requestCard: {
+        marginTop: 16,
+        marginBottom: 8,
+        padding: 16,
+        borderRadius: 12,
+        backgroundColor: '#EFF6FF',
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+    },
+    requestTitle: { fontSize: 15, fontWeight: '700', color: '#1D4ED8', marginBottom: 6 },
+    requestDescription: { fontSize: 13, color: '#374151', marginBottom: 12 },
+    requestActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+    requestButton: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999 },
+    requestAcceptButton: { backgroundColor: Colors.brandInk },
+    requestRejectButton: { backgroundColor: 'white', borderWidth: 1, borderColor: '#DC2626' },
+    requestAcceptText: { color: 'white', fontSize: 14, fontWeight: '700' },
+    requestRejectText: { color: '#DC2626', fontSize: 14, fontWeight: '700' },
 });
