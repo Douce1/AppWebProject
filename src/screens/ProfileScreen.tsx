@@ -3,7 +3,7 @@ import { useProfile } from '@/src/context/ProfileContext';
 import { apiClient } from '@/src/api/apiClient';
 import type { ApiCompany, ApiInstructorProfile } from '@/src/api/types';
 import { useRouter } from 'expo-router';
-import { Briefcase, ChevronRight, Clock, MapPin, Settings, UserCircle } from 'lucide-react-native';
+import { Bell, Briefcase, ChevronRight, Clock, MapPin, Settings, UserCircle } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -68,7 +68,16 @@ export default function ProfileScreen() {
             <View style={styles.topBar}>
                 <Text style={styles.topBarTitle}>내 정보</Text>
                 <View style={styles.topBarIcons}>
-                    <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
+                    <TouchableOpacity
+                        onPress={() => router.push('/' as any)}
+                        style={styles.settingsIconContainer}
+                    >
+                        <Bell color="#666" size={26} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => router.push('/settings' as any)}
+                        style={styles.settingsIconContainer}
+                    >
                         <Settings color="#666" size={26} />
                     </TouchableOpacity>
                 </View>

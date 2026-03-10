@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { FileText, RefreshCcw, Settings, TrendingUp, X } from 'lucide-react-native';
+import { Bell, FileText, RefreshCcw, Settings, TrendingUp, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Radius, Shadows } from '@/constants/theme';
@@ -19,6 +19,7 @@ export default function IncomeScreen() {
                 container: { flex: 1, backgroundColor: Colors.background },
                 header: { paddingTop: 50, paddingBottom: 15, paddingHorizontal: 20, backgroundColor: Colors.background, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
                 headerTitle: { fontSize: 24, fontWeight: 'bold', color: Colors.brandInk },
+                headerIcons: { flexDirection: 'row', alignItems: 'center' },
                 settingsIconContainer: { padding: 8 },
                 incomeCard: { backgroundColor: '#FFF0C2', margin: 15, borderRadius: 16, borderTopRightRadius: 0, padding: 20, shadowColor: '#FFF0C2', shadowOpacity: 0.2, shadowRadius: 10, elevation: 4 },
                 incomeLabel: { color: Colors.brandInk, fontSize: 14, marginBottom: 4, fontWeight: '500' },
@@ -80,9 +81,20 @@ export default function IncomeScreen() {
         <ScrollView style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>수입/정산</Text>
-                <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
-                    <Settings color={Colors.mutedForeground} size={26} />
-                </TouchableOpacity>
+                <View style={styles.headerIcons}>
+                    <TouchableOpacity
+                        onPress={() => router.push('/' as any)}
+                        style={styles.settingsIconContainer}
+                    >
+                        <Bell color={Colors.mutedForeground} size={26} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => router.push('/settings' as any)}
+                        style={styles.settingsIconContainer}
+                    >
+                        <Settings color={Colors.mutedForeground} size={26} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <View style={styles.incomeCard}>
