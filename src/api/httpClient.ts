@@ -311,6 +311,16 @@ export const httpClient = {
     return getJson<ApiLessonRequest[]>('/lesson-requests');
   },
 
+  async respondToRequest(
+    requestId: string,
+    body: { action: 'ACCEPT' | 'REJECT'; rejectionReason?: string },
+  ): Promise<ApiLessonRequest> {
+    return postJson<ApiLessonRequest>(
+      `/lessons/assignments/${encodeURIComponent(requestId)}/respond`,
+      body,
+    );
+  },
+
   async getContracts(): Promise<ApiContract[]> {
     return getJson<ApiContract[]>('/contracts');
   },
