@@ -1,7 +1,7 @@
 import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
-import { FileText, Bell, Settings, Camera } from 'lucide-react-native';
+import { Bell, Camera, FileText, Settings } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { httpClient } from '../api/httpClient';
@@ -128,11 +128,20 @@ export default function DocsScreen() {
 
     return (
         <View style={[styles.container, { paddingTop: Math.max(50, insets.top) }]}>
-            {/* Top Bar with Settings */}
+            {/* Top Bar with Settings & Notifications */}
             <View style={styles.topBar}>
                 <Text style={styles.topBarTitle}>서류/계약</Text>
                 <View style={styles.topBarIcons}>
-                    <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
+                    <TouchableOpacity
+                        onPress={() => router.push('/' as any)}
+                        style={styles.settingsIconContainer}
+                    >
+                        <Bell color="#666" size={26} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => router.push('/settings' as any)}
+                        style={styles.settingsIconContainer}
+                    >
                         <Settings color="#666" size={26} />
                     </TouchableOpacity>
                 </View>
