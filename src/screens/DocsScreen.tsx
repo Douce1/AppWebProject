@@ -168,7 +168,7 @@ export default function DocsScreen() {
                                     </View>
                                     <TouchableOpacity
                                         style={styles.viewButton}
-                                        onPress={() => router.push(`/(tabs)/docs/contract?contractId=${encodeURIComponent(c.contractId)}`)}
+                                        onPress={() => router.push(`/docs/contract?contractId=${encodeURIComponent(c.contractId)}`)}
                                     >
                                         <Text style={styles.viewButtonText}>보기</Text>
                                     </TouchableOpacity>
@@ -265,9 +265,9 @@ const styles = StyleSheet.create({
     emptyText: { fontSize: 13, color: '#9CA3AF', padding: 16 },
     contractFilterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
     contractFilterChip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#f0f0f0' },
-    contractFilterChipActive: { backgroundColor: Colors.brandInk },
+    contractFilterChipActive: { backgroundColor: '#F3C742', borderTopRightRadius: 0 },
     contractFilterChipText: { fontSize: 13, color: '#666', fontWeight: '500' },
-    contractFilterChipTextActive: { color: Colors.brandHoney, fontWeight: 'bold' },
+    contractFilterChipTextActive: { color: Colors.brandInk, fontWeight: 'bold' },
     errorRow: { padding: 16, backgroundColor: '#FEE2E2', borderRadius: 8, marginBottom: 8 },
     errorText: { fontSize: 13, color: '#DC2626', fontWeight: '500' },
 

@@ -161,14 +161,35 @@ export default function HomeScreen({ navigation }: any) {
             const isReported = reportedIds.includes(c.id);
 
             let hasEnded = false;
-            const endStr = c.time.split('-')[1]?.trim();
-            if (endStr && c.date === dateStr) {
+            let isDepartable = false;
+            const now = new Date();
+            const timeParts = c.time.split('-');
+            
+            if (timeParts.length === 2 && c.date) {
+              const startStr = timeParts[0].trim();
+              const endStr = timeParts[1].trim();
+              
+              const [startH, startM] = startStr.split(':').map(Number);
               const [endH, endM] = endStr.split(':').map(Number);
-              const endTime = new Date(today);
-              endTime.setHours(endH, endM, 0, 0);
-              if (new Date() > endTime && dateStr === todayStr) hasEnded = true;
-            } else if (c.date < todayStr) {
-              hasEnded = true;
+              
+              const classStart = new Date(today);
+              classStart.setHours(startH, startM, 0, 0);
+              
+              const classEnd = new Date(today);
+              classEnd.setHours(endH, endM, 0, 0);
+              const classDate = c.date;
+
+              if (classDate === todayStr) {
+                  if (now > classEnd) hasEnded = true;
+                  
+                  // Allow departing 2 hours before class until the class end
+                  const validStart = new Date(classStart.getTime() - 2 * 60 * 60 * 1000);
+                  if (now >= validStart && now <= classEnd) {
+                      isDepartable = true;
+                  }
+              } else if (classDate < todayStr) {
+                  hasEnded = true;
+              }
             }
 
             let statusStr: 'requested' | 'confirmed' | 'canceled' | 'completed' = 'confirmed';
@@ -202,6 +223,9 @@ export default function HomeScreen({ navigation }: any) {
               actionLabel = '이동 중...'; actionDisabled = true;
             } else {
               actionVariant = 'secondary';
+              if (!isDepartable) {
+                  actionDisabled = true;
+              }
             }
 
 
@@ -264,9 +288,9 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.topBarIcons}>
           <TouchableOpacity onPress={() => setSidePanelVisible(true)} style={styles.settingsIconContainer}>
             <Bell color="#666" size={26} />
-            {notifications.filter(n => n.type !== '채팅 신규메시지').length + unreadCount > 0 && (
+            {notifications.filter(n => n.type !== '채팅 신규메시지').length + unreadMessages.length > 0 && (
               <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>{notifications.filter(n => n.type !== '채팅 신규메시지').length + unreadCount}</Text>
+                <Text style={styles.bellBadgeText}>{notifications.filter(n => n.type !== '채팅 신규메시지').length + unreadMessages.length}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -344,7 +368,7 @@ export default function HomeScreen({ navigation }: any) {
           <View style={styles.sidebarPanel}>
             <View style={styles.sidebarHeader}>
               <Text style={styles.sidebarTitle}>
-                알림 센터 ({notifications.filter(n => n.type !== '채팅 신규메시지').length + unreadCount})
+                알림 센터 ({notifications.filter(n => n.type !== '채팅 신규메시지').length + unreadMessages.length})
               </Text>
               <TouchableOpacity onPress={() => setSidePanelVisible(false)}>
                 <X size={24} color="#333" />
@@ -382,7 +406,7 @@ export default function HomeScreen({ navigation }: any) {
                   <Text style={styles.notifTime}>{notif.time}</Text>
                 </TouchableOpacity>
               ))}
-              {notifications.filter(n => n.type !== '채팅 신규메시지').length === 0 && unreadCount === 0 && (
+              {notifications.filter(n => n.type !== '채팅 신규메시지').length === 0 && unreadMessages.length === 0 && (
                 <Text style={styles.emptyText}>새로운 알림이 없습니다.</Text>
               )}
             </ScrollView>
@@ -460,7 +484,7 @@ const styles = StyleSheet.create({
   topBarIcons: { flexDirection: 'row', alignItems: 'center' },
   bellBadge: { position: 'absolute', top: 2, right: 2, backgroundColor: '#E53E3E', borderRadius: 8, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white' },
   bellBadgeText: { color: 'white', fontSize: 9, fontWeight: 'bold' },
-  calendarContainer: { backgroundColor: 'white', padding: 15, marginHorizontal: 15, borderRadius: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  calendarContainer: { backgroundColor: 'white', padding: 15, marginHorizontal: 15, borderRadius: 15, borderTopRightRadius: 0, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#333' },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
   dayContainer: { alignItems: 'center', paddingVertical: 10, paddingHorizontal: 5, borderRadius: 10, width: 40 },
@@ -474,7 +498,7 @@ const styles = StyleSheet.create({
   dateNavBtn: { padding: 8, borderRadius: 20, backgroundColor: 'white', borderWidth: 1, borderColor: '#F3C742' },
   dateNavCenter: { flex: 1, alignItems: 'center' },
   goTodayHint: { fontSize: 11, color: '#F3C742', marginTop: 2, fontWeight: 'bold' },
-  classCard: { backgroundColor: 'white', padding: 15, borderRadius: 15, marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  classCard: { backgroundColor: 'white', padding: 15, borderRadius: 15, borderTopRightRadius: 0, marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
   classTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#333' },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   classDetails: { fontSize: 14, color: '#666' },
