@@ -1,18 +1,36 @@
 import { Colors, Radius, Shadows } from '@/constants/theme';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import { Bell, ChevronLeft, FileText, Info, LogOut, Shield } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
-const INITIAL_NOTIFICATIONS_ENABLED = true;
+const PUSH_NOTIFICATIONS_KEY = 'pushNotificationsEnabled';
 const APP_VERSION = '1.0.0';
 
 export default function AppSettingsScreen() {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(INITIAL_NOTIFICATIONS_ENABLED);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const navigation = useNavigation();
   const params = useLocalSearchParams();
+
+  const loadPushSetting = useCallback(async () => {
+    try {
+      setLoading(true);
+      const stored = await SecureStore.getItemAsync(PUSH_NOTIFICATIONS_KEY);
+      setNotificationsEnabled(stored !== 'false');
+    } catch {
+      setNotificationsEnabled(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPushSetting();
+  }, [loadPushSetting]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -24,6 +42,17 @@ export default function AppSettingsScreen() {
       ),
     });
   }, [navigation, router]);
+
+  const handlePushToggle = async (value: boolean) => {
+    const prev = notificationsEnabled;
+    setNotificationsEnabled(value);
+    try {
+      await SecureStore.setItemAsync(PUSH_NOTIFICATIONS_KEY, value ? 'true' : 'false');
+    } catch {
+      setNotificationsEnabled(prev);
+      Alert.alert('저장 실패', '푸시 알림 설정을 저장하지 못했습니다. 다시 시도해주세요.');
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
@@ -47,7 +76,8 @@ export default function AppSettingsScreen() {
           <Text style={styles.rowLabel}>푸시 알림</Text>
           <Switch
             value={notificationsEnabled}
-            onValueChange={setNotificationsEnabled}
+            onValueChange={handlePushToggle}
+            disabled={loading}
             trackColor={{ false: '#E5E7EB', true: '#A5B4FC' }}
             thumbColor={notificationsEnabled ? '#4F46E5' : '#f4f3f4'}
           />
