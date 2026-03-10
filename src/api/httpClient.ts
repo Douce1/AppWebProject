@@ -318,7 +318,7 @@ export const httpClient = {
     body: { action: 'ACCEPT' | 'REJECT'; rejectionReason?: string },
   ): Promise<ApiLessonRequest> {
     return postJson<ApiLessonRequest>(
-      `/lessons/assignments/${encodeURIComponent(requestId)}/respond`,
+      `/assignments/${encodeURIComponent(requestId)}/respond`,
       body,
     );
   },

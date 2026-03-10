@@ -4,14 +4,12 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Activi
 import { FileText, Bell, Settings, Camera } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSchedule } from '../context/ScheduleContext';
 import { httpClient } from '../api/httpClient';
-import type { ApiContract, ContractStatus } from '../api/types';
+import type { ApiContract, ApiLessonRequest, ContractStatus } from '../api/types';
 import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
 
 export default function DocsScreen() {
     const insets = useSafeAreaInsets();
-    const { proposalStatus, resolveProposal } = useSchedule();
     const router = useRouter();
     const params = useLocalSearchParams();
 
@@ -20,14 +18,18 @@ export default function DocsScreen() {
     const [selectedTabIndex, setSelectedTabIndex] = useState(initialTabIndex >= 0 ? initialTabIndex : 0);
     const selectedTab = tabs[selectedTabIndex];
 
-    const [isRejecting, setIsRejecting] = useState(false);
-    const [rejectReason, setRejectReason] = useState('');
-
     const [contracts, setContracts] = useState<ApiContract[]>([]);
     const [contractsLoading, setContractsLoading] = useState(false);
     const [contractsError, setContractsError] = useState<string | null>(null);
     const contractFilterStatuses: (ContractStatus | 'ALL')[] = ['ALL', 'SENT', 'INSTRUCTOR_SIGNED', 'FULLY_SIGNED'];
     const [contractStatusFilter, setContractStatusFilter] = useState<ContractStatus | 'ALL'>('ALL');
+
+    const [lessonRequests, setLessonRequests] = useState<ApiLessonRequest[]>([]);
+    const [requestsLoading, setRequestsLoading] = useState(false);
+    const [requestsError, setRequestsError] = useState<string | null>(null);
+    const [rejectModalOpenFor, setRejectModalOpenFor] = useState<string | null>(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [respondingRequestId, setRespondingRequestId] = useState<string | null>(null);
 
     useEffect(() => {
         if (selectedTab !== '계약') return;
@@ -43,6 +45,31 @@ export default function DocsScreen() {
                 }
             })
             .finally(() => { if (mounted) setContractsLoading(false); });
+        return () => { mounted = false; };
+    }, [selectedTab]);
+
+    useEffect(() => {
+        if (selectedTab !== '요청/제안') return;
+        let mounted = true;
+        setRequestsError(null);
+        setRequestsLoading(true);
+
+        httpClient.getLessonRequests()
+            .then((list) => {
+                if (!mounted) return;
+                setLessonRequests(list);
+            })
+            .catch((error: unknown) => {
+                if (!mounted) return;
+                // eslint-disable-next-line no-console
+                console.log('[DocsScreen] failed to load lesson-requests', error);
+                setRequestsError('수업 요청 목록을 불러오지 못했습니다.');
+                setLessonRequests([]);
+            })
+            .finally(() => {
+                if (mounted) setRequestsLoading(false);
+            });
+
         return () => { mounted = false; };
     }, [selectedTab]);
 
@@ -73,9 +100,29 @@ export default function DocsScreen() {
         return '';
     };
 
-    const handleRejectSubmit = () => {
-        if (rejectReason.trim()) {
-            resolveProposal('거절');
+    const handleRespond = async (requestId: string, action: 'ACCEPT' | 'REJECT', reason?: string) => {
+        if (respondingRequestId) return;
+        setRespondingRequestId(requestId);
+        try {
+            const updated = await httpClient.respondToRequest(requestId, {
+                action,
+                rejectionReason: reason?.trim() || undefined,
+            });
+            setLessonRequests((prev) =>
+                prev.map((r) => (r.requestId === updated.requestId ? updated : r)),
+            );
+        } catch (error: unknown) {
+            const e = error as { status?: number; message?: string };
+            let message = e.message ?? '요청 처리 중 오류가 발생했습니다.';
+            if (e.status === 409) {
+                message = '이미 응답이 완료된 요청입니다.';
+            }
+            // eslint-disable-next-line no-alert
+            alert(message);
+        } finally {
+            setRespondingRequestId(null);
+            setRejectModalOpenFor(null);
+            setRejectReason('');
         }
     };
 
@@ -183,53 +230,113 @@ export default function DocsScreen() {
                     <View style={styles.requestCard}>
                         <View style={styles.requestHeader}>
                             <View style={styles.requestBadgeRow}>
-                                {proposalStatus === '미응답' && (
-                                    <View style={styles.ddayBadge}>
-                                        <Text style={styles.ddayText}>D-1</Text>
+                                <Bell color="#EF4444" size={16} />
+                                <Text style={styles.requestStatusText}>수업 요청 / 제안</Text>
+                            </View>
+                            <Text style={styles.requestMetaText}>백엔드 연동 상태 기준</Text>
+                        </View>
+
+                        {requestsLoading && (
+                            <View style={styles.loadingRow}>
+                                <ActivityIndicator size="small" color={Colors.brandInk} />
+                                <Text style={styles.loadingText}>수업 요청을 불러오는 중...</Text>
+                            </View>
+                        )}
+
+                        {requestsError && !requestsLoading && (
+                            <View style={styles.errorRow}>
+                                <Text style={styles.errorText}>{requestsError}</Text>
+                            </View>
+                        )}
+
+                        {!requestsLoading && !requestsError && lessonRequests.length === 0 && (
+                            <Text style={styles.emptyText}>현재 대기 중인 수업 요청이 없습니다.</Text>
+                        )}
+
+                        {!requestsLoading && !requestsError && lessonRequests.map((req) => {
+                            const isPending = req.status === 'PENDING';
+                            const isResponded = req.status === 'ACCEPTED' || req.status === 'REJECTED' || req.status === 'CANCELLED';
+                            const requestedDate = req.requestedAt.slice(0, 10);
+                            const isRejectingThis = rejectModalOpenFor === req.requestId;
+                            const isBusy = respondingRequestId === req.requestId;
+
+                            const statusLabel =
+                                req.status === 'PENDING' ? '미응답' :
+                                    req.status === 'ACCEPTED' ? '수락됨' :
+                                        req.status === 'REJECTED' ? '거절됨' :
+                                            '취소됨';
+
+                            return (
+                                <View key={req.requestId} style={styles.requestItemCard}>
+                                    <View style={styles.requestItemHeader}>
+                                        <Text style={styles.requestItemTitle}>요청 ID: {req.requestId}</Text>
+                                        <Text style={styles.requestItemStatus}>{statusLabel}</Text>
                                     </View>
-                                )}
-                                <Bell color="#EF4444" size={16} style={{ marginLeft: proposalStatus === '미응답' ? 6 : 0 }} />
-                                <Text style={styles.requestStatusText}>제안 건</Text>
-                            </View>
-                            <Text style={styles.requestMetaText}>{proposalStatus === '미응답' ? '미응답' : `${proposalStatus} 완료`}</Text>
-                        </View>
-
-                        <Text style={styles.requestTitle}>제안 상세는 곧 연동될 예정입니다.</Text>
-
-                        <View style={styles.requestBody}>
-                            <Text style={styles.requestBullet}>실제 수업 제안이 도착하면 이 영역에 상세 정보가 표시됩니다.</Text>
-                        </View>
-
-                        {proposalStatus === '미응답' && !isRejecting && (
-                            <View style={styles.requestActions}>
-                                <TouchableOpacity style={styles.acceptButton} onPress={() => resolveProposal('수락')}>
-                                    <Text style={styles.acceptButtonText}>수락</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.rejectButton} onPress={() => setIsRejecting(true)}>
-                                    <Text style={styles.rejectButtonText}>거절</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                        {proposalStatus === '미응답' && isRejecting && (
-                            <View style={styles.rejectInputContainer}>
-                                <TextInput
-                                    style={styles.rejectInput}
-                                    placeholder="거절 사유를 입력해주세요..."
-                                    value={rejectReason}
-                                    onChangeText={setRejectReason}
-                                    multiline
-                                    textAlignVertical="top"
-                                />
-                                <View style={styles.requestActions}>
-                                    <TouchableOpacity style={styles.cancelRejectButton} onPress={() => setIsRejecting(false)}>
-                                        <Text style={styles.cancelRejectButtonText}>취소</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.submitRejectButton} onPress={handleRejectSubmit}>
-                                        <Text style={styles.submitRejectButtonText}>거절 완료</Text>
-                                    </TouchableOpacity>
+                                    <Text style={styles.requestItemMeta}>요청일: {requestedDate}</Text>
+                                    {req.rejectionReason && (
+                                        <Text style={styles.requestItemMeta}>거절 사유: {req.rejectionReason}</Text>
+                                    )}
+                                    <View style={styles.requestActions}>
+                                        <TouchableOpacity
+                                            style={[styles.acceptButton, (!isPending || isBusy) && { opacity: 0.6 }]}
+                                            onPress={() => handleRespond(req.requestId, 'ACCEPT')}
+                                            disabled={!isPending || isBusy}
+                                        >
+                                            <Text style={styles.acceptButtonText}>
+                                                {isBusy && isPending ? '처리 중...' : '수락'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.rejectButton, (!isPending || isBusy) && { opacity: 0.6 }]}
+                                            onPress={() => {
+                                                if (!isPending || isBusy) return;
+                                                setRejectModalOpenFor(isRejectingThis ? null : req.requestId);
+                                                setRejectReason('');
+                                            }}
+                                            disabled={!isPending || isBusy}
+                                        >
+                                            <Text style={styles.rejectButtonText}>거절</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    {isPending && isRejectingThis && (
+                                        <View style={styles.rejectInputContainer}>
+                                            <TextInput
+                                                style={styles.rejectInput}
+                                                placeholder="거절 사유를 입력해주세요... (선택 사항)"
+                                                value={rejectReason}
+                                                onChangeText={setRejectReason}
+                                                multiline
+                                                textAlignVertical="top"
+                                            />
+                                            <View style={styles.requestActions}>
+                                                <TouchableOpacity
+                                                    style={styles.cancelRejectButton}
+                                                    onPress={() => {
+                                                        setRejectModalOpenFor(null);
+                                                        setRejectReason('');
+                                                    }}
+                                                    disabled={isBusy}
+                                                >
+                                                    <Text style={styles.cancelRejectButtonText}>취소</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.submitRejectButton}
+                                                    onPress={() => handleRespond(req.requestId, 'REJECT', rejectReason)}
+                                                    disabled={isBusy}
+                                                >
+                                                    <Text style={styles.submitRejectButtonText}>거절 완료</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    )}
+                                    {isResponded && !isPending && (
+                                        <Text style={styles.requestFooterNote}>
+                                            응답이 서버에 저장되었습니다. 다시 들어와도 동일하게 표시됩니다.
+                                        </Text>
+                                    )}
                                 </View>
-                            </View>
-                        )}
+                            );
+                        })}
                     </View>
                 )}
             </ScrollView>
@@ -299,4 +406,11 @@ const styles = StyleSheet.create({
     cancelRejectButtonText: { color: Colors.brandInk, fontWeight: '700', fontSize: 14 },
     submitRejectButton: { flex: 1, backgroundColor: Colors.brandInk, paddingVertical: 10, ...Radius.button, alignItems: 'center', marginLeft: 8 },
     submitRejectButtonText: { color: Colors.brandHoney, fontWeight: '700', fontSize: 14 },
+
+    requestItemCard: { marginTop: 10, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 12, backgroundColor: Colors.surfaceSoft },
+    requestItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+    requestItemTitle: { fontSize: 13, fontWeight: '600', color: '#111827' },
+    requestItemStatus: { fontSize: 12, fontWeight: '600', color: Colors.brandInk },
+    requestItemMeta: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    requestFooterNote: { fontSize: 11, color: '#9CA3AF', marginTop: 6 },
 });
