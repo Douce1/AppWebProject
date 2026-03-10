@@ -78,6 +78,8 @@ export interface ApiLesson {
   startsAt: string; // ISO
   endsAt: string;   // ISO
   status: LessonStatus;
+  isExternal?: boolean;
+  documentId?: string | null;
 }
 
 export interface ApiLessonRequest {
@@ -233,4 +235,23 @@ export interface ApiChatMessage {
 export interface ApiChatMessageList {
   items: ApiChatMessage[];
   nextCursor: string | null;
+}
+
+// ---- Document Import API Types ----
+
+export interface ApiDocumentDraft {
+  lectureTitle: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  region: string | null;
+  museum: string | null;
+  payAmount: number | null;
+}
+
+export interface ApiDocument {
+  documentId: string;
+  imageUrl: string;
+  status: 'UPLOADED' | 'DRAFT_READY' | 'CONFIRMED';
+  draft: ApiDocumentDraft | null;
+  createdAt: string;
 }

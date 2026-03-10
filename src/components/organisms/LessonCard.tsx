@@ -24,6 +24,7 @@ interface LessonCardProps {
     primaryActionVariant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
     secondaryActionLabel?: string;
     onSecondaryAction?: () => void;
+    isExternal?: boolean;
 }
 
 export function LessonCard({
@@ -43,6 +44,7 @@ export function LessonCard({
     primaryActionVariant,
     secondaryActionLabel,
     onSecondaryAction,
+    isExternal,
 }: LessonCardProps) {
     return (
         <TouchableOpacity
@@ -50,7 +52,14 @@ export function LessonCard({
             onPress={onPressCard}
             style={styles.card}
         >
-            <StatusBadgeGroup status={status} label={statusLabel} badgeLabel={badgeLabel} style={styles.badgeGroup} />
+            <View style={styles.headerRow}>
+                <StatusBadgeGroup status={status} label={statusLabel} badgeLabel={badgeLabel} style={styles.badgeGroup} />
+                {isExternal && (
+                    <View style={styles.externalBadge}>
+                        <Typography variant="caption" style={styles.externalBadgeText}>외부 등록</Typography>
+                    </View>
+                )}
+            </View>
 
             <Typography variant="h3" style={styles.title}>{title}</Typography>
 
@@ -111,6 +120,24 @@ const styles = StyleSheet.create({
     },
     badgeGroup: {
         marginBottom: 16,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    externalBadge: {
+        backgroundColor: '#F1F5F9', // light slate
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    externalBadgeText: {
+        color: '#64748B',
+        fontWeight: 'bold',
+        fontSize: 10,
     },
     title: {
         marginBottom: 16,

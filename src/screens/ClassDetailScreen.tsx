@@ -1,4 +1,4 @@
-﻿import { Colors, Radius, Shadows } from '@/constants/theme';
+import { Colors, Radius, Shadows } from '@/constants/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, BookOpen, CheckCircle2, Phone, User } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -101,6 +101,18 @@ export default function ClassDetailScreen() {
                                                     isDeparted ? '이동 중' : '진행 예정'}
                         </Text>
                     </View>
+
+                    {classInfo.isExternal && classInfo.documentId && (
+                        <TouchableOpacity 
+                            style={styles.originalDocButton} 
+                            onPress={() => {
+                                Alert.alert('문서 보기', '원본 문서 이미지 호출을 위한 API 연동이 필요합니다. (Backend TBD)');
+                            }}
+                        >
+                            <BookOpen size={18} color={Colors.brandInk} style={{ marginRight: 8 }} />
+                            <Text style={styles.originalDocButtonText}>외부 원본 문서 보기</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 {/* 보고서 뷰어 */}
@@ -216,6 +228,8 @@ const styles = StyleSheet.create({
     statusLabel: { fontSize: 16, color: '#666', fontWeight: '500' },
     statusValue: { fontSize: 16, fontWeight: 'bold', color: '#6B7280' },
     statusValueActive: { color: '#10B981' },
+    originalDocButton: { marginTop: 15, backgroundColor: '#F0F9FF', paddingVertical: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#BAE6FD' },
+    originalDocButtonText: { fontSize: 14, fontWeight: 'bold', color: Colors.brandInk },
     footer: { padding: 20, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#eee' },
     checkInButton: { backgroundColor: '#FFF0C2', paddingVertical: 15, ...Radius.button, alignItems: 'center' },
     checkedInButton: { backgroundColor: Colors.brandInk, opacity: 0.6, paddingVertical: 15, ...Radius.button, alignItems: 'center' },

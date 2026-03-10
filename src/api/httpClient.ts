@@ -11,6 +11,8 @@ import {
   ApiContract,
   ApiContractDetail,
   ApiContractVersion,
+  ApiDocument,
+  ApiDocumentDraft,
   ApiInstructorProfile,
   ApiLesson,
   ApiLessonReport,
@@ -402,5 +404,41 @@ export const httpClient = {
   async getUnreadCount(): Promise<number> {
     const data = await getJson<{ unreadCount: number }>('/chat/unread-count');
     return data.unreadCount;
+  },
+
+  // --- Document Import APIs ---
+  async uploadDocument(imageUri: string): Promise<ApiDocument> {
+    const formData = new FormData();
+    formData.append('file', {
+      uri: imageUri,
+      name: 'document.jpg',
+      type: 'image/jpeg',
+    } as any);
+
+    const accessToken = await getAccessToken();
+    const response = await fetch(`${API_BASE_URL}/documents`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData as any,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to upload document');
+    }
+    return response.json();
+  },
+
+  async extractDocument(documentId: string, text: string): Promise<ApiDocument> {
+    return postJson<ApiDocument>(`/documents/${documentId}/extract`, { text });
+  },
+
+  async updateDocumentDraft(documentId: string, draft: Partial<ApiDocumentDraft>): Promise<ApiDocument> {
+    return putJson<ApiDocument>(`/documents/${documentId}/draft`, { draft });
+  },
+
+  async confirmDocument(documentId: string): Promise<void> {
+    return postJson<void>(`/documents/${documentId}/confirm`);
   },
 };

@@ -1,7 +1,7 @@
 import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
-import { FileText, Bell, Settings } from 'lucide-react-native';
+import { FileText, Bell, Settings, Camera } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSchedule } from '../context/ScheduleContext';
@@ -105,6 +105,20 @@ export default function DocsScreen() {
 
                 {selectedTab === '계약' && (
                     <>
+                        {/* 외부 계약서 등록 CTA 카드 */}
+                        <TouchableOpacity 
+                            style={styles.importCard} 
+                            onPress={() => router.push('/docs/import' as any)}
+                        >
+                            <View style={styles.importIconContainer}>
+                                <Camera color={Colors.brandInk} size={24} />
+                            </View>
+                            <View style={styles.importTextContainer}>
+                                <Text style={styles.importTitle}>문서로 일정 만들기</Text>
+                                <Text style={styles.importDesc}>외부 서류를 촬영하여 간편하게 일정을 등록하세요.</Text>
+                            </View>
+                        </TouchableOpacity>
+
                         {/* 계약 상태 필터 탭 */}
                         <View style={styles.contractFilterRow}>
                             {contractFilterStatuses.map((status) => (
@@ -254,6 +268,12 @@ const styles = StyleSheet.create({
     contractFilterChipTextActive: { color: Colors.brandHoney, fontWeight: 'bold' },
     errorRow: { padding: 16, backgroundColor: '#FEE2E2', borderRadius: 8, marginBottom: 8 },
     errorText: { fontSize: 13, color: '#DC2626', fontWeight: '500' },
+
+    importCard: { backgroundColor: '#F0F9FF', padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: '#BAE6FD' },
+    importIconContainer: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E0F2FE', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+    importTextContainer: { flex: 1 },
+    importTitle: { fontSize: 15, fontWeight: 'bold', color: Colors.brandInk, marginBottom: 4 },
+    importDesc: { fontSize: 13, color: '#64748B' },
 
     requestCard: { backgroundColor: 'white', padding: 16, borderRadius: 16, ...Shadows.card, marginBottom: 16 },
     requestHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },

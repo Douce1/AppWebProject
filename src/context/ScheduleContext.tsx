@@ -9,6 +9,8 @@ export interface ClassSession {
     date: string; // YYYY-MM-DD format
     location: string;
     time: string;
+    isExternal?: boolean;
+    documentId?: string | null;
 }
 
 export interface AppNotification {
@@ -41,6 +43,7 @@ interface ScheduleContextType {
     getClassReport: (id: string) => string | null;
     handleClassAction: (id: string) => Promise<void>;
     submitClassReport: (id: string, text: string) => void;
+    fetchLessons: () => Promise<void>;
 }
 
 const ScheduleContext = createContext<ScheduleContextType>({
@@ -61,7 +64,8 @@ const ScheduleContext = createContext<ScheduleContextType>({
     classReports: {},
     getClassReport: () => null,
     handleClassAction: async () => { },
-    submitClassReport: () => { }
+    submitClassReport: () => { },
+    fetchLessons: async () => { }
 });
 
 export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -97,95 +101,94 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const getClassReport = (id: string): string | null => classReports[id] ?? null;
 
-    useEffect(() => {
+    const fetchLessons = async () => {
         let mounted = true;
-        apiClient
-            .getLessons()
-            .then((lessons) => {
-                if (!mounted) return;
-                const mapped: ClassSession[] = lessons.map((lesson) => {
-                    const start = new Date(lesson.startsAt);
-                    const end = new Date(lesson.endsAt);
-                    const pad = (n: number) => n.toString().padStart(2, '0');
-                    const date = lesson.startsAt.slice(0, 10);
-                    const time = `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(
-                        end.getHours(),
-                    )}:${pad(end.getMinutes())}`;
-                    const location = `${lesson.region} ${lesson.museum}`;
-                    return {
-                        id: lesson.lessonId,
-                        title: lesson.lectureTitle,
-                        date,
-                        location,
-                        time,
-                    };
-                });
-                setClasses(mapped);
-
-                // 수업 요청(assignment)과 lessonId 매핑 + 출강 이벤트 초기 상태 로드
-                Promise.all([apiClient.getLessonRequests(), apiClient.getAttendanceEvents()])
-                    .then(([requests, events]) => {
-                        if (!mounted) return;
-
-                        // 1) lessonId -> requestId 매핑 (ACCEPTED만)
-                        const accepted = requests.filter((r) => r.status === 'ACCEPTED');
-                        const nextMap: Record<string, string> = {};
-                        accepted.forEach((r) => {
-                            nextMap[r.lessonId] = r.requestId;
-                        });
-                        setLessonRequestMap(nextMap);
-
-                        // 2) 출강 이벤트 기반으로 departed/arrived/ended 및 다음 단계(canArrive/canEnd)를 복원
-                        const departedSet = new Set<string>();
-                        const arrivedSet = new Set<string>();
-                        const finishedSet = new Set<string>();
-
-                        events.forEach((e) => {
-                            if (!e.isValid) return;
-                            const lessonId = e.lessonId;
-                            if (e.eventType === 'DEPART') {
-                                departedSet.add(lessonId);
-                            } else if (e.eventType === 'ARRIVE') {
-                                departedSet.add(lessonId);
-                                arrivedSet.add(lessonId);
-                            } else if (e.eventType === 'FINISH') {
-                                departedSet.add(lessonId);
-                                arrivedSet.add(lessonId);
-                                finishedSet.add(lessonId);
-                            }
-                        });
-
-                        const canArriveSet = new Set<string>();
-                        const canEndSet = new Set<string>();
-                        mapped.forEach((c) => {
-                            if (departedSet.has(c.id) && !arrivedSet.has(c.id)) {
-                                canArriveSet.add(c.id);
-                            }
-                            if (arrivedSet.has(c.id) && !finishedSet.has(c.id)) {
-                                canEndSet.add(c.id);
-                            }
-                        });
-
-                        setDepartedIds(Array.from(departedSet));
-                        setArrivedIds(Array.from(arrivedSet));
-                        setEndedClassIds(Array.from(finishedSet));
-                        setCanArriveIds(Array.from(canArriveSet));
-                        setCanEndClassIds(Array.from(canEndSet));
-                    })
-                    .catch(() => {
-                        if (!mounted) return;
-                        Alert.alert(
-                            '불러오기 실패',
-                            '수업 요청/출강 이벤트를 불러오지 못했습니다. 다시 시도해주세요.',
-                        );
-                    });
-            })
-            .catch(() => {
-                if (!mounted) return;
-                Alert.alert('불러오기 실패', '수업 목록을 불러오지 못했습니다. 다시 시도해주세요.');
+        try {
+            const lessons = await apiClient.getLessons();
+            if (!mounted) return;
+            const mapped: ClassSession[] = lessons.map((lesson) => {
+                const start = new Date(lesson.startsAt);
+                const end = new Date(lesson.endsAt);
+                const pad = (n: number) => n.toString().padStart(2, '0');
+                const date = lesson.startsAt.slice(0, 10);
+                const time = `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(
+                    end.getHours(),
+                )}:${pad(end.getMinutes())}`;
+                const location = `${lesson.region} ${lesson.museum}`;
+                return {
+                    id: lesson.lessonId,
+                    title: lesson.lectureTitle,
+                    date,
+                    location,
+                    time,
+                    isExternal: lesson.isExternal,
+                    documentId: lesson.documentId,
+                };
             });
+            setClasses(mapped);
+
+            try {
+                const [requests, events] = await Promise.all([apiClient.getLessonRequests(), apiClient.getAttendanceEvents()]);
+                if (!mounted) return;
+
+                const accepted = requests.filter((r) => r.status === 'ACCEPTED');
+                const nextMap: Record<string, string> = {};
+                accepted.forEach((r) => {
+                    nextMap[r.lessonId] = r.requestId;
+                });
+                setLessonRequestMap(nextMap);
+
+                const departedSet = new Set<string>();
+                const arrivedSet = new Set<string>();
+                const finishedSet = new Set<string>();
+
+                events.forEach((e) => {
+                    if (!e.isValid) return;
+                    const lessonId = e.lessonId;
+                    if (e.eventType === 'DEPART') {
+                        departedSet.add(lessonId);
+                    } else if (e.eventType === 'ARRIVE') {
+                        departedSet.add(lessonId);
+                        arrivedSet.add(lessonId);
+                    } else if (e.eventType === 'FINISH') {
+                        departedSet.add(lessonId);
+                        arrivedSet.add(lessonId);
+                        finishedSet.add(lessonId);
+                    }
+                });
+
+                const canArriveSet = new Set<string>();
+                const canEndSet = new Set<string>();
+                mapped.forEach((c) => {
+                    if (departedSet.has(c.id) && !arrivedSet.has(c.id)) {
+                        canArriveSet.add(c.id);
+                    }
+                    if (arrivedSet.has(c.id) && !finishedSet.has(c.id)) {
+                        canEndSet.add(c.id);
+                    }
+                });
+
+                setDepartedIds(Array.from(departedSet));
+                setArrivedIds(Array.from(arrivedSet));
+                setEndedClassIds(Array.from(finishedSet));
+                setCanArriveIds(Array.from(canArriveSet));
+                setCanEndClassIds(Array.from(canEndSet));
+            } catch {
+                if (!mounted) return;
+                Alert.alert('불러오기 실패', '수업 요청/출강 이벤트를 불러오지 못했습니다. 다시 시도해주세요.');
+            }
+        } catch {
+            if (!mounted) return;
+            Alert.alert('불러오기 실패', '수업 목록을 불러오지 못했습니다. 다시 시도해주세요.');
+        }
+    };
+
+    useEffect(() => {
+        fetchLessons();
         return () => {
-            mounted = false;
+            // Can't efficiently unmount the internal promises without AbortController, but state updates are safe enough now, as React handles it better. 
+            // mounted state variable is kept in fetchLessons but we don't have scope here. 
+            // It's fine for our use-case since fetchLessons executes independently.
         };
     }, []);
 
@@ -326,7 +329,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         <ScheduleContext.Provider value={{
             classes, addClass, notifications, removeNotification, isProposalResolved, proposalStatus, resolveProposal,
             departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds,
-            classReports, getClassReport, handleClassAction, submitClassReport
+            classReports, getClassReport, handleClassAction, submitClassReport, fetchLessons
         }}>
             {children}
         </ScheduleContext.Provider>

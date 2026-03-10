@@ -1,4 +1,4 @@
-﻿import { useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Bell, CalendarIcon as Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, MapPin, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useRef, useState } from 'react';
 import { Dimensions, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -214,6 +214,7 @@ export default function HomeScreen({ navigation }: any) {
                 title={c.title}
                 location={c.location}
                 time={c.time}
+                isExternal={c.isExternal}
                 onPressCard={() => router.push({ pathname: '/class-detail' as any, params: { classInfo: JSON.stringify(c) } })}
                 primaryActionLabel={actionLabel}
                 primaryActionVariant={actionVariant}
