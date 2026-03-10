@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { apiClient } from '../api/apiClient';
 import { ApiChatMessage, ApiChatRoom } from '../api/types';
 import { ChatMessagePayload, chatSocket } from '../services/chatSocket';
+import { getAccessToken } from '../store/authStore';
 
 // ---- Context Type ----
 
@@ -32,6 +33,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [chatRooms, setChatRooms] = useState<ApiChatRoom[]>([]);
     const [messagesMap, setMessagesMap] = useState<Record<string, ApiChatMessage[]>>({});
     const [isConnected, setIsConnected] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     // 초기 데이터 로드
     useEffect(() => {
@@ -51,16 +53,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     msgEntries[room.roomId] = msgs.items;
                 }
                 setMessagesMap(msgEntries);
+
+                // 서버 기준 전체 unreadCount 조회
+                const serverUnread = await apiClient.getUnreadCount();
+                if (!mounted) return;
+                setUnreadCount(serverUnread);
+
+                // 소켓 연결 (인증 토큰 포함)
+                const accessToken = await getAccessToken();
+                if (!mounted) return;
+                chatSocket.connect(accessToken ?? undefined);
+                setIsConnected(true);
             } catch (e) {
-                console.error('[ChatContext] Failed to load initial data:', e);
+                // eslint-disable-next-line no-console
+                console.error('[ChatContext] Failed to init chat:', e);
             }
         };
 
-        init();
-
-        // 소켓 연결
-        chatSocket.connect();
-        setIsConnected(true);
+        void init();
 
         return () => {
             mounted = false;
@@ -72,7 +82,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 실시간 메시지 수신
     useEffect(() => {
         const handleMessage = (payload: ChatMessagePayload) => {
-            // isMine: senderUserId === 'me' (mock) or 현재 로그인 userId
+            // isMine: senderUserId === 'me' (mock) or 현재 로그인 userId (실서버에서는 senderUserId 비교)
             const isMine = payload.senderUserId === 'me';
             const newMsg: ApiChatMessage = {
                 messageId: payload.messageId,
@@ -91,10 +101,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 [payload.roomId]: [...(prev[payload.roomId] || []), newMsg],
             }));
 
-            // 방 목록 갱신 (lastMessage 객체 형식으로)
+            // 방 목록 갱신 (lastMessage 객체 형식으로) + 전체 unreadCount 갱신
             setChatRooms(prev => {
                 const updated = prev.map(room => {
                     if (room.roomId === payload.roomId) {
+                        const nextUnread = isMine ? room.unreadCount : room.unreadCount + 1;
                         return {
                             ...room,
                             lastMessage: {
@@ -105,13 +116,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                 sentAt: payload.sentAt,
                             },
                             updatedAt: payload.sentAt,
-                            unreadCount: isMine ? room.unreadCount : room.unreadCount + 1,
+                            unreadCount: nextUnread,
                         };
                     }
                     return room;
                 });
                 // 최신 메시지 방을 맨 위로
                 updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+                setUnreadCount(updated.reduce((sum, r) => sum + r.unreadCount, 0));
                 return updated;
             });
         };
@@ -147,11 +159,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return prev;
         });
 
-        setChatRooms(prev =>
-            prev.map(room =>
+        setChatRooms(prev => {
+            const updated = prev.map(room =>
                 room.roomId === roomId ? { ...room, unreadCount: 0 } : room
-            )
-        );
+            );
+            setUnreadCount(updated.reduce((sum, r) => sum + r.unreadCount, 0));
+            return updated;
+        });
 
         // 소켓 + API 호출
         chatSocket.readRoom(roomId);
@@ -159,9 +173,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     // ---- Computed ----
-
-    const unreadCount = chatRooms.reduce((sum, r) => sum + r.unreadCount, 0);
-
     // 안읽은 메시지: unreadCount > 0인 방의 메시지만 (읽음 처리된 방은 제외)
     const unreadRoomIds = new Set(chatRooms.filter(r => r.unreadCount > 0).map(r => r.roomId));
     const unreadMessages: ApiChatMessage[] = Object.values(messagesMap)

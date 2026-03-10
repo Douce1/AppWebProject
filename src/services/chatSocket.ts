@@ -111,8 +111,16 @@ class MockChatSocket {
 
 class RealChatSocket {
     private socket: any = null;
+    private messageCallbacks: MessageCallback[] = [];
+    private messageReadCallbacks: MessageReadCallback[] = [];
+    private errorCallbacks: ErrorCallback[] = [];
 
     connect(token?: string) {
+        // 기존 연결 정리
+        if (this.socket) {
+            this.disconnect();
+        }
+
         this.socket = io(SOCKET_URL, {
             auth: { token },
             transports: ['websocket'],
@@ -128,6 +136,20 @@ class RealChatSocket {
 
         this.socket.on('disconnect', (reason: string) => {
             console.log(`[Socket] Disconnected: ${reason}`);
+        });
+
+        this.socket.on('chat_message', (payload: ChatMessagePayload) => {
+            this.messageCallbacks.forEach((cb) => cb(payload));
+        });
+
+        this.socket.on('message_read', (payload: MessageReadPayload) => {
+            this.messageReadCallbacks.forEach((cb) => cb(payload));
+        });
+
+        this.socket.on('chat_error', (payload: ChatErrorPayload) => {
+            // eslint-disable-next-line no-console
+            console.warn('[Socket] chat_error', payload);
+            this.errorCallbacks.forEach((cb) => cb(payload));
         });
     }
 
@@ -149,23 +171,23 @@ class RealChatSocket {
     }
 
     onMessage(cb: MessageCallback) {
-        this.socket?.on('chat_message', cb);
+        this.messageCallbacks.push(cb);
     }
 
     offMessage(cb?: MessageCallback) {
         if (cb) {
-            this.socket?.off('chat_message', cb);
+            this.messageCallbacks = this.messageCallbacks.filter((c) => c !== cb);
         } else {
-            this.socket?.removeAllListeners('chat_message');
+            this.messageCallbacks = [];
         }
     }
 
     onMessageRead(cb: MessageReadCallback) {
-        this.socket?.on('message_read', cb);
+        this.messageReadCallbacks.push(cb);
     }
 
     onError(cb: ErrorCallback) {
-        this.socket?.on('chat_error', cb);
+        this.errorCallbacks.push(cb);
     }
 
     onReconnect(cb: VoidCallback) {
