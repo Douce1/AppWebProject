@@ -1,11 +1,11 @@
 import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
-import { FileSignature, FileText, Bell, Settings } from 'lucide-react-native';
+import { FileText, Bell, Settings } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSchedule } from '../context/ScheduleContext';
-import { apiClient } from '../api/apiClient';
+import { httpClient } from '../api/httpClient';
 import type { ApiContract, ContractStatus } from '../api/types';
 import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
 
@@ -25,14 +25,23 @@ export default function DocsScreen() {
 
     const [contracts, setContracts] = useState<ApiContract[]>([]);
     const [contractsLoading, setContractsLoading] = useState(false);
+    const [contractsError, setContractsError] = useState<string | null>(null);
+    const contractFilterStatuses: (ContractStatus | 'ALL')[] = ['ALL', 'SENT', 'INSTRUCTOR_SIGNED', 'FULLY_SIGNED'];
+    const [contractStatusFilter, setContractStatusFilter] = useState<ContractStatus | 'ALL'>('ALL');
 
     useEffect(() => {
         if (selectedTab !== '계약') return;
         let mounted = true;
+        setContractsError(null);
         setContractsLoading(true);
-        apiClient.getContracts()
+        httpClient.getContracts()
             .then((list) => { if (mounted) setContracts(list); })
-            .catch(() => { if (mounted) setContracts([]); })
+            .catch(() => {
+                if (mounted) {
+                    setContracts([]);
+                    setContractsError('계약 목록을 불러오지 못했습니다.');
+                }
+            })
             .finally(() => { if (mounted) setContractsLoading(false); });
         return () => { mounted = false; };
     }, [selectedTab]);
@@ -47,6 +56,16 @@ export default function DocsScreen() {
         };
         return map[s] ?? s;
     };
+
+    const contractFilterLabel = (s: ContractStatus | 'ALL'): string => {
+        if (s === 'ALL') return '전체';
+        return contractStatusLabel(s);
+    };
+
+    const filteredContracts =
+        contractStatusFilter === 'ALL'
+            ? contracts
+            : contracts.filter((c) => c.status === contractStatusFilter);
 
     const formatContractDate = (c: ApiContract): string => {
         if (c.effectiveFrom && c.effectiveTo) return `${c.effectiveFrom.slice(0, 10)} ~ ${c.effectiveTo.slice(0, 10)}`;
@@ -86,15 +105,41 @@ export default function DocsScreen() {
 
                 {selectedTab === '계약' && (
                     <>
-                        {contractsLoading ? (
+                        {/* 계약 상태 필터 탭 */}
+                        <View style={styles.contractFilterRow}>
+                            {contractFilterStatuses.map((status) => (
+                                <TouchableOpacity
+                                    key={status}
+                                    style={[
+                                        styles.contractFilterChip,
+                                        contractStatusFilter === status && styles.contractFilterChipActive,
+                                    ]}
+                                    onPress={() => setContractStatusFilter(status)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.contractFilterChipText,
+                                            contractStatusFilter === status && styles.contractFilterChipTextActive,
+                                        ]}
+                                    >
+                                        {contractFilterLabel(status)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                        {contractsError ? (
+                            <View style={styles.errorRow}>
+                                <Text style={styles.errorText}>{contractsError}</Text>
+                            </View>
+                        ) : contractsLoading ? (
                             <View style={styles.loadingRow}>
                                 <ActivityIndicator size="small" color={Colors.brandInk} />
                                 <Text style={styles.loadingText}>계약 목록 불러오는 중...</Text>
                             </View>
-                        ) : contracts.length === 0 ? (
+                        ) : filteredContracts.length === 0 ? (
                             <Text style={styles.emptyText}>표시할 계약이 없습니다.</Text>
                         ) : (
-                            contracts.map((c) => (
+                            filteredContracts.map((c) => (
                                 <View key={c.contractId} style={styles.docCard}>
                                     <View style={styles.docIcon}>
                                         <FileText color="#10B981" size={24} />
@@ -202,6 +247,13 @@ const styles = StyleSheet.create({
     loadingRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 8 },
     loadingText: { fontSize: 13, color: '#6B7280' },
     emptyText: { fontSize: 13, color: '#9CA3AF', padding: 16 },
+    contractFilterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+    contractFilterChip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#f0f0f0' },
+    contractFilterChipActive: { backgroundColor: Colors.brandInk },
+    contractFilterChipText: { fontSize: 13, color: '#666', fontWeight: '500' },
+    contractFilterChipTextActive: { color: Colors.brandHoney, fontWeight: 'bold' },
+    errorRow: { padding: 16, backgroundColor: '#FEE2E2', borderRadius: 8, marginBottom: 8 },
+    errorText: { fontSize: 13, color: '#DC2626', fontWeight: '500' },
 
     requestCard: { backgroundColor: 'white', padding: 16, borderRadius: 16, ...Shadows.card, marginBottom: 16 },
     requestHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
