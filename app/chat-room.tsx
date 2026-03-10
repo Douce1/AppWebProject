@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChat } from '../src/context/ChatContext';
 import { useSchedule } from '../src/context/ScheduleContext';
 import { Colors, Radius, Shadows } from '@/constants/theme';
+import { chatSocket } from '../src/services/chatSocket';
 
 export default function ChatRoomScreen() {
     const router = useRouter();
@@ -27,6 +28,12 @@ export default function ChatRoomScreen() {
             markAsRead(roomId);
         }
     }, [roomId, roomMessages]);
+
+    // 방 입장 시 WebSocket join_room 호출
+    useEffect(() => {
+        if (!roomId) return;
+        chatSocket.joinRoom(roomId);
+    }, [roomId]);
 
     // Android keyboard handling via Keyboard API
     useEffect(() => {
