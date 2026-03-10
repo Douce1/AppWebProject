@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { FileText, RefreshCcw, Settings, TrendingUp, X } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Radius, Shadows } from '@/constants/theme';
 import { Button } from '@/src/components/atoms/Button';
@@ -13,52 +13,6 @@ export default function IncomeScreen() {
     const [testMessage, setTestMessage] = useState<string | null>(null);
     const [testError, setTestError] = useState<string | null>(null);
     const [isTesting, setIsTesting] = useState(false);
-
-    const styles = useMemo(
-        () =>
-            StyleSheet.create({
-                container: { flex: 1, backgroundColor: Colors.background },
-                header: { paddingTop: 50, paddingBottom: 0, paddingHorizontal: 0, backgroundColor: Colors.background },
-                incomeCard: { backgroundColor: '#FFF0C2', margin: 15, borderRadius: 16, borderTopRightRadius: 0, padding: 20, shadowColor: '#FFF0C2', shadowOpacity: 0.2, shadowRadius: 10, elevation: 4 },
-                incomeLabel: { color: Colors.brandInk, fontSize: 14, marginBottom: 4, fontWeight: '500' },
-                amountRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 5 },
-                amountText: { color: '#F3C742', fontSize: 32, fontWeight: 'bold' },
-                currencyText: { color: Colors.brandInk, fontSize: 18, marginLeft: 4, fontWeight: '600' },
-                taxDeductedText: { color: Colors.brandInk, fontSize: 14, marginBottom: 20, fontWeight: '500', opacity: 0.7 },
-                statsRow: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 10, padding: 12, marginBottom: 15 },
-                statBox: { flex: 1, alignItems: 'center' },
-                statLabel: { color: Colors.brandInk, fontSize: 12, marginBottom: 4, opacity: 0.7 },
-                statValue: { color: Colors.brandInk, fontSize: 16, fontWeight: 'bold' },
-                verticalDivider: { width: 1, backgroundColor: 'rgba(0,0,0,0.1)' },
-                increaseBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(243, 199, 66, 0.4)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-                increaseText: { color: Colors.brandInk, fontSize: 13, fontWeight: 'bold' },
-                divider: { height: 1, backgroundColor: 'rgba(0,0,0,0.1)', marginVertical: 15 },
-                paymentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-                paymentText: { color: Colors.brandInk, fontSize: 14, opacity: 0.8 },
-                historySection: { paddingHorizontal: 20, marginTop: 10, paddingBottom: 100 },
-                sectionTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.brandInk, marginBottom: 15 },
-                historyItem: { backgroundColor: 'white', padding: 15, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, ...Shadows.card },
-                historyIconBox: { backgroundColor: Colors.brandMint, padding: 10, borderRadius: 10, marginRight: 12 },
-                historyTitle: { fontSize: 15, fontWeight: '600', color: Colors.brandInk, marginBottom: 4 },
-                historyDate: { fontSize: 12, color: Colors.mutedForeground },
-                historyAmount: { fontSize: 16, fontWeight: 'bold', color: Colors.brandInk },
-                historyTaxAmount: { fontSize: 13, color: Colors.brandHoney, marginTop: 4, fontWeight: '500' },
-                modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-                modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 25, minHeight: 400 },
-                modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-                modalTitle: { fontSize: 20, fontWeight: 'bold', color: Colors.brandInk },
-                receiptBox: { backgroundColor: Colors.surfaceSoft, padding: 20, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, marginBottom: 25 },
-                receiptRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-                receiptRowBorder: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: Colors.border, borderStyle: 'dashed' },
-                receiptRowTotal: { marginTop: 15, paddingTop: 15, borderTopWidth: 2, borderTopColor: Colors.brandInk },
-                receiptLabel: { color: Colors.mutedForeground, fontSize: 14 },
-                receiptValue: { color: Colors.brandInk, fontSize: 14, fontWeight: '500' },
-                receiptTotalLabel: { color: Colors.brandInk, fontSize: 16, fontWeight: 'bold' },
-                receiptTotalValue: { color: Colors.brandHoney, fontSize: 18, fontWeight: 'bold' },
-                emptyHistoryText: { fontSize: 14, fontWeight: '500', color: Colors.mutedForeground, marginTop: 8 },
-            }),
-        [],
-    );
 
     const handleTestApiCall = async () => {
         setIsTesting(true);
@@ -225,4 +179,46 @@ export default function IncomeScreen() {
         </ScrollView>
     );
 }
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: Colors.background },
+    header: { paddingTop: 50, paddingBottom: 0, paddingHorizontal: 0, backgroundColor: Colors.background },
+    incomeCard: { backgroundColor: '#FFF0C2', margin: 15, borderRadius: 16, borderTopRightRadius: 0, padding: 20, shadowColor: '#FFF0C2', shadowOpacity: 0.2, shadowRadius: 10, elevation: 4 },
+    incomeLabel: { color: Colors.brandInk, fontSize: 14, marginBottom: 4, fontWeight: '500' },
+    amountRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 5 },
+    amountText: { color: '#F3C742', fontSize: 32, fontWeight: 'bold' },
+    currencyText: { color: Colors.brandInk, fontSize: 18, marginLeft: 4, fontWeight: '600' },
+    taxDeductedText: { color: Colors.brandInk, fontSize: 14, marginBottom: 20, fontWeight: '500', opacity: 0.7 },
+    statsRow: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 10, padding: 12, marginBottom: 15 },
+    statBox: { flex: 1, alignItems: 'center' },
+    statLabel: { color: Colors.brandInk, fontSize: 12, marginBottom: 4, opacity: 0.7 },
+    statValue: { color: Colors.brandInk, fontSize: 16, fontWeight: 'bold' },
+    verticalDivider: { width: 1, backgroundColor: 'rgba(0,0,0,0.1)' },
+    increaseBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(243, 199, 66, 0.4)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+    increaseText: { color: Colors.brandInk, fontSize: 13, fontWeight: 'bold' },
+    divider: { height: 1, backgroundColor: 'rgba(0,0,0,0.1)', marginVertical: 15 },
+    paymentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    paymentText: { color: Colors.brandInk, fontSize: 14, opacity: 0.8 },
+    historySection: { paddingHorizontal: 20, marginTop: 10, paddingBottom: 100 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.brandInk, marginBottom: 15 },
+    historyItem: { backgroundColor: 'white', padding: 15, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, ...Shadows.card },
+    historyIconBox: { backgroundColor: Colors.brandMint, padding: 10, borderRadius: 10, marginRight: 12 },
+    historyTitle: { fontSize: 15, fontWeight: '600', color: Colors.brandInk, marginBottom: 4 },
+    historyDate: { fontSize: 12, color: Colors.mutedForeground },
+    historyAmount: { fontSize: 16, fontWeight: 'bold', color: Colors.brandInk },
+    historyTaxAmount: { fontSize: 13, color: Colors.brandHoney, marginTop: 4, fontWeight: '500' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 25, minHeight: 400 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: Colors.brandInk },
+    receiptBox: { backgroundColor: Colors.surfaceSoft, padding: 20, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, marginBottom: 25 },
+    receiptRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+    receiptRowBorder: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: Colors.border, borderStyle: 'dashed' },
+    receiptRowTotal: { marginTop: 15, paddingTop: 15, borderTopWidth: 2, borderTopColor: Colors.brandInk },
+    receiptLabel: { color: Colors.mutedForeground, fontSize: 14 },
+    receiptValue: { color: Colors.brandInk, fontSize: 14, fontWeight: '500' },
+    receiptTotalLabel: { color: Colors.brandInk, fontSize: 16, fontWeight: 'bold' },
+    receiptTotalValue: { color: Colors.brandHoney, fontSize: 18, fontWeight: 'bold' },
+    emptyHistoryText: { fontSize: 14, fontWeight: '500', color: Colors.mutedForeground, marginTop: 8 },
+});
 

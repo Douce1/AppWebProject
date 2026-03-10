@@ -23,37 +23,39 @@ export default function ProfileScreen() {
         let mounted = true;
 
         const load = async () => {
-            let nextInstructor: ApiInstructorProfile | null = null;
-            let nextCompany: ApiCompany | null = null;
+            const [instructorResult, companyResult] = await Promise.allSettled([
+                apiClient.getInstructorProfile(),
+                apiClient.getCompany(),
+            ]);
 
-            try {
-                nextInstructor = await apiClient.getInstructorProfile();
+            if (!mounted) return;
+
+            if (instructorResult.status === 'fulfilled') {
+                const nextInstructor = instructorResult.value;
                 // eslint-disable-next-line no-console
                 console.log('[ProfileScreen] loaded instructor', {
                     instructorId: nextInstructor.instructorId,
                     userId: nextInstructor.userId,
                 });
-            } catch (error) {
+                setInstructor(nextInstructor);
+            } else {
                 // eslint-disable-next-line no-console
-                console.log('[ProfileScreen] failed to load instructor', error);
+                console.log('[ProfileScreen] failed to load instructor', instructorResult.reason);
             }
 
-            try {
-                nextCompany = await apiClient.getCompany();
+            if (companyResult.status === 'fulfilled') {
+                const nextCompany = companyResult.value;
                 // eslint-disable-next-line no-console
                 console.log('[ProfileScreen] loaded company', {
                     companyId: nextCompany.companyId,
                     companyName: nextCompany.name,
                 });
-            } catch (error) {
+                setCompany(nextCompany);
+            } else {
                 // 회사가 없어도 나머지 정보는 보여줄 수 있도록 company만 null 처리
                 // eslint-disable-next-line no-console
-                console.log('[ProfileScreen] failed to load company', error);
+                console.log('[ProfileScreen] failed to load company', companyResult.reason);
             }
-
-            if (!mounted) return;
-            setInstructor(nextInstructor);
-            setCompany(nextCompany);
         };
 
         void load();
