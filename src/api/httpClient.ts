@@ -331,6 +331,23 @@ export const httpClient = {
     return getJson<ApiAttendanceEvent[]>('/attendance-events');
   },
 
+  async checkinByAssignment(
+    requestId: string,
+    body: {
+      eventType: 'DEPART' | 'ARRIVE' | 'FINISH';
+      idempotencyKey: string;
+      lat: number;
+      lng: number;
+      accuracyMeters?: number;
+      occurredAt?: string;
+    },
+  ): Promise<ApiAttendanceEvent> {
+    return postJson<ApiAttendanceEvent>(
+      `/assignments/${encodeURIComponent(requestId)}/checkin`,
+      body,
+    );
+  },
+
   async getLessonReports(): Promise<ApiLessonReport[]> {
     return getJson<ApiLessonReport[]>('/lesson-reports');
   },
