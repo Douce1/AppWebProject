@@ -261,6 +261,8 @@ export interface ApiDocument {
   documentId: string;
   imageUrl: string;
   status: 'UPLOADED' | 'DRAFT_READY' | 'CONFIRMED';
+  /** 문서 소스 타입 (현재는 외부 문서만 지원) */
+  sourceType: 'EXTERNAL_DOCUMENT';
   draft: ApiDocumentDraft | null;
   createdAt: string;
 }

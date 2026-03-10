@@ -432,6 +432,7 @@ export const httpClient = {
   },
 
   // --- Document Import APIs ---
+
   async uploadDocument(imageUri: string): Promise<ApiDocument> {
     const formData = new FormData();
     formData.append('file', {
@@ -455,11 +456,26 @@ export const httpClient = {
     return response.json();
   },
 
-  async extractDocument(documentId: string, text: string): Promise<ApiDocument> {
-    return postJson<ApiDocument>(`/documents/${documentId}/extract`, { text });
+  async getDocument(documentId: string): Promise<ApiDocument> {
+    return getJson<ApiDocument>(`/documents/${documentId}`);
   },
 
-  async updateDocumentDraft(documentId: string, draft: Partial<ApiDocumentDraft>): Promise<ApiDocument> {
+  async extractDocumentDraft(
+    documentId: string,
+    payload: { text: string },
+  ): Promise<ApiDocument> {
+    return postJson<ApiDocument>(`/documents/${documentId}/extract`, payload);
+  },
+
+  // backwards-compatible alias
+  async extractDocument(documentId: string, text: string): Promise<ApiDocument> {
+    return this.extractDocumentDraft(documentId, { text });
+  },
+
+  async updateDocumentDraft(
+    documentId: string,
+    draft: Partial<ApiDocumentDraft>,
+  ): Promise<ApiDocument> {
     return putJson<ApiDocument>(`/documents/${documentId}/draft`, { draft });
   },
 
