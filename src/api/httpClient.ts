@@ -286,6 +286,14 @@ export const httpClient = {
     return getJson<ApiInstructorProfile>('/instructors/me');
   },
 
+  async getPreferredRegions(): Promise<{ items: string[] }> {
+    return getJson<{ items: string[] }>('/instructors/me/preferred-regions');
+  },
+
+  async updatePreferredRegions(items: string[]): Promise<{ items: string[] }> {
+    return putJson<{ items: string[] }>('/instructors/me/preferred-regions', { items });
+  },
+
   async getAvailability(): Promise<ApiAvailabilitySlot[]> {
     return getJson<ApiAvailabilitySlot[]>('/availability/me');
   },

@@ -1,6 +1,7 @@
 import { Colors, Radius, Shadows } from '@/constants/theme';
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { apiClient } from '@/api/httpClient';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Check, X } from 'lucide-react-native';
 import { useProfile } from '../context/ProfileContext';
 import { REGION_SIDO_GU } from '../data/regionData';
@@ -16,6 +17,26 @@ const SIDO_LIST = REGION_SIDO_GU.map((r) => r.sido);
 export default function RegionSettingScreen() {
   const { selectedRegions, setSelectedRegions } = useProfile();
   const [selected, setSelected] = useState<Set<string>>(() => new Set(selectedRegions.map(toSidoOnly)));
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const loadRegions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { items } = await apiClient.getPreferredRegions();
+      const list = Array.isArray(items) ? items.map(toSidoOnly) : [];
+      setSelected(new Set(list));
+      setSelectedRegions(list);
+    } catch {
+      // 실패 시 기존 선택 상태 유지
+    } finally {
+      setLoading(false);
+    }
+  }, [setSelectedRegions]);
+
+  useEffect(() => {
+    loadRegions();
+  }, [loadRegions]);
 
   useEffect(() => {
     setSelected(new Set(selectedRegions.map(toSidoOnly)));
@@ -38,13 +59,30 @@ export default function RegionSettingScreen() {
     });
   };
 
-  const handleSave = () => {
-    const list = Array.from(selected);
-    setSelectedRegions(list);
-    Alert.alert('저장 완료', '희망 지역이 저장되었습니다.');
+  const handleSave = async () => {
+    const list = Array.from(selected).sort();
+    try {
+      setSaving(true);
+      await apiClient.updatePreferredRegions(list);
+      setSelectedRegions(list);
+      Alert.alert('저장 완료', '희망 지역이 저장되었습니다.');
+    } catch {
+      Alert.alert('저장 실패', '희망 지역을 저장하지 못했습니다. 다시 시도해주세요.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const selectedList = useMemo(() => Array.from(selected).sort(), [selected]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={Colors.brandHoney} />
+        <Text style={styles.loadingText}>희망 지역 불러오는 중...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -82,8 +120,8 @@ export default function RegionSettingScreen() {
             ))}
           </ScrollView>
         </View>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>저장</Text>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
+          <Text style={styles.saveButtonText}>{saving ? '저장 중...' : '저장'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -92,6 +130,8 @@ export default function RegionSettingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  centered: { justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 12, fontSize: 14, color: '#6B7280' },
   section: { flex: 1, padding: 16 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: Colors.foreground, marginBottom: 12 },
   tagContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
