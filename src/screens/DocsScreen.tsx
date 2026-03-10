@@ -140,7 +140,8 @@ export default function DocsScreen() {
                             <Text style={styles.emptyText}>표시할 계약이 없습니다.</Text>
                         ) : (
                             filteredContracts.map((c) => (
-                                <View key={c.contractId} style={styles.docCard}>
+                                <React.Fragment key={c.contractId}>
+                                    <View style={styles.docCard}>
                                     <View style={styles.docIcon}>
                                         <FileText color="#10B981" size={24} />
                                     </View>
@@ -158,6 +159,7 @@ export default function DocsScreen() {
                                         <Text style={styles.viewButtonText}>보기</Text>
                                     </TouchableOpacity>
                                 </View>
+                                </React.Fragment>
                             ))
                         )}
                     </>
