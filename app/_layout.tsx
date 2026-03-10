@@ -5,7 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { startTransition, useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
-import { setAuthFailureHandler } from '@/src/api/httpClient';
+import { httpClient, setAuthFailureHandler } from '@/src/api/httpClient';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ChatProvider } from '@/src/context/ChatContext';
 import { ProfileProvider } from '@/src/context/ProfileContext';
@@ -30,13 +30,35 @@ export default function RootLayout() {
     let mounted = true;
 
     const bootstrapAuth = async () => {
-      const token = await getAccessToken();
-      if (!mounted) {
-        return;
-      }
+      try {
+        const token = await getAccessToken();
+        if (!mounted) {
+          return;
+        }
 
-      setIsAuthenticated(Boolean(token));
-      setIsAuthReady(true);
+        if (!token) {
+          setIsAuthenticated(false);
+          setIsAuthReady(true);
+          return;
+        }
+
+        // 토큰이 있으면 /me 호출로 세션 유효성 검증 (내부에서 refresh/401 처리)
+        await httpClient.getMe();
+        if (!mounted) {
+          return;
+        }
+        setIsAuthenticated(true);
+      } catch {
+        if (!mounted) {
+          return;
+        }
+        // /me 또는 refresh 실패 → 비인증 상태로 간주
+        setIsAuthenticated(false);
+      } finally {
+        if (mounted) {
+          setIsAuthReady(true);
+        }
+      }
     };
 
     bootstrapAuth();
