@@ -298,6 +298,10 @@ export const httpClient = {
     return getJson<ApiAvailabilitySlot[]>('/availability/me');
   },
 
+  async upsertAvailability(body: { slots: Array<{ availableStartAt: string; availableEndAt: string }> }): Promise<ApiAvailabilitySlot[]> {
+    return putJson<ApiAvailabilitySlot[]>('/availability/me', body);
+  },
+
   async getLessons(): Promise<ApiLesson[]> {
     return getJson<ApiLesson[]>('/lessons');
   },

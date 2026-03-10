@@ -14,7 +14,6 @@ import { Calendar } from 'react-native-calendars';
 import { Plus } from 'lucide-react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { apiClient } from '../api/apiClient';
-import { putJson } from '@/src/api/httpClient';
 
 export type TimeSlot = { start: string; end: string };
 type AvailabilityMap = Record<string, TimeSlot[]>; // key: YYYY-MM-DD
@@ -210,7 +209,7 @@ export default function AvailabilitySettingsScreen() {
     const payloadSlots = buildPayloadSlots(next);
 
     try {
-      await putJson('/availability/me', { slots: payloadSlots });
+      await apiClient.upsertAvailability({ slots: payloadSlots });
       Alert.alert('등록 완료', '선택한 날짜의 가능시간이 저장되었습니다.');
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -341,7 +340,7 @@ export default function AvailabilitySettingsScreen() {
                         // 2) 백엔드에 전체 가용시간 상태를 다시 저장
                         const payloadSlots = buildPayloadSlots(next);
                         try {
-                          await putJson('/availability/me', { slots: payloadSlots });
+                          await apiClient.upsertAvailability({ slots: payloadSlots });
                           Alert.alert('삭제 완료', '선택한 날짜의 가능시간이 삭제되었습니다.');
                         } catch (error) {
                           // eslint-disable-next-line no-console
