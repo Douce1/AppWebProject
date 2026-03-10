@@ -36,6 +36,8 @@ export default function HomeScreen({ navigation }: any) {
   } = useSchedule();
   const { unreadCount, unreadMessages, markAsRead } = useChat();
 
+  const nonChatNotifications = notifications.filter(n => n.type !== '채팅 신규메시지');
+
   const today = new Date();
   const pad = (n: number) => n.toString().padStart(2, '0');
   const toLocalISOString = (d: Date) =>
@@ -62,6 +64,7 @@ export default function HomeScreen({ navigation }: any) {
   // Carousel state
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(TODAY_INDEX);
+  const currentIndexRef = useRef(TODAY_INDEX);
   const activeDate = DATE_LIST[currentIndex];
 
   // Scroll to a given index
@@ -69,6 +72,9 @@ export default function HomeScreen({ navigation }: any) {
     const clampedIndex = Math.max(0, Math.min(DATE_LIST.length - 1, index));
     flatListRef.current?.scrollToIndex({ index: clampedIndex, animated: true });
   }, []);
+
+  const scrollToPrev = useCallback(() => scrollToIndex(currentIndexRef.current - 1), [scrollToIndex]);
+  const scrollToNext = useCallback(() => scrollToIndex(currentIndexRef.current + 1), [scrollToIndex]);
 
   // Jump to today
   const goToToday = useCallback(() => scrollToIndex(TODAY_INDEX), [scrollToIndex]);
@@ -82,7 +88,9 @@ export default function HomeScreen({ navigation }: any) {
   // Track which page is currently visible
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
-      setCurrentIndex(viewableItems[0].index);
+      const idx = viewableItems[0].index;
+      currentIndexRef.current = idx;
+      setCurrentIndex(idx);
     }
   }).current;
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
@@ -136,7 +144,7 @@ export default function HomeScreen({ navigation }: any) {
       <View style={{ width, flex: 1, paddingHorizontal: 15 }}>
         {/* Date Navigation Row */}
         <View style={styles.dateNavRow}>
-          <TouchableOpacity onPress={() => scrollToIndex(currentIndex - 1)} style={styles.dateNavBtn}>
+          <TouchableOpacity onPress={scrollToPrev} style={styles.dateNavBtn}>
             <ChevronLeft size={22} color="#F3C742" />
           </TouchableOpacity>
           <TouchableOpacity onPress={goToToday} style={styles.dateNavCenter}>
@@ -145,7 +153,7 @@ export default function HomeScreen({ navigation }: any) {
             </Text>
             {dateStr !== todayStr && <Text style={styles.goTodayHint}>오늘로 이동</Text>}
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => scrollToIndex(currentIndex + 1)} style={styles.dateNavBtn}>
+          <TouchableOpacity onPress={scrollToNext} style={styles.dateNavBtn}>
             <ChevronRight size={22} color="#F3C742" />
           </TouchableOpacity>
         </View>
@@ -270,7 +278,7 @@ export default function HomeScreen({ navigation }: any) {
         </ScrollView>
       </View>
     );
-  }, [classes, readyToReportIds, endedClassIds, canEndClassIds, arrivedIds, canArriveIds, departedIds, reportedIds, todayStr, goToToday, handleClassAction, router, currentIndex, scrollToIndex]);
+  }, [classes, readyToReportIds, endedClassIds, canEndClassIds, arrivedIds, canArriveIds, departedIds, reportedIds, todayStr, goToToday, handleClassAction, router, scrollToPrev, scrollToNext]);
 
   // compute classes dict for CalendarStrip indicator
   const classesForDates = classes.reduce((acc, c) => {
@@ -288,9 +296,9 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.topBarIcons}>
           <TouchableOpacity onPress={() => setSidePanelVisible(true)} style={styles.settingsIconContainer}>
             <Bell color="#666" size={26} />
-            {notifications.filter(n => n.type !== '채팅 신규메시지').length + unreadMessages.length > 0 && (
+            {nonChatNotifications.length + unreadMessages.length > 0 && (
               <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>{notifications.filter(n => n.type !== '채팅 신규메시지').length + unreadMessages.length}</Text>
+                <Text style={styles.bellBadgeText}>{nonChatNotifications.length + unreadMessages.length}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -368,7 +376,7 @@ export default function HomeScreen({ navigation }: any) {
           <View style={styles.sidebarPanel}>
             <View style={styles.sidebarHeader}>
               <Text style={styles.sidebarTitle}>
-                알림 센터 ({notifications.filter(n => n.type !== '채팅 신규메시지').length + unreadMessages.length})
+                알림 센터 ({nonChatNotifications.length + unreadMessages.length})
               </Text>
               <TouchableOpacity onPress={() => setSidePanelVisible(false)}>
                 <X size={24} color="#333" />
@@ -391,7 +399,7 @@ export default function HomeScreen({ navigation }: any) {
                   <Text style={styles.notifTime}>{new Date(msg.sentAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
                 </TouchableOpacity>
               ))}
-              {notifications.filter(n => n.type !== '채팅 신규메시지').map((notif: any) => (
+              {nonChatNotifications.map((notif: any) => (
                 <TouchableOpacity
                   key={notif.id}
                   style={styles.notifItem}
@@ -406,7 +414,7 @@ export default function HomeScreen({ navigation }: any) {
                   <Text style={styles.notifTime}>{notif.time}</Text>
                 </TouchableOpacity>
               ))}
-              {notifications.filter(n => n.type !== '채팅 신규메시지').length === 0 && unreadMessages.length === 0 && (
+              {nonChatNotifications.length === 0 && unreadMessages.length === 0 && (
                 <Text style={styles.emptyText}>새로운 알림이 없습니다.</Text>
               )}
             </ScrollView>

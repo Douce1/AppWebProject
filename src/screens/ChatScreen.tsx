@@ -1,8 +1,8 @@
 import { Colors } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { Flame } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useCallback, useState } from 'react';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useChat } from '../context/ChatContext';
 import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
 import { NotificationTopBar } from '@/src/components/organisms/NotificationTopBar';
@@ -15,57 +15,47 @@ export default function ChatScreen({ navigation }: any) {
     const tabs = ['전체 메시지', '안읽은 메시지'];
     const selectedTab = tabs[selectedTabIndex];
 
-    // Filter rooms based on selected tab
-    const getFilteredRooms = () => {
+    const filteredRooms = useMemo(() => {
         if (selectedTab === '안읽은 메시지') {
             return chatRooms.filter(room => room.unreadCount > 0);
         }
         return chatRooms;
-    };
+    }, [chatRooms, selectedTab]);
 
-    const renderChatRooms = () => {
-        const rooms = getFilteredRooms();
-
-        if (rooms.length === 0) {
-            return (
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>
-                        {selectedTab === '안읽은 메시지' ? '안읽은 메시지가 없습니다.' : '참여 중인 채팅방이 없습니다.'}
-                    </Text>
+    const renderRoom = useCallback(({ item: room }: { item: typeof chatRooms[0] }) => (
+        <TouchableOpacity
+            style={styles.roomItem}
+            onPress={() => router.push({ pathname: '/chat-room', params: { roomId: room.roomId } } as any)}
+        >
+            <View style={styles.roomProfilePic}>
+                <Flame color="#9CA3AF" size={24} />
+            </View>
+            <View style={styles.roomInfo}>
+                <View style={styles.roomHeaderRow}>
+                    <Text style={styles.roomName}>{room.title ?? '주제 없음'}</Text>
+                    <Text style={styles.roomTime}>{new Date(room.lastMessage?.sentAt ?? room.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
                 </View>
-            );
-        }
+                <View style={styles.roomMessageRow}>
+                    <Text style={styles.roomLatestMessage} numberOfLines={1}>{room.lastMessage?.content ?? ''}</Text>
+                    {room.unreadCount > 0 && (
+                        <View style={styles.unreadBadge}>
+                            <Text style={styles.unreadText}>{room.unreadCount}</Text>
+                        </View>
+                    )}
+                </View>
+            </View>
+        </TouchableOpacity>
+    ), [router]);
 
-        return (
-            <ScrollView style={styles.chatScroll} contentContainerStyle={{ paddingBottom: 20 }}>
-                {rooms.map(room => (
-                    <TouchableOpacity
-                        key={room.roomId}
-                        style={styles.roomItem}
-                        onPress={() => router.push({ pathname: '/chat-room', params: { roomId: room.roomId } } as any)}
-                    >
-                        <View style={styles.roomProfilePic}>
-                            <Flame color="#9CA3AF" size={24} />
-                        </View>
-                        <View style={styles.roomInfo}>
-                            <View style={styles.roomHeaderRow}>
-                                <Text style={styles.roomName}>{room.title ?? '주제 없음'}</Text>
-                                <Text style={styles.roomTime}>{new Date(room.lastMessage?.sentAt ?? room.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
-                            </View>
-                            <View style={styles.roomMessageRow}>
-                                <Text style={styles.roomLatestMessage} numberOfLines={1}>{room.lastMessage?.content ?? ''}</Text>
-                                {room.unreadCount > 0 && (
-                                    <View style={styles.unreadBadge}>
-                                        <Text style={styles.unreadText}>{room.unreadCount}</Text>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
-        );
-    };
+    const keyExtractor = useCallback((item: typeof chatRooms[0]) => item.roomId, []);
+
+    const emptyComponent = useMemo(() => (
+        <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+                {selectedTab === '안읽은 메시지' ? '안읽은 메시지가 없습니다.' : '참여 중인 채팅방이 없습니다.'}
+            </Text>
+        </View>
+    ), [selectedTab]);
 
     return (
         <View style={styles.container}>
@@ -79,7 +69,14 @@ export default function ChatScreen({ navigation }: any) {
             />
 
             <View style={styles.contentContainer}>
-                {renderChatRooms()}
+                <FlatList
+                    data={filteredRooms}
+                    renderItem={renderRoom}
+                    keyExtractor={keyExtractor}
+                    ListEmptyComponent={emptyComponent}
+                    contentContainerStyle={filteredRooms.length === 0 ? { flex: 1 } : { paddingBottom: 20 }}
+                    removeClippedSubviews
+                />
             </View>
         </View>
     );

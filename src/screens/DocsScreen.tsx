@@ -193,28 +193,29 @@ export default function DocsScreen() {
                         ) : filteredContracts.length === 0 ? (
                             <Text style={styles.emptyText}>표시할 계약이 없습니다.</Text>
                         ) : (
-                            filteredContracts.map((c) => (
-                                <React.Fragment key={c.contractId}>
-                                    <View style={styles.docCard}>
-                                    <View style={styles.docIcon}>
-                                        <FileText color="#10B981" size={24} />
+                            filteredContracts.map((c) => {
+                                const dateStr = formatContractDate(c);
+                                return (
+                                    <View key={c.contractId} style={styles.docCard}>
+                                        <View style={styles.docIcon}>
+                                            <FileText color="#10B981" size={24} />
+                                        </View>
+                                        <View style={styles.docInfo}>
+                                            <Text style={styles.docTitle}>{c.title ?? `계약 ${c.contractId}`}</Text>
+                                            <Text style={styles.docDate}>
+                                                {dateStr}
+                                                {dateStr ? ' · ' : ''}{contractStatusLabel(c.status)}
+                                            </Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            style={styles.viewButton}
+                                            onPress={() => router.push(`/docs/contract?contractId=${encodeURIComponent(c.contractId)}`)}
+                                        >
+                                            <Text style={styles.viewButtonText}>보기</Text>
+                                        </TouchableOpacity>
                                     </View>
-                                    <View style={styles.docInfo}>
-                                        <Text style={styles.docTitle}>{c.title ?? `계약 ${c.contractId}`}</Text>
-                                        <Text style={styles.docDate}>
-                                            {formatContractDate(c)}
-                                            {formatContractDate(c) ? ' · ' : ''}{contractStatusLabel(c.status)}
-                                        </Text>
-                                    </View>
-                                    <TouchableOpacity
-                                        style={styles.viewButton}
-                                        onPress={() => router.push(`/docs/contract?contractId=${encodeURIComponent(c.contractId)}`)}
-                                    >
-                                        <Text style={styles.viewButtonText}>보기</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                </React.Fragment>
-                            ))
+                                );
+                            })
                         )}
                     </>
                 )}
