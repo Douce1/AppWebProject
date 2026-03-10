@@ -15,6 +15,15 @@ const SIDO_LIST = REGION_SIDO_GU.map((r) => r.sido);
 const formatEducation = (school: string, major: string, year: string) =>
   [school.trim(), major.trim(), year.trim()].filter(Boolean).join(', ');
 
+/** 휴대폰 번호 표시 포맷: "01021000008" -> "010-2100-0008" */
+function formatPhoneNumber(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 11) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+  return raw;
+}
+
 /** 한 줄 입력된 학교/전공/졸업연도로 파싱 (끝에 4자리 숫자 = 연도, 그 앞 = 전공, 나머지 = 학교) */
 function parseEducationLine(text: string): { schoolName: string; major: string; graduationYear: string } {
   const parts = text.split(',').map((p) => p.trim());
@@ -321,8 +330,8 @@ export default function InstructorProfileScreen() {
               <Phone color={Colors.brandInk} size={20} />
               <TextInput
                 style={styles.input}
-                value={phone}
-                onChangeText={setPhone}
+                value={formatPhoneNumber(phone)}
+                onChangeText={(text) => setPhone(text.replace(/\D/g, ''))}
                 placeholder="전화번호"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="phone-pad"
