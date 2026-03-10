@@ -1,5 +1,5 @@
-import { Colors, Radius, Shadows } from '@/constants/theme';
-import { apiClient } from '@/api/httpClient';
+import { Colors, Radius } from '@/constants/theme';
+import { apiClient } from '@/src/api/apiClient';
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Check, X } from 'lucide-react-native';
@@ -27,8 +27,11 @@ export default function RegionSettingScreen() {
       const list = Array.isArray(items) ? items.map(toSidoOnly) : [];
       setSelected(new Set(list));
       setSelectedRegions(list);
-    } catch {
-      // 실패 시 기존 선택 상태 유지
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      const message =
+        status != null ? `오류가 발생했습니다. (${status})` : '희망 지역을 불러오지 못했습니다. 다시 시도해주세요.';
+      Alert.alert('불러오기 실패', message);
     } finally {
       setLoading(false);
     }
@@ -87,7 +90,7 @@ export default function RegionSettingScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>희망 지역 ("시도"만 선택, 다중 선택 가능)</Text>
+        <Text style={styles.sectionTitle}>희망 지역 (&quot;시도&quot;만 선택, 다중 선택 가능)</Text>
         <View style={styles.tagContainer}>
           {SIDO_LIST.map((sido) => {
             const active = selected.has(sido);

@@ -99,8 +99,11 @@ export default function AvailabilitySettingsScreen() {
 
         setAvailability(next);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log('[AvailabilitySettingsScreen] failed to load availability', error);
+        if (!mounted) return;
+        const status = (error as { status?: number }).status;
+        const message =
+          status != null ? `오류가 발생했습니다. (${status})` : '가용시간을 불러오지 못했습니다. 다시 시도해주세요.';
+        Alert.alert('불러오기 실패', message);
       }
     };
 

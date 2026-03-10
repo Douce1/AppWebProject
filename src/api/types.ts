@@ -44,11 +44,15 @@ export interface ApiInstructorProfile {
   userId: string;
   name: string;
   email: string;
-  phone: string;
-  residenceArea: string;
-  certificates: string[];
-  majorField: string;
-  profileNote: string;
+  phone?: string;
+  residenceArea?: string;
+  photoUrl?: string | null;
+  /** 백엔드 InstructorEducationDto */
+  education?: { schoolName: string; major: string; graduationYear: string } | null;
+  /** 백엔드 InstructorCertificationDto[] */
+  certifications: { id: string; name: string; year: string }[];
+  majorField?: string;
+  profileNote?: string;
   isActive: boolean;
 }
 

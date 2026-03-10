@@ -95,15 +95,9 @@ export default function InstructorProfileScreen() {
         setName(profile.name ?? '');
         setEmail(profile.email ?? '');
         setPhone(profile.phone ?? '');
-        // residenceArea는 주소(시도)로 사용
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const anyProfile = profile as any;
-        setAddress(anyProfile.residenceArea ?? '');
+        setAddress(profile.residenceArea ?? '');
 
-        const edu = anyProfile.education as
-          | { schoolName?: string; major?: string; graduationYear?: string }
-          | null
-          | undefined;
+        const edu = profile.education;
         if (edu) {
           const eduState = {
             schoolName: edu.schoolName ?? '',
@@ -116,13 +110,12 @@ export default function InstructorProfileScreen() {
           setGraduationYear(eduState.graduationYear);
         }
 
-        const backendCerts = (anyProfile.certifications ??
-          []) as { id: string; name: string; year: string }[];
+        const backendCerts = profile.certifications ?? [];
         if (backendCerts.length > 0) {
           const mapped = backendCerts.map((c) => ({
             id: c.id,
             name: c.name,
-            year: c.year,
+            year: c.year ?? '',
           }));
           setCertifications(mapped);
           setSavedCertifications(mapped);
@@ -132,16 +125,19 @@ export default function InstructorProfileScreen() {
         }
 
         setSavedProfile({
-          photoUri: '', // photoUrl은 현재 UI에서 사용 안 함
+          photoUri: '',
           name: profile.name ?? '',
           email: profile.email ?? '',
           phone: profile.phone ?? '',
-          address: anyProfile.residenceArea ?? '',
+          address: profile.residenceArea ?? '',
         });
       } catch (error) {
-        // 프로필을 못 불러와도 화면은 빈 상태로 유지
-        // eslint-disable-next-line no-console
-        console.log('[InstructorProfileScreen] failed to load profile', error);
+        if (!mounted) return;
+        const message =
+          (error as { status?: number; message?: string }).status != null
+            ? `오류가 발생했습니다. (${(error as { status: number }).status})`
+            : '프로필을 불러오지 못했습니다. 다시 시도해주세요.';
+        Alert.alert('불러오기 실패', message);
       }
     };
 
