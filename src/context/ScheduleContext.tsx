@@ -173,11 +173,16 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         setCanEndClassIds(Array.from(canEndSet));
                     })
                     .catch(() => {
-                        // 이벤트/요청 정보를 못 가져와도 기본 동작(로컬 상태)만 유지
+                        if (!mounted) return;
+                        Alert.alert(
+                            '불러오기 실패',
+                            '수업 요청/출강 이벤트를 불러오지 못했습니다. 다시 시도해주세요.',
+                        );
                     });
             })
             .catch(() => {
-                // 실패 시에는 기존 빈 상태 유지
+                if (!mounted) return;
+                Alert.alert('불러오기 실패', '수업 목록을 불러오지 못했습니다. 다시 시도해주세요.');
             });
         return () => {
             mounted = false;
@@ -190,19 +195,42 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             return;
         }
 
+        const getLocationForCheckin = async (): Promise<{ lat: number; lng: number; accuracyMeters?: number } | null> => {
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') return null;
+                let position = await Location.getLastKnownPositionAsync();
+                if (!position) {
+                    position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Lowest });
+                }
+                if (!position?.coords) return null;
+                return {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                    accuracyMeters: position.coords.accuracy ?? undefined,
+                };
+            } catch {
+                return null;
+            }
+        };
+
         // 2. If can end class, handle end class
         if (canEndClassIds.includes(id) && !endedClassIds.includes(id)) {
             const requestId = lessonRequestMap[id];
             if (requestId) {
                 try {
+                    const coords = await getLocationForCheckin();
                     await apiClient.checkinByAssignment(requestId, {
                         eventType: 'FINISH',
                         idempotencyKey: `FINISH_${requestId}_${Date.now()}`,
-                        lat: 0,
-                        lng: 0,
+                        lat: coords?.lat ?? 0,
+                        lng: coords?.lng ?? 0,
+                        accuracyMeters: coords?.accuracyMeters,
+                        occurredAt: new Date().toISOString(),
                     });
                 } catch {
-                    // 백엔드 저장 실패 시에도 로컬 상태는 유지
+                    Alert.alert('전송 실패', '강의 종료 체크인을 서버에 보내지 못했습니다. 다시 시도해주세요.');
+                    return;
                 }
             }
 
@@ -220,14 +248,18 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const requestId = lessonRequestMap[id];
             if (requestId) {
                 try {
+                    const coords = await getLocationForCheckin();
                     await apiClient.checkinByAssignment(requestId, {
                         eventType: 'ARRIVE',
                         idempotencyKey: `ARRIVE_${requestId}_${Date.now()}`,
-                        lat: 0,
-                        lng: 0,
+                        lat: coords?.lat ?? 0,
+                        lng: coords?.lng ?? 0,
+                        accuracyMeters: coords?.accuracyMeters,
+                        occurredAt: new Date().toISOString(),
                     });
                 } catch {
-                    // 백엔드 저장 실패 시에도 로컬 상태는 유지
+                    Alert.alert('전송 실패', '도착 체크인을 서버에 보내지 못했습니다. 다시 시도해주세요.');
+                    return;
                 }
             }
 
@@ -265,7 +297,8 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                             occurredAt: new Date().toISOString(),
                         });
                     } catch {
-                        // 백엔드 저장 실패 시에도 로컬 상태는 유지
+                        Alert.alert('전송 실패', '출발 체크인을 서버에 보내지 못했습니다. 다시 시도해주세요.');
+                        return;
                     }
                 }
 
@@ -276,7 +309,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     setCanArriveIds(prev => [...prev, id]);
                 }, 3000);
 
-            } catch (error) {
+            } catch {
                 Alert.alert('오류', '위치를 가져오는데 실패했습니다.');
             }
         }
