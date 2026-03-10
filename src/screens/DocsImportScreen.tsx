@@ -4,7 +4,9 @@ import { Camera, Image as ImageIcon, X, ChevronRight, FileText } from 'lucide-re
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+// eslint-disable-next-line import/no-unresolved
 import * as DocumentPicker from 'expo-document-picker';
+// eslint-disable-next-line import/no-unresolved
 import TextRecognition from '@react-native-ml-kit/text-recognition';
 import { Colors, Radius, Shadows } from '@/constants/theme';
 import { httpClient } from '@/src/api/httpClient';
@@ -103,7 +105,7 @@ export default function DocsImportScreen() {
             
             // 2) Send text to the parsing API (if present)
             if (extractedText) {
-                await httpClient.extractDocument(doc.documentId, extractedText);
+                await httpClient.extractDocumentDraft(doc.documentId, { text: extractedText });
             }
             
             // Move to review screen with documentId
