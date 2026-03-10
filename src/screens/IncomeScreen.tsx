@@ -20,7 +20,7 @@ export default function IncomeScreen() {
                 header: { paddingTop: 50, paddingBottom: 15, paddingHorizontal: 20, backgroundColor: Colors.background, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
                 headerTitle: { fontSize: 24, fontWeight: 'bold', color: Colors.brandInk },
                 settingsIconContainer: { padding: 8 },
-                incomeCard: { backgroundColor: '#FFF0C2', margin: 15, borderRadius: 16, padding: 20, shadowColor: '#FFF0C2', shadowOpacity: 0.2, shadowRadius: 10, elevation: 4 },
+                incomeCard: { backgroundColor: '#FFF0C2', margin: 15, borderRadius: 16, borderTopRightRadius: 0, padding: 20, shadowColor: '#FFF0C2', shadowOpacity: 0.2, shadowRadius: 10, elevation: 4 },
                 incomeLabel: { color: Colors.brandInk, fontSize: 14, marginBottom: 4, fontWeight: '500' },
                 amountRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 5 },
                 amountText: { color: '#F3C742', fontSize: 32, fontWeight: 'bold' },

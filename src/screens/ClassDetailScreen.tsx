@@ -43,19 +43,33 @@ export default function ClassDetailScreen() {
 
     // Time logic for "강의 보고서 작성"
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
-    // Extract end time from "HH:MM - HH:MM"
     let hasEnded = false;
-    if (classInfo.time && classInfo.date) {
-        const endStr = classInfo.time.split('-')[1]?.trim();
-        if (endStr && classInfo.date === todayStr) {
-            const [endHour, endMin] = endStr.split(':').map(Number);
-            const endTime = new Date(now);
-            endTime.setHours(endHour, endMin, 0, 0);
+    let isDepartable = false;
+    const timeParts = classInfo.time ? classInfo.time.split('-') : [];
+    
+    if (timeParts.length === 2 && classInfo.date) {
+        const startStr = timeParts[0].trim();
+        const endStr = timeParts[1].trim();
+        
+        const [startH, startM] = startStr.split(':').map(Number);
+        const [endH, endM] = endStr.split(':').map(Number);
+        
+        const classStart = new Date(now);
+        classStart.setHours(startH, startM, 0, 0);
+        
+        const classEnd = new Date(now);
+        classEnd.setHours(endH, endM, 0, 0);
 
-            if (now > endTime) {
-                hasEnded = true;
+        if (classInfo.date === todayStr) {
+            if (now > classEnd) hasEnded = true;
+            
+            // Allow departing 2 hours before class until the class end
+            const validStart = new Date(classStart.getTime() - 2 * 60 * 60 * 1000);
+            if (now >= validStart && now <= classEnd) {
+                isDepartable = true;
             }
         } else if (classInfo.date < todayStr) {
             hasEnded = true;
@@ -124,7 +138,7 @@ export default function ClassDetailScreen() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top + 10, 50) }]}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <ArrowLeft size={24} color="#333" />
                 </TouchableOpacity>
@@ -236,7 +250,7 @@ export default function ClassDetailScreen() {
                         }
                     }}
                     activeOpacity={0.7}
-                    disabled={isReported || (isDeparted && !isCanArrive) || (isArrived && !isCanEndClass) || (isEndedClass && !isReadyToReport)}
+                    disabled={isReported || (isDeparted && !isCanArrive) || (isArrived && !isCanEndClass) || (isEndedClass && !isReadyToReport) || (!isDeparted && !isArrived && !isEndedClass && !isReadyToReport && !isDepartable)}
                 >
                     {isReported ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -341,11 +355,11 @@ export default function ClassDetailScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 15, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 15, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' },
     backButton: { padding: 5 },
     headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
     content: { padding: 20, flex: 1 },
-    card: { backgroundColor: 'white', borderRadius: 16, padding: 25, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+    card: { backgroundColor: 'white', borderRadius: 16, borderTopRightRadius: 0, padding: 25, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
     classTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827', marginBottom: 25 },
     infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
     infoText: { fontSize: 16, color: '#4B5563', marginLeft: 12 },
@@ -376,7 +390,7 @@ const styles = StyleSheet.create({
     submitReportText: { color: Colors.brandHoney, fontWeight: 'bold' },
 
     // Report viewer card
-    reportCard: { backgroundColor: '#F0FDF4', borderRadius: 12, padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#BBF7D0' },
+    reportCard: { backgroundColor: '#F0FDF4', borderRadius: 12, borderTopRightRadius: 0, padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#BBF7D0' },
     reportCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
     reportCardTitle: { fontSize: 15, fontWeight: '700', color: '#065F46', marginLeft: 8 },
     reportCardText: { fontSize: 14, color: '#1F2937', lineHeight: 22 },
@@ -386,6 +400,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         padding: 16,
         borderRadius: 12,
+        borderTopRightRadius: 0,
         backgroundColor: '#EFF6FF',
         borderWidth: 1,
         borderColor: '#BFDBFE',

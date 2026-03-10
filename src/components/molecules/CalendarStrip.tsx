@@ -63,6 +63,7 @@ const styles = StyleSheet.create({
         padding: 16,
         marginHorizontal: 16,
         borderRadius: Radius.card,
+        borderTopRightRadius: 0,
         ...Shadows.card,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -93,6 +94,7 @@ const styles = StyleSheet.create({
     },
     todayContainer: {
         backgroundColor: Colors.brandHoney,
+        borderTopRightRadius: 0,
     },
     dayText: {
         marginBottom: 4,

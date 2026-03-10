@@ -74,7 +74,7 @@ export default function ProfileScreen() {
                 </View>
             </View>
 
-            <TouchableOpacity activeOpacity={0.9} onPress={() => router.push('/(tabs)/profile/instructor')}>
+            <TouchableOpacity activeOpacity={0.9} onPress={() => router.push('/profile/instructor')}>
                 <ProfileHero
                     name={instructor ? `${instructor.name} 강사님` : '강사님'}
                     role={company ? `${company.name} 소속` : '프리랜서'}
@@ -85,7 +85,7 @@ export default function ProfileScreen() {
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>설정</Text>
 
-                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/instructor')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/instructor')}>
                     <View style={styles.menuIconContainer}>
                         <UserCircle color={Colors.brandInk} size={20} />
                     </View>
@@ -93,7 +93,7 @@ export default function ProfileScreen() {
                     <ChevronRight color="#CBD5E1" size={20} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/availability')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/availability')}>
                     <View style={styles.menuIconContainer}>
                         <Clock color={Colors.brandInk} size={20} />
                     </View>
@@ -101,7 +101,7 @@ export default function ProfileScreen() {
                     <ChevronRight color="#CBD5E1" size={20} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/career')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/career')}>
                     <View style={styles.menuIconContainer}>
                         <Briefcase color={Colors.brandInk} size={20} />
                     </View>
@@ -109,7 +109,7 @@ export default function ProfileScreen() {
                     <ChevronRight color="#CBD5E1" size={20} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/profile/region')}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/region')}>
                     <View style={styles.menuIconContainer}>
                         <MapPin color={Colors.brandInk} size={20} />
                     </View>
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     helperText: { fontSize: 12, color: '#9CA3AF', marginTop: 4 },
     section: { paddingHorizontal: 15, paddingVertical: 20, marginTop: 10 },
     sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#6B7280', marginBottom: 15 },
-    menuItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 15, borderRadius: 12, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 5, elevation: 1 },
+    menuItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 15, borderRadius: 12, borderTopRightRadius: 0, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 5, elevation: 1 },
     menuIconContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.brandCream, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
     menuText: { flex: 1, fontSize: 16, color: '#374151', fontWeight: '500' },
     menuTextWrap: { flex: 1 },

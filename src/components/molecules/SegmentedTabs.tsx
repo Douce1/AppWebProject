@@ -51,7 +51,8 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     activeTab: {
-        backgroundColor: Colors.card,
+        backgroundColor: '#F3C742',
+        borderTopRightRadius: 0,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,

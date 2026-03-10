@@ -1,4 +1,4 @@
-﻿import { Colors } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { Flame, Settings } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -97,9 +97,9 @@ const styles = StyleSheet.create({
     settingsIconContainer: { padding: 8 },
     tabContainer: { flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
     tabButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, marginRight: 8, backgroundColor: '#f0f0f0' },
-    activeTabButton: { backgroundColor: Colors.brandInk },
+    activeTabButton: { backgroundColor: '#F3C742', borderTopRightRadius: 0 },
     tabText: { fontSize: 13, color: '#666', fontWeight: '500' },
-    activeTabText: { color: 'white', fontWeight: 'bold' },
+    activeTabText: { color: Colors.brandInk, fontWeight: 'bold' },
     contentContainer: { flex: 1, padding: 15 },
     emptyContainer: { alignItems: 'center', marginTop: 50 },
     emptyText: { color: '#999', fontSize: 15 },
