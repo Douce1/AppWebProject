@@ -18,6 +18,7 @@ import {
   ApiLesson,
   ApiLessonReport,
   ApiLessonRequest,
+  ApiSettlement,
   AuthLoginResponse,
   LectureRecordView,
 } from './types';
@@ -481,5 +482,12 @@ export const httpClient = {
 
   async confirmDocument(documentId: string): Promise<void> {
     return postJson<void>(`/documents/${documentId}/confirm`);
+  },
+
+  // ---- Settlements API ----
+
+  async getSettlements(month?: string): Promise<ApiSettlement[]> {
+    const query = month ? `?month=${encodeURIComponent(month)}` : '';
+    return getJson<ApiSettlement[]>(`/settlements${query}`);
   },
 };

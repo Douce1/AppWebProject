@@ -246,6 +246,32 @@ export interface ApiChatMessageList {
   nextCursor: string | null;
 }
 
+// ---- Settlements API Types ----
+
+export type SettlementStatus = 'PENDING' | 'PAID' | 'CANCELLED';
+
+export interface ApiSettlement {
+  settlementId: string;
+  companyId: string;
+  instructorId: string;
+  lessonId: string;
+  month: string;          // "YYYY-MM"
+  totalHours: number;
+  hourlyRate: number;
+  grossAmount: number;    // 세전 지급액
+  status: SettlementStatus;
+  scheduledPayDate?: string | null;  // ISO date
+  paidAt?: string | null;            // ISO date
+}
+
+export interface ApiSettlementSummary {
+  month: string;          // "YYYY-MM"
+  totalGross: number;
+  totalHours: number;
+  count: number;
+  scheduledPayDate?: string | null;
+}
+
 // ---- Document Import API Types ----
 
 export interface ApiDocumentDraft {
