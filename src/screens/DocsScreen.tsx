@@ -1,5 +1,5 @@
 import { Colors, Radius, Shadows } from '@/constants/theme';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { Bell, Camera, FileText } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -71,7 +71,6 @@ export default function DocsScreen() {
                 })
                 .catch((error: unknown) => {
                     if (!mounted) return;
-                    // eslint-disable-next-line no-console
                     console.log('[DocsScreen] failed to load lesson-requests', error);
                     setRequestsError('수업 요청 목록을 불러오지 못했습니다.');
                     setLessonRequests([]);
@@ -104,6 +103,9 @@ export default function DocsScreen() {
         contractStatusFilter === 'ALL'
             ? contracts
             : contracts.filter((c) => c.status === contractStatusFilter);
+
+    const pendingLessonRequests = lessonRequests.filter((request) => request.status === 'PENDING');
+    const respondedLessonRequests = lessonRequests.filter((request) => request.status !== 'PENDING');
 
     const formatContractDate = (c: ApiContract): string => {
         if (c.effectiveFrom && c.effectiveTo) return `${c.effectiveFrom.slice(0, 10)} ~ ${c.effectiveTo.slice(0, 10)}`;
@@ -147,7 +149,6 @@ export default function DocsScreen() {
             if (e.status === 409) {
                 message = '이미 응답이 완료된 요청입니다.';
             }
-            // eslint-disable-next-line no-alert
             alert(message);
         } finally {
             setRespondingRequestId(null);
@@ -256,7 +257,9 @@ export default function DocsScreen() {
                                 <Bell color="#EF4444" size={16} />
                                 <Text style={styles.requestStatusText}>수업 요청 / 제안</Text>
                             </View>
-                            <Text style={styles.requestMetaText}>백엔드 연동 상태 기준</Text>
+                            <Text style={styles.requestMetaText}>
+                                대기 {pendingLessonRequests.length}건 · 전체 {lessonRequests.length}건
+                            </Text>
                         </View>
 
                         {requestsLoading && (
@@ -276,32 +279,43 @@ export default function DocsScreen() {
                             <Text style={styles.emptyText}>현재 대기 중인 수업 요청이 없습니다.</Text>
                         )}
 
-                        {!requestsLoading && !requestsError && lessonRequests.map((req) => {
+                        {!requestsLoading && !requestsError && pendingLessonRequests.length > 0 && (
+                            <View style={styles.requestSection}>
+                                <View style={styles.requestSectionHeader}>
+                                    <Text style={styles.requestSectionTitle}>대기 중인 요청</Text>
+                                    <Text style={styles.requestSectionCount}>{pendingLessonRequests.length}건</Text>
+                                </View>
+                                <Text style={styles.requestSectionDescription}>
+                                    아래 요청에 응답하면 일정과 계약 진행 상태가 갱신됩니다.
+                                </Text>
+                            </View>
+                        )}
+
+                        {!requestsLoading && !requestsError && pendingLessonRequests.length === 0 && lessonRequests.length > 0 && (
+                            <View style={styles.requestSection}>
+                                <View style={styles.requestSectionHeader}>
+                                    <Text style={styles.requestSectionTitle}>대기 중인 요청</Text>
+                                    <Text style={styles.requestSectionCount}>0건</Text>
+                                </View>
+                                <Text style={styles.emptyText}>현재 응답이 필요한 요청은 없습니다.</Text>
+                            </View>
+                        )}
+
+                        {!requestsLoading && !requestsError && pendingLessonRequests.map((req) => {
                             const isPending = req.status === 'PENDING';
-                            const isResponded =
-                                req.status === 'ACCEPTED' ||
-                                req.status === 'REJECTED' ||
-                                req.status === 'CANCELLED';
                             const requestedDate = req.requestedAt.slice(0, 10);
                             const isRejectingThis = rejectModalOpenFor === req.requestId;
                             const isBusy = respondingRequestId === req.requestId;
 
-                            const statusLabel =
-                                req.status === 'PENDING' ? '미응답' :
-                                    req.status === 'ACCEPTED' ? '수락됨' :
-                                        req.status === 'REJECTED' ? '거절됨' :
-                                            '취소됨';
-
                             return (
-                                <View key={req.requestId} style={styles.requestItemCard}>
+                                <View key={req.requestId} style={[styles.requestItemCard, styles.pendingRequestItemCard]}>
                                     <View style={styles.requestItemHeader}>
-                                        <Text style={styles.requestItemTitle}>요청 ID: {req.requestId}</Text>
-                                        <Text style={styles.requestItemStatus}>{statusLabel}</Text>
+                                        <Text style={styles.requestItemTitle}>수업 요청</Text>
+                                        <Text style={[styles.requestItemStatus, styles.pendingRequestItemStatus]}>미응답</Text>
                                     </View>
+                                    <Text style={styles.requestItemMeta}>요청 ID: {req.requestId}</Text>
+                                    <Text style={styles.requestItemMeta}>수업 ID: {req.lessonId}</Text>
                                     <Text style={styles.requestItemMeta}>요청일: {requestedDate}</Text>
-                                    {req.rejectionReason && (
-                                        <Text style={styles.requestItemMeta}>거절 사유: {req.rejectionReason}</Text>
-                                    )}
                                     {isPending && (
                                         <View style={styles.requestActions}>
                                             <TouchableOpacity
@@ -357,7 +371,43 @@ export default function DocsScreen() {
                                             </View>
                                         </View>
                                     )}
-                                    {isResponded && !isPending && (
+                                </View>
+                            );
+                        })}
+
+                        {!requestsLoading && !requestsError && respondedLessonRequests.length > 0 && (
+                            <View style={styles.requestHistorySection}>
+                                <View style={styles.requestSectionHeader}>
+                                    <Text style={styles.requestSectionTitle}>응답 완료 이력</Text>
+                                    <Text style={styles.requestSectionCount}>{respondedLessonRequests.length}건</Text>
+                                </View>
+                            </View>
+                        )}
+
+                        {!requestsLoading && !requestsError && respondedLessonRequests.map((req) => {
+                            const isResponded =
+                                req.status === 'ACCEPTED' ||
+                                req.status === 'REJECTED' ||
+                                req.status === 'CANCELLED';
+                            const requestedDate = req.requestedAt.slice(0, 10);
+                            const statusLabel =
+                                req.status === 'ACCEPTED' ? '수락됨' :
+                                    req.status === 'REJECTED' ? '거절됨' :
+                                        '취소됨';
+
+                            return (
+                                <View key={req.requestId} style={styles.requestItemCard}>
+                                    <View style={styles.requestItemHeader}>
+                                        <Text style={styles.requestItemTitle}>응답 완료 요청</Text>
+                                        <Text style={styles.requestItemStatus}>{statusLabel}</Text>
+                                    </View>
+                                    <Text style={styles.requestItemMeta}>요청 ID: {req.requestId}</Text>
+                                    <Text style={styles.requestItemMeta}>수업 ID: {req.lessonId}</Text>
+                                    <Text style={styles.requestItemMeta}>요청일: {requestedDate}</Text>
+                                    {req.rejectionReason && (
+                                        <Text style={styles.requestItemMeta}>거절 사유: {req.rejectionReason}</Text>
+                                    )}
+                                    {isResponded && (
                                         <Text style={styles.requestFooterNote}>
                                             응답이 서버에 저장되었습니다. 다시 들어와도 동일하게 표시됩니다.
                                         </Text>
@@ -419,6 +469,12 @@ const styles = StyleSheet.create({
     ddayText: { color: '#DC2626', fontWeight: '700', fontSize: 12 },
     requestStatusText: { marginLeft: 6, fontSize: 12, color: '#DC2626', fontWeight: '600' },
     requestMetaText: { fontSize: 11, color: '#9CA3AF' },
+    requestSection: { marginTop: 8, marginBottom: 8 },
+    requestHistorySection: { marginTop: 16, marginBottom: 8 },
+    requestSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    requestSectionTitle: { fontSize: 15, fontWeight: '700', color: '#111827' },
+    requestSectionCount: { fontSize: 12, fontWeight: '700', color: '#DC2626' },
+    requestSectionDescription: { fontSize: 12, color: '#6B7280', marginTop: 4 },
     requestTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 10 },
     requestBody: { backgroundColor: Colors.brandMint, borderRadius: 12, padding: 12, marginBottom: 12 },
     requestBullet: { fontSize: 13, color: Colors.brandInk, marginBottom: 4 },
@@ -436,9 +492,11 @@ const styles = StyleSheet.create({
     submitRejectButtonText: { color: Colors.brandHoney, fontWeight: '700', fontSize: 14 },
 
     requestItemCard: { marginTop: 10, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 12, backgroundColor: Colors.surfaceSoft },
+    pendingRequestItemCard: { backgroundColor: '#FFF7E8', borderWidth: 1, borderColor: '#F3C742' },
     requestItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
     requestItemTitle: { fontSize: 13, fontWeight: '600', color: '#111827' },
     requestItemStatus: { fontSize: 12, fontWeight: '600', color: Colors.brandInk },
+    pendingRequestItemStatus: { color: '#B45309' },
     requestItemMeta: { fontSize: 12, color: '#6B7280', marginTop: 2 },
     requestFooterNote: { fontSize: 11, color: '#9CA3AF', marginTop: 6 },
 });
