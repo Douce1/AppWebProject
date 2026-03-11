@@ -108,6 +108,10 @@ export interface ApiContract {
   currentVersion: number;
   /** 상세 표시용 (백엔드에서 내려주면 표시) */
   title?: string;
+  /** 수업명 (강의 제목) */
+  lessonTitle?: string;
+  /** 강사 이름 */
+  instructorName?: string;
   effectiveFrom?: string; // ISO date
   effectiveTo?: string;   // ISO date
 }
