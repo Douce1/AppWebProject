@@ -5,11 +5,10 @@ import { Bell, Camera, FileText } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { httpClient } from '../api/httpClient';
 import type { ApiContract, ApiLessonRequest, ContractStatus } from '../api/types';
 import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
 import { NotificationTopBar } from '@/src/components/organisms/NotificationTopBar';
-import { useSchedule } from '../context/ScheduleContext';
+import { useContractsQuery, useLessonRequestsQuery, useRespondToRequestMutation } from '../query/hooks';
 
 export default function DocsScreen() {
     const insets = useSafeAreaInsets();
@@ -20,67 +19,30 @@ export default function DocsScreen() {
     const initialTabIndex = params.targetTab ? tabs.indexOf(params.targetTab as string) : 0;
     const [selectedTabIndex, setSelectedTabIndex] = useState(initialTabIndex >= 0 ? initialTabIndex : 0);
     const selectedTab = tabs[selectedTabIndex];
-    const { fetchLessons } = useSchedule();
-
-    const [contracts, setContracts] = useState<ApiContract[]>([]);
-    const [contractsLoading, setContractsLoading] = useState(false);
-    const [contractsError, setContractsError] = useState<string | null>(null);
     const contractFilterStatuses: (ContractStatus | 'ALL')[] = ['ALL', 'SENT', 'INSTRUCTOR_SIGNED', 'FULLY_SIGNED'];
     const [contractStatusFilter, setContractStatusFilter] = useState<ContractStatus | 'ALL'>('ALL');
-
-    const [lessonRequests, setLessonRequests] = useState<ApiLessonRequest[]>([]);
-    const [requestsLoading, setRequestsLoading] = useState(false);
-    const [requestsError, setRequestsError] = useState<string | null>(null);
     const [rejectModalOpenFor, setRejectModalOpenFor] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState('');
-    const [respondingRequestId, setRespondingRequestId] = useState<string | null>(null);
+    const contractsQuery = useContractsQuery({ enabled: selectedTab === '계약' });
+    const lessonRequestsQuery = useLessonRequestsQuery({ enabled: selectedTab === '요청/제안' });
+    const respondToRequestMutation = useRespondToRequestMutation();
+    const contracts = contractsQuery.data ?? [];
+    const lessonRequests = lessonRequestsQuery.data ?? [];
+    const contractsLoading = contractsQuery.isLoading || contractsQuery.isFetching;
+    const requestsLoading = lessonRequestsQuery.isLoading || lessonRequestsQuery.isFetching;
+    const contractsError = contractsQuery.isError ? '계약 목록을 불러오지 못했습니다.' : null;
+    const requestsError = lessonRequestsQuery.isError ? '수업 요청 목록을 불러오지 못했습니다.' : null;
+    const respondingRequestId = respondToRequestMutation.variables?.requestId ?? null;
 
     useFocusEffect(
         useCallback(() => {
-            if (selectedTab !== '계약') return;
-            let mounted = true;
-            setContractsError(null);
-            setContractsLoading(true);
-            httpClient.getContracts()
-                .then((list) => {
-                    if (mounted) setContracts(list);
-                })
-                .catch(() => {
-                    if (mounted) {
-                        setContracts([]);
-                        setContractsError('계약 목록을 불러오지 못했습니다.');
-                    }
-                })
-                .finally(() => { if (mounted) setContractsLoading(false); });
-            return () => { mounted = false; };
-        }, [selectedTab])
-    );
-
-    // 이슈 #121: 요청/제안 탭을 열 때마다 항상 최신 목록으로 다시 불러오기 (useFocusEffect)
-    useFocusEffect(
-        useCallback(() => {
-            if (selectedTab !== '요청/제안') return;
-            let mounted = true;
-            setRequestsError(null);
-            setRequestsLoading(true);
-
-            httpClient.getLessonRequests()
-                .then((list) => {
-                    if (!mounted) return;
-                    setLessonRequests(list);
-                })
-                .catch((error: unknown) => {
-                    if (!mounted) return;
-                    console.log('[DocsScreen] failed to load lesson-requests', error);
-                    setRequestsError('수업 요청 목록을 불러오지 못했습니다.');
-                    setLessonRequests([]);
-                })
-                .finally(() => {
-                    if (mounted) setRequestsLoading(false);
-                });
-
-            return () => { mounted = false; };
-        }, [selectedTab])
+            if (selectedTab === '계약') {
+                contractsQuery.refetch();
+            }
+            if (selectedTab === '요청/제안') {
+                lessonRequestsQuery.refetch();
+            }
+        }, [contractsQuery, lessonRequestsQuery, selectedTab])
     );
 
     const contractStatusLabel = (s: ContractStatus): string => {
@@ -157,18 +119,13 @@ export default function DocsScreen() {
     };
 
     const handleRespond = async (requestId: string, action: 'ACCEPT' | 'REJECT', reason?: string) => {
-        if (respondingRequestId) return;
-        setRespondingRequestId(requestId);
+        if (respondToRequestMutation.isPending) return;
         try {
-            const updated = await httpClient.respondToRequest(requestId, {
+            await respondToRequestMutation.mutateAsync({
+                requestId,
                 action,
                 rejectionReason: reason?.trim() || undefined,
             });
-            setLessonRequests((prev) =>
-                prev.map((r) => (r.requestId === updated.requestId ? updated : r)),
-            );
-            // 수락/거절 성공 시 전체 일정도 동기화 (홈 대시보드에 즉시 띄우기 위함)
-            await fetchLessons();
 
             if (action === 'ACCEPT') {
                 Alert.alert(
@@ -194,7 +151,6 @@ export default function DocsScreen() {
             }
             alert(message);
         } finally {
-            setRespondingRequestId(null);
             setRejectModalOpenFor(null);
             setRejectReason('');
         }

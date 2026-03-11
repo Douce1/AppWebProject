@@ -1,5 +1,5 @@
 import { Colors, Shadows } from '@/constants/theme';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,9 +11,8 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { httpClient } from '../api/httpClient';
 import type { ApiLessonRequest } from '../api/types';
-import { useSchedule } from '../context/ScheduleContext';
+import { useLessonRequestsQuery, useRespondToRequestMutation } from '../query/hooks';
 
 function formatLessonSchedule(req: ApiLessonRequest): string {
   if (!req.startsAt) return '일정 정보 없음';
@@ -59,57 +58,32 @@ function lessonRequestStatusLabel(status: ApiLessonRequest['status']): string {
 export default function DocLessonRequestDetailScreen() {
   const params = useLocalSearchParams<{ requestId?: string | string[] }>();
   const router = useRouter();
-  const { fetchLessons } = useSchedule();
   const requestId = typeof params.requestId === 'string'
     ? params.requestId
     : Array.isArray(params.requestId)
       ? params.requestId[0]
       : undefined;
 
-  const [request, setRequest] = useState<ApiLessonRequest | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [rejectMode, setRejectMode] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const lessonRequestsQuery = useLessonRequestsQuery();
+  const respondToRequestMutation = useRespondToRequestMutation();
+  const request = useMemo(
+    () => (lessonRequestsQuery.data ?? []).find((item) => item.requestId === requestId) ?? null,
+    [lessonRequestsQuery.data, requestId],
+  );
+  const loading = lessonRequestsQuery.isLoading || lessonRequestsQuery.isFetching;
+  const error = lessonRequestsQuery.isError ? '요청 정보를 불러오지 못했습니다.' : null;
+  const submitting = respondToRequestMutation.isPending;
 
-  const loadRequest = useCallback(async () => {
-    if (!requestId) {
-      setError('요청 정보를 찾을 수 없습니다.');
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const list = await httpClient.getLessonRequests();
-      const matched = list.find((item) => item.requestId === requestId) ?? null;
-      setRequest(matched);
-      if (!matched) {
-        setError('요청 정보를 찾을 수 없습니다.');
-      }
-    } catch {
-      setError('요청 정보를 불러오지 못했습니다.');
-      setRequest(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [requestId]);
-
-  useEffect(() => {
-    loadRequest();
-  }, [loadRequest]);
-
-  const handleRespond = useCallback(async (action: 'ACCEPT' | 'REJECT') => {
+  const handleRespond = async (action: 'ACCEPT' | 'REJECT') => {
     if (!request || submitting) return;
-    setSubmitting(true);
     try {
-      const updated = await httpClient.respondToRequest(request.requestId, {
+      await respondToRequestMutation.mutateAsync({
+        requestId: request.requestId,
         action,
         rejectionReason: action === 'REJECT' ? rejectReason.trim() || undefined : undefined,
       });
-      setRequest(updated);
-      await fetchLessons();
       setRejectMode(false);
       setRejectReason('');
       if (action === 'ACCEPT') {
@@ -123,10 +97,8 @@ export default function DocLessonRequestDetailScreen() {
       const e = error as { status?: number; message?: string };
       const message = e.status === 409 ? '이미 응답이 완료된 요청입니다.' : (e.message ?? '요청 처리 중 오류가 발생했습니다.');
       Alert.alert('처리 실패', message);
-    } finally {
-      setSubmitting(false);
     }
-  }, [fetchLessons, rejectReason, request, router, submitting]);
+  };
 
   const requestedAtText = useMemo(() => {
     if (!request?.requestedAt) return '-';

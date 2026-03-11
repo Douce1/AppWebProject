@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query';
 import { httpClient } from '../api/httpClient';
 import type {
+  ApiAttendanceEvent,
   ApiChatMessageList,
   ApiChatRoom,
   ApiContract,
@@ -37,7 +38,7 @@ export function useLessonRequestsQuery(
 }
 
 export function useAttendanceEventsQuery(
-  options?: Omit<UseQueryOptions<any[]>, 'queryKey' | 'queryFn'>,
+  options?: Omit<UseQueryOptions<ApiAttendanceEvent[]>, 'queryKey' | 'queryFn'>,
 ) {
   return useQuery({
     queryKey: queryKeys.attendanceEvents,
