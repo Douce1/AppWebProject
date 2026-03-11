@@ -30,6 +30,7 @@ export default function ClassDetailScreen() {
     // Modal state for Report
     const [reportModalVisible, setReportModalVisible] = useState(false);
     const [reportText, setReportText] = useState('');
+    const [reportSubmitting, setReportSubmitting] = useState(false);
 
     // Modal state for Request Rejection
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
@@ -76,16 +77,27 @@ export default function ClassDetailScreen() {
         }
     }
 
-    const submitReport = () => {
+    const submitReport = async () => {
         if (!reportText.trim()) {
             Alert.alert('알림', '강의 보고서 내용을 입력해주세요.');
             return;
         }
-        submitClassReport(classInfo.id, reportText);
-        setReportModalVisible(false);
-        setReportText('');
-        Alert.alert('보고서 작성 완료', '강의 보고서 작성이 완료되었습니다.');
-        router.back();
+        setReportSubmitting(true);
+        try {
+            await submitClassReport(classInfo.id, reportText);
+            setReportModalVisible(false);
+            setReportText('');
+            Alert.alert('보고서 작성 완료', '강의 보고서가 서버에 저장되었습니다.');
+            router.back();
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : '보고서 저장에 실패했습니다.';
+            Alert.alert('저장 실패', message, [
+                { text: '취소', style: 'cancel' },
+                { text: '다시 시도', onPress: () => { void submitReport(); } },
+            ]);
+        } finally {
+            setReportSubmitting(false);
+        }
     };
 
     const handleAcceptRequest = async () => {
@@ -306,8 +318,14 @@ export default function ClassDetailScreen() {
                             <TouchableOpacity style={styles.cancelButton} onPress={() => setReportModalVisible(false)}>
                                 <Text style={styles.cancelButtonText}>취소</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.submitReportButton} onPress={submitReport}>
-                                <Text style={styles.submitReportText}>작성 완료</Text>
+                            <TouchableOpacity
+                                style={styles.submitReportButton}
+                                onPress={() => { void submitReport(); }}
+                                disabled={reportSubmitting}
+                            >
+                                <Text style={styles.submitReportText}>
+                                    {reportSubmitting ? '저장 중...' : '작성 완료'}
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     </View>

@@ -42,7 +42,7 @@ interface ScheduleContextType {
     classReports: Record<string, string>;
     getClassReport: (id: string) => string | null;
     handleClassAction: (id: string) => Promise<void>;
-    submitClassReport: (id: string, text: string) => void;
+    submitClassReport: (id: string, text: string) => Promise<void>;
     fetchLessons: () => Promise<void>;
 }
 
@@ -64,7 +64,7 @@ const ScheduleContext = createContext<ScheduleContextType>({
     classReports: {},
     getClassReport: () => null,
     handleClassAction: async () => { },
-    submitClassReport: () => { },
+    submitClassReport: async () => { },
     fetchLessons: async () => { }
 });
 
@@ -128,8 +128,21 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setClasses(mapped);
 
             try {
-                const [requests, events] = await Promise.all([apiClient.getLessonRequests(), apiClient.getAttendanceEvents()]);
+                const [requests, events, reports] = await Promise.all([
+                    apiClient.getLessonRequests(),
+                    apiClient.getAttendanceEvents(),
+                    apiClient.getLessonReports(),
+                ]);
                 if (!mounted) return;
+
+                // 서버 보고서 기반 초기화
+                const serverReportedIds = reports.map((r) => r.lessonId);
+                const serverReports: Record<string, string> = {};
+                reports.forEach((r) => {
+                    serverReports[r.lessonId] = r.content;
+                });
+                setReportedIds(serverReportedIds);
+                setClassReports(serverReports);
 
                 const accepted = requests.filter((r) => r.status === 'ACCEPTED');
                 const nextMap: Record<string, string> = {};
@@ -318,10 +331,27 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     };
 
-    const submitClassReport = (id: string, text: string) => {
+    const submitClassReport = async (id: string, text: string): Promise<void> => {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+
+        // Optimistic update
         setReportedIds(prev => [...prev, id]);
-        if (text.trim()) {
-            setClassReports(prev => ({ ...prev, [id]: text.trim() }));
+        setClassReports(prev => ({ ...prev, [id]: trimmed }));
+
+        try {
+            const report = await apiClient.submitLessonReport(id, trimmed);
+            // 서버 응답으로 정확한 content 반영
+            setClassReports(prev => ({ ...prev, [id]: report.content }));
+        } catch {
+            // 롤백
+            setReportedIds(prev => prev.filter(rid => rid !== id));
+            setClassReports(prev => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
+            throw new Error('보고서 저장에 실패했습니다. 다시 시도해주세요.');
         }
     };
 
