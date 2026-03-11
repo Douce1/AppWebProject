@@ -1,6 +1,6 @@
 import { Colors, Radius, Shadows } from '@/constants/theme';
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert, Pressable } from 'react-native';
 import { Bell, Camera, FileText } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -141,6 +141,13 @@ export default function DocsScreen() {
             (value): value is string => Boolean(value && value.trim()),
         );
         return parts.length > 0 ? parts.join(' · ') : '장소 정보 없음';
+    };
+
+    const lessonRequestStatusLabel = (status: ApiLessonRequest['status']): string => {
+        if (status === 'PENDING') return '미응답';
+        if (status === 'ACCEPTED') return '수락됨';
+        if (status === 'REJECTED') return '거절됨';
+        return '취소됨';
     };
 
     const formatContractDate = (c: ApiContract): string => {
@@ -339,7 +346,6 @@ export default function DocsScreen() {
 
                         {!requestsLoading && !requestsError && pendingLessonRequests.map((req) => {
                             const isPending = req.status === 'PENDING';
-                            const requestedDate = req.requestedAt.slice(0, 10);
                             const isRejectingThis = rejectModalOpenFor === req.requestId;
                             const isBusy = respondingRequestId === req.requestId;
                             const lessonTitle = req.lessonTitle?.trim() || '수업명 미정';
@@ -347,15 +353,21 @@ export default function DocsScreen() {
                             const lessonLocation = formatLessonLocation(req);
 
                             return (
-                                <View key={req.requestId} style={[styles.requestItemCard, styles.pendingRequestItemCard]}>
+                                <Pressable
+                                    key={req.requestId}
+                                    style={({ pressed }) => [
+                                        styles.requestItemCard,
+                                        styles.pendingRequestItemCard,
+                                        pressed && styles.requestItemCardPressed,
+                                    ]}
+                                    onPress={() => router.push(`/docs/request?requestId=${encodeURIComponent(req.requestId)}`)}
+                                >
                                     <View style={styles.requestItemHeader}>
                                         <Text style={styles.requestItemTitle}>{lessonTitle}</Text>
                                         <Text style={[styles.requestItemStatus, styles.pendingRequestItemStatus]}>미응답</Text>
                                     </View>
                                     <Text style={styles.requestItemPrimaryMeta}>{lessonSchedule}</Text>
                                     <Text style={styles.requestItemMeta}>{lessonLocation}</Text>
-                                    <Text style={styles.requestItemMeta}>요청일: {requestedDate}</Text>
-                                    <Text style={styles.requestItemFootnote}>요청 ID {req.requestId} · 수업 ID {req.lessonId}</Text>
                                     {isPending && (
                                         <View style={styles.requestActions}>
                                             <TouchableOpacity
@@ -411,7 +423,7 @@ export default function DocsScreen() {
                                             </View>
                                         </View>
                                     )}
-                                </View>
+                                </Pressable>
                             );
                         })}
 
@@ -429,25 +441,26 @@ export default function DocsScreen() {
                                 req.status === 'ACCEPTED' ||
                                 req.status === 'REJECTED' ||
                                 req.status === 'CANCELLED';
-                            const requestedDate = req.requestedAt.slice(0, 10);
                             const lessonTitle = req.lessonTitle?.trim() || '수업명 미정';
                             const lessonSchedule = formatLessonSchedule(req);
                             const lessonLocation = formatLessonLocation(req);
-                            const statusLabel =
-                                req.status === 'ACCEPTED' ? '수락됨' :
-                                    req.status === 'REJECTED' ? '거절됨' :
-                                        '취소됨';
+                            const statusLabel = lessonRequestStatusLabel(req.status);
 
                             return (
-                                <View key={req.requestId} style={styles.requestItemCard}>
+                                <Pressable
+                                    key={req.requestId}
+                                    style={({ pressed }) => [
+                                        styles.requestItemCard,
+                                        pressed && styles.requestItemCardPressed,
+                                    ]}
+                                    onPress={() => router.push(`/docs/request?requestId=${encodeURIComponent(req.requestId)}`)}
+                                >
                                     <View style={styles.requestItemHeader}>
                                         <Text style={styles.requestItemTitle}>{lessonTitle}</Text>
                                         <Text style={styles.requestItemStatus}>{statusLabel}</Text>
                                     </View>
                                     <Text style={styles.requestItemPrimaryMeta}>{lessonSchedule}</Text>
                                     <Text style={styles.requestItemMeta}>{lessonLocation}</Text>
-                                    <Text style={styles.requestItemMeta}>요청일: {requestedDate}</Text>
-                                    <Text style={styles.requestItemFootnote}>요청 ID {req.requestId} · 수업 ID {req.lessonId}</Text>
                                     {req.rejectionReason && (
                                         <Text style={styles.requestItemMeta}>거절 사유: {req.rejectionReason}</Text>
                                     )}
@@ -456,7 +469,7 @@ export default function DocsScreen() {
                                             응답이 서버에 저장되었습니다. 다시 들어와도 동일하게 표시됩니다.
                                         </Text>
                                     )}
-                                </View>
+                                </Pressable>
                             );
                         })}
                     </View>
@@ -536,6 +549,7 @@ const styles = StyleSheet.create({
     submitRejectButtonText: { color: Colors.brandHoney, fontWeight: '700', fontSize: 14 },
 
     requestItemCard: { marginTop: 10, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 12, backgroundColor: Colors.surfaceSoft },
+    requestItemCardPressed: { opacity: 0.92 },
     pendingRequestItemCard: { backgroundColor: '#FFF7E8', borderWidth: 1, borderColor: '#F3C742' },
     requestItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
     requestItemTitle: { fontSize: 15, fontWeight: '700', color: '#111827', flex: 1, marginRight: 8 },
@@ -543,6 +557,5 @@ const styles = StyleSheet.create({
     pendingRequestItemStatus: { color: '#B45309' },
     requestItemPrimaryMeta: { fontSize: 13, color: '#374151', marginTop: 2, fontWeight: '600' },
     requestItemMeta: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-    requestItemFootnote: { fontSize: 11, color: '#9CA3AF', marginTop: 6 },
     requestFooterNote: { fontSize: 11, color: '#9CA3AF', marginTop: 6 },
 });
