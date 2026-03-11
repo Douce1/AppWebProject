@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
-import { AlertTriangle, CheckCircle2, Plus, XCircle } from 'lucide-react-native';
+import { AlertTriangle, Plus } from 'lucide-react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { apiClient } from '../api/apiClient';
 import type { ApiMonthSubmission } from '../api/types';
@@ -161,42 +161,62 @@ export default function AvailabilitySettingsScreen() {
     setRangeText(start === end ? start : `${start} ~ ${end}`);
   }, [selectedDates]);
 
-  // 월 전체 출강 불가 토글
+  // 월 출강 불가 토글 (버튼: 캘린더 헤더 우측)
   const handleMonthUnavailableToggle = async () => {
     if (monthSubmissionUpdating) return;
     const next = !(monthSubmission?.isUnavailable ?? false);
+    const monthNum = parseInt(viewMonth.split('-')[1], 10);
 
-    const title = next ? '이번 달 출강 불가 제출' : '출강 불가 취소';
+    const title = next ? '출강 불가 제출' : '출강 불가 해제';
     const message = next
-      ? `${formatMonthLabel(viewMonth)}을 출강 불가로 제출하시겠습니까?\n운영팀에게 명시적으로 전달됩니다.`
-      : `${formatMonthLabel(viewMonth)} 출강 불가를 취소하시겠습니까?\n다시 출강 가능 상태가 됩니다.`;
+      ? `${monthNum}월 출강불가로 제출하시겠습니까?\n확인 시 등록되어 있던 출강가능 날짜는 지워집니다.`
+      : `${formatMonthLabel(viewMonth)} 출강 불가를 해제하시겠습니까?`;
 
     Alert.alert(title, message, [
-      { text: '아니오', style: 'cancel' },
+      { text: '취소', style: 'cancel' },
       {
         text: '확인',
         style: next ? 'destructive' : 'default',
         onPress: async () => {
           setMonthSubmissionUpdating(true);
-          // Optimistic
           const prev = monthSubmission;
+          const prevAvailability = availability;
+
+          // Optimistic: 상태 업데이트
           setMonthSubmission((s) =>
             s
               ? { ...s, isUnavailable: next, submittedAt: next ? new Date().toISOString() : null }
               : { month: viewMonth, isUnavailable: next, submittedAt: next ? new Date().toISOString() : null },
           );
+
+          // 출강불가 제출 시: 해당 월 슬롯 Optimistic 삭제
+          let nextAvailability = availability;
+          if (next) {
+            nextAvailability = Object.fromEntries(
+              Object.entries(availability).filter(([date]) => !date.startsWith(viewMonth)),
+            );
+            setAvailability(nextAvailability);
+          }
+
           try {
             const updated = await apiClient.updateMonthSubmission(viewMonth, next);
             setMonthSubmission(updated);
+
+            // 출강불가 제출 시: 해당 월 슬롯 백엔드 동기화
+            if (next) {
+              await apiClient.upsertAvailability({ slots: buildPayloadSlots(nextAvailability) });
+            }
+
             Alert.alert(
-              next ? '출강 불가 제출 완료' : '출강 불가 취소 완료',
+              next ? '출강 불가 제출 완료' : '출강 불가 해제 완료',
               next
                 ? `${formatMonthLabel(viewMonth)}이 출강 불가로 제출되었습니다.`
-                : `${formatMonthLabel(viewMonth)} 출강 불가가 취소되었습니다.`,
+                : `${formatMonthLabel(viewMonth)} 출강 불가가 해제되었습니다.`,
             );
           } catch {
             // 롤백
             setMonthSubmission(prev);
+            if (next) setAvailability(prevAvailability);
             Alert.alert('저장 실패', '월별 출강 상태 변경에 실패했습니다. 다시 시도해주세요.');
           } finally {
             setMonthSubmissionUpdating(false);
@@ -308,7 +328,6 @@ export default function AvailabilitySettingsScreen() {
 
   const currentSlots: TimeSlot[] = availability[focusedDate] ?? [];
   const canApply = selectedDates.length > 0;
-  const hasSelection = selectedDates.length > 0 || !!rangeText;
   const hasConfiguredInSelection = selectedDates.some(
     (date) => availability[date] && availability[date].length > 0,
   );
@@ -329,6 +348,18 @@ export default function AvailabilitySettingsScreen() {
     [availability],
   );
 
+  // 월별 요약 (등록된 가능시간 섹션용)
+  const slotsByMonth = useMemo(() => {
+    const map: Record<string, { dates: Set<string>; slots: number }> = {};
+    allConfiguredSlots.forEach(({ date }) => {
+      const ym = date.slice(0, 7);
+      if (!map[ym]) map[ym] = { dates: new Set(), slots: 0 };
+      map[ym].dates.add(date);
+      map[ym].slots++;
+    });
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+  }, [allConfiguredSlots]);
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -341,83 +372,60 @@ export default function AvailabilitySettingsScreen() {
         enableOnAndroid
         extraScrollHeight={40}
       >
-        {/* ── 월별 출강 상태 배너 ── */}
+        {/* ── 캘린더 섹션 (헤더에 출강불가 버튼 통합) ── */}
         <View style={styles.section}>
-          <View style={styles.monthBannerHeader}>
-            <Text style={styles.sectionTitle}>
-              월별 출강 상태
-            </Text>
-            <Text style={styles.monthLabel}>{formatMonthLabel(viewMonth)}</Text>
-          </View>
-
-          {monthSubmissionLoading ? (
-            <ActivityIndicator color={Colors.brandInk} style={{ marginVertical: 12 }} />
-          ) : (
-            <>
-              <View
-                style={[
-                  styles.statusBadge,
-                  isUnavailable ? styles.statusBadgeUnavailable : styles.statusBadgeAvailable,
-                ]}
-              >
-                {isUnavailable ? (
-                  <XCircle size={16} color="#DC2626" style={{ marginRight: 6 }} />
-                ) : (
-                  <CheckCircle2 size={16} color="#059669" style={{ marginRight: 6 }} />
-                )}
+          {/* 헤더: 가능 날짜 선택 + 출강 불가 버튼 */}
+          <View style={styles.calendarTitleRow}>
+            <View>
+              <Text style={styles.sectionTitle}>가능 날짜 선택</Text>
+              {monthSubmissionLoading ? (
+                <ActivityIndicator
+                  size="small"
+                  color={Colors.brandInk}
+                  style={{ alignSelf: 'flex-start', marginTop: 4 }}
+                />
+              ) : (
                 <Text
                   style={[
-                    styles.statusBadgeText,
-                    isUnavailable ? styles.statusBadgeTextUnavailable : styles.statusBadgeTextAvailable,
+                    styles.monthStatusText,
+                    isUnavailable && styles.monthStatusUnavailable,
                   ]}
                 >
-                  {isUnavailable
-                    ? '출강 불가 제출됨'
-                    : monthSubmission?.submittedAt == null
-                    ? '미제출 (출강 가능)'
-                    : '출강 가능'}
+                  {formatMonthLabel(viewMonth)} ·{' '}
+                  {isUnavailable ? '출강 불가' : '출강 가능'}
                 </Text>
-              </View>
-
-              {isUnavailable && (
-                <View style={styles.warningRow}>
-                  <AlertTriangle size={14} color="#B45309" style={{ marginRight: 6 }} />
-                  <Text style={styles.warningText}>
-                    출강 불가 상태에서는 slot을 등록해도 운영팀에게 불가로 표시됩니다.
-                  </Text>
-                </View>
               )}
+            </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.unavailableButton,
-                  isUnavailable ? styles.unavailableButtonCancel : styles.unavailableButtonSubmit,
-                  monthSubmissionUpdating && styles.unavailableButtonDisabled,
-                ]}
-                onPress={handleMonthUnavailableToggle}
-                disabled={monthSubmissionUpdating}
-              >
-                {monthSubmissionUpdating ? (
-                  <ActivityIndicator size="small" color={isUnavailable ? '#DC2626' : Colors.brandInk} />
-                ) : (
-                  <Text
-                    style={[
-                      styles.unavailableButtonText,
-                      isUnavailable ? styles.unavailableButtonTextCancel : styles.unavailableButtonTextSubmit,
-                    ]}
-                  >
-                    {isUnavailable
-                      ? `${formatMonthLabel(viewMonth)} 출강 불가 취소`
-                      : `${formatMonthLabel(viewMonth)} 출강 불가로 제출`}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
+            <TouchableOpacity
+              style={[
+                styles.unavailableChip,
+                isUnavailable && styles.unavailableChipActive,
+                (monthSubmissionUpdating || monthSubmissionLoading) &&
+                  styles.unavailableChipDisabled,
+              ]}
+              onPress={handleMonthUnavailableToggle}
+              disabled={monthSubmissionUpdating || monthSubmissionLoading}
+            >
+              {monthSubmissionUpdating ? (
+                <ActivityIndicator
+                  size="small"
+                  color={isUnavailable ? '#059669' : '#DC2626'}
+                />
+              ) : (
+                <Text
+                  style={[
+                    styles.unavailableChipText,
+                    isUnavailable && styles.unavailableChipTextActive,
+                  ]}
+                >
+                  {isUnavailable ? '불가 해제' : '출강 불가'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
-        {/* ── 기존 캘린더 섹션 ── */}
-        <View style={styles.section}>
+          {/* 출강 불가 경고 배너 */}
           {isUnavailable && (
             <View style={styles.calendarWarningBanner}>
               <AlertTriangle size={14} color="#92400E" style={{ marginRight: 6 }} />
@@ -426,7 +434,7 @@ export default function AvailabilitySettingsScreen() {
               </Text>
             </View>
           )}
-          <Text style={styles.sectionTitle}>가능 날짜 선택 (오늘 ~ 2개월)</Text>
+
           <Calendar
             minDate={minDate}
             maxDate={maxDate}
@@ -438,6 +446,7 @@ export default function AvailabilitySettingsScreen() {
           />
         </View>
 
+        {/* ── 가능시간 일괄 설정 ── */}
         <View style={styles.section}>
           <View style={styles.timeHeaderRow}>
             <View>
@@ -536,15 +545,17 @@ export default function AvailabilitySettingsScreen() {
           </View>
         </View>
 
+        {/* ── 등록된 가능시간 (월별 요약) ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>등록된 가능시간</Text>
-          {allConfiguredSlots.length === 0 ? (
+          <Text style={styles.sectionTitle}>등록된 가능시간 요약</Text>
+          {slotsByMonth.length === 0 ? (
             <Text style={styles.emptyText}>등록된 가능시간이 없습니다.</Text>
           ) : (
-            allConfiguredSlots.map((item, index) => (
-              <View key={`${item.date}-${index}`} style={styles.slotDisplayRow}>
-                <Text style={styles.slotDisplayText}>
-                  {item.date} {item.start}-{item.end}
+            slotsByMonth.map(([month, { dates, slots }]) => (
+              <View key={month} style={styles.monthlySummaryRow}>
+                <Text style={styles.monthlySummaryLabel}>{formatMonthLabel(month)}</Text>
+                <Text style={styles.monthlySummaryCount}>
+                  {dates.size}일 · {slots}개 슬롯
                 </Text>
               </View>
             ))
@@ -564,57 +575,38 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 16,
     borderRadius: 12,
+    marginBottom: 4,
   },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginBottom: 12 },
-  // 월별 상태 배너
-  monthBannerHeader: {
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#374151' },
+  // 캘린더 헤더
+  calendarTitleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  monthLabel: { fontSize: 14, fontWeight: '600', color: Colors.brandInk },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    marginBottom: 12,
-  },
-  statusBadgeAvailable: { backgroundColor: '#ECFDF5' },
-  statusBadgeUnavailable: { backgroundColor: '#FEF2F2' },
-  statusBadgeText: { fontSize: 14, fontWeight: '600' },
-  statusBadgeTextAvailable: { color: '#059669' },
-  statusBadgeTextUnavailable: { color: '#DC2626' },
-  warningRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FFFBEB',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  warningText: { fontSize: 12, color: '#92400E', flex: 1 },
-  unavailableButton: {
-    paddingVertical: 13,
-    borderRadius: 10,
-    alignItems: 'center',
+  monthStatusText: { fontSize: 12, color: '#6B7280', marginTop: 4 },
+  monthStatusUnavailable: { color: '#DC2626' },
+  // 출강 불가 pill 버튼
+  unavailableChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
     borderWidth: 1.5,
-  },
-  unavailableButtonSubmit: {
     borderColor: '#DC2626',
     backgroundColor: '#FEF2F2',
+    minWidth: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  unavailableButtonCancel: {
+  unavailableChipActive: {
     borderColor: '#059669',
     backgroundColor: '#ECFDF5',
   },
-  unavailableButtonDisabled: { opacity: 0.5 },
-  unavailableButtonText: { fontSize: 14, fontWeight: '700' },
-  unavailableButtonTextSubmit: { color: '#DC2626' },
-  unavailableButtonTextCancel: { color: '#059669' },
-  // 캘린더 경고
+  unavailableChipDisabled: { opacity: 0.5 },
+  unavailableChipText: { fontSize: 13, fontWeight: '600', color: '#DC2626' },
+  unavailableChipTextActive: { color: '#059669' },
+  // 캘린더 경고 배너
   calendarWarningBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -626,7 +618,7 @@ const styles = StyleSheet.create({
     borderColor: '#FDE68A',
   },
   calendarWarningText: { fontSize: 12, color: '#92400E', flex: 1 },
-  // 기존 스타일 유지
+  // 가능시간 설정
   timeHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   activeHint: { fontSize: 12, color: Colors.brandInk, fontWeight: '600' },
   rangeText: { fontSize: 12, color: '#4B5563', marginTop: 4 },
@@ -677,6 +669,15 @@ const styles = StyleSheet.create({
   applyButtonDisabled: { backgroundColor: '#E5E7EB' },
   applyButtonText: { color: Colors.brandInk, fontWeight: '700', marginLeft: 6 },
   applyButtonTextDisabled: { color: '#9CA3AF' },
-  slotDisplayRow: { paddingVertical: 8 },
-  slotDisplayText: { fontSize: 14, color: '#374151' },
+  // 월별 요약
+  monthlySummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  monthlySummaryLabel: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  monthlySummaryCount: { fontSize: 13, color: '#6B7280' },
 });
