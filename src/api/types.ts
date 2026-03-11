@@ -70,6 +70,11 @@ export interface ApiLesson {
   lectureTitle: string;
   region: string;
   museum: string;
+  venueName?: string;
+  venueAddress?: string;
+  venueLat?: number;
+  venueLng?: number;
+  kakaoPlaceId?: string;
   guideNotionUrl: string;
   payAmount: number;
   studentCount: number;
@@ -244,6 +249,61 @@ export interface ApiChatMessage {
 export interface ApiChatMessageList {
   items: ApiChatMessage[];
   nextCursor: string | null;
+}
+
+// ---- Monthly Availability Submission Types ----
+
+export interface ApiMonthSubmission {
+  month: string;           // "YYYY-MM"
+  isUnavailable: boolean;  // true = 해당 월 출강 불가 명시 제출
+  submittedAt: string | null; // ISO, 제출 시각 (미제출 시 null)
+}
+
+// ---- Push Notifications & Device Registration Types ----
+
+export interface ApiPushDevice {
+  deviceId: string;
+  instructorId: string;
+  pushToken: string;
+  platform: 'ios' | 'android' | 'web';
+  isActive: boolean;
+  registeredAt: string; // ISO
+}
+
+export interface ApiNotificationSettings {
+  instructorId: string;
+  pushEnabled: boolean;
+  lessonReminder: boolean;
+  paymentNotification: boolean;
+  chatNotification: boolean;
+}
+
+export type NotificationSettingsUpdate = Partial<Omit<ApiNotificationSettings, 'instructorId'>>;
+
+// ---- Settlements API Types ----
+
+export type SettlementStatus = 'PENDING' | 'PAID' | 'CANCELLED';
+
+export interface ApiSettlement {
+  settlementId: string;
+  companyId: string;
+  instructorId: string;
+  lessonId: string;
+  month: string;          // "YYYY-MM"
+  totalHours: number;
+  hourlyRate: number;
+  grossAmount: number;    // 세전 지급액
+  status: SettlementStatus;
+  scheduledPayDate?: string | null;  // ISO date
+  paidAt?: string | null;            // ISO date
+}
+
+export interface ApiSettlementSummary {
+  month: string;          // "YYYY-MM"
+  totalGross: number;
+  totalHours: number;
+  count: number;
+  scheduledPayDate?: string | null;
 }
 
 // ---- Document Import API Types ----

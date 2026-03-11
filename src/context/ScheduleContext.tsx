@@ -2,15 +2,22 @@ import * as Location from 'expo-location';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { apiClient } from '../api/apiClient';
+import { transitionPhase, type CheckinPhase } from '../services/checkinStateMachine';
+import { evaluateAllLessons, buildNotificationKey, type CurrentPosition } from '../services/gpsNotificationEngine';
 
 export interface ClassSession {
-    id: string;
-    title: string;
-    date: string; // YYYY-MM-DD format
-    location: string;
-    time: string;
-    isExternal?: boolean;
-    documentId?: string | null;
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD format
+  location: string;
+  time: string;
+  isExternal?: boolean;
+  documentId?: string | null;
+  venueName?: string;
+  venueAddress?: string;
+  venueLat?: number;
+  venueLng?: number;
+  kakaoPlaceId?: string;
 }
 
 export interface AppNotification {
@@ -42,8 +49,10 @@ interface ScheduleContextType {
     classReports: Record<string, string>;
     getClassReport: (id: string) => string | null;
     handleClassAction: (id: string) => Promise<void>;
-    submitClassReport: (id: string, text: string) => void;
+    submitClassReport: (id: string, text: string) => Promise<void>;
     fetchLessons: () => Promise<void>;
+    checkSmartAlerts: (position: CurrentPosition | null) => void;
+    checkinPhases: Record<string, CheckinPhase>;
 }
 
 const ScheduleContext = createContext<ScheduleContextType>({
@@ -64,8 +73,10 @@ const ScheduleContext = createContext<ScheduleContextType>({
     classReports: {},
     getClassReport: () => null,
     handleClassAction: async () => { },
-    submitClassReport: () => { },
-    fetchLessons: async () => { }
+    submitClassReport: async () => { },
+    fetchLessons: async () => { },
+    checkSmartAlerts: () => { },
+    checkinPhases: {},
 });
 
 export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -98,6 +109,10 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [readyToReportIds, setReadyToReportIds] = useState<string[]>([]);
     const [reportedIds, setReportedIds] = useState<string[]>([]);
     const [classReports, setClassReports] = useState<Record<string, string>>({});
+    // 중복 알림 방지 키 집합 (GPS 스마트 알림 엔진 연동)
+    const [firedNotificationKeys, setFiredNotificationKeys] = useState<Set<string>>(new Set());
+    // 수업별 체크인 단계 (상태 머신)
+    const [checkinPhases, setCheckinPhases] = useState<Record<string, CheckinPhase>>({});
 
     const getClassReport = (id: string): string | null => classReports[id] ?? null;
 
@@ -116,20 +131,38 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 )}:${pad(end.getMinutes())}`;
                 const location = `${lesson.region} ${lesson.museum}`;
                 return {
-                    id: lesson.lessonId,
-                    title: lesson.lectureTitle,
-                    date,
-                    location,
-                    time,
-                    isExternal: lesson.isExternal,
-                    documentId: lesson.documentId,
+                  id: lesson.lessonId,
+                  title: lesson.lectureTitle,
+                  date,
+                  location,
+                  time,
+                  isExternal: lesson.isExternal,
+                  documentId: lesson.documentId,
+                  venueName: lesson.venueName,
+                  venueAddress: lesson.venueAddress,
+                  venueLat: lesson.venueLat,
+                  venueLng: lesson.venueLng,
+                  kakaoPlaceId: lesson.kakaoPlaceId,
                 };
             });
             setClasses(mapped);
 
             try {
-                const [requests, events] = await Promise.all([apiClient.getLessonRequests(), apiClient.getAttendanceEvents()]);
+                const [requests, events, reports] = await Promise.all([
+                    apiClient.getLessonRequests(),
+                    apiClient.getAttendanceEvents(),
+                    apiClient.getLessonReports(),
+                ]);
                 if (!mounted) return;
+
+                // 서버 보고서 기반 초기화
+                const serverReportedIds = reports.map((r) => r.lessonId);
+                const serverReports: Record<string, string> = {};
+                reports.forEach((r) => {
+                    serverReports[r.lessonId] = r.content;
+                });
+                setReportedIds(serverReportedIds);
+                setClassReports(serverReports);
 
                 const accepted = requests.filter((r) => r.status === 'ACCEPTED');
                 const nextMap: Record<string, string> = {};
@@ -238,11 +271,9 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }
 
             setEndedClassIds(prev => [...prev, id]);
+            setReadyToReportIds(prev => [...prev, id]);
+            setCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'ARRIVED', 'FINISH') }));
             Alert.alert('강의 종료', '강의가 종료되었습니다.');
-
-            setTimeout(() => {
-                setReadyToReportIds(prev => [...prev, id]);
-            }, 3000);
             return;
         }
 
@@ -267,11 +298,9 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }
 
             setArrivedIds(prev => [...prev, id]);
+            setCanEndClassIds(prev => [...prev, id]);
+            setCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'DEPARTED', 'ARRIVE') }));
             Alert.alert('도착 완료', '도착이 등록되었습니다. 강의를 진행해주세요.');
-
-            setTimeout(() => {
-                setCanEndClassIds(prev => [...prev, id]);
-            }, 3000);
             return;
         }
 
@@ -306,11 +335,9 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 }
 
                 setDepartedIds(prev => [...prev, id]);
+                setCanArriveIds(prev => [...prev, id]);
+                setCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'IDLE', 'DEPART') }));
                 Alert.alert('출발 완료', '출발이 등록되었습니다. 안전하게 이동하세요.');
-
-                setTimeout(() => {
-                    setCanArriveIds(prev => [...prev, id]);
-                }, 3000);
 
             } catch {
                 Alert.alert('오류', '위치를 가져오는데 실패했습니다.');
@@ -318,10 +345,77 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     };
 
-    const submitClassReport = (id: string, text: string) => {
+    const submitClassReport = async (id: string, text: string): Promise<void> => {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+
+        // Optimistic update
         setReportedIds(prev => [...prev, id]);
-        if (text.trim()) {
-            setClassReports(prev => ({ ...prev, [id]: text.trim() }));
+        setClassReports(prev => ({ ...prev, [id]: trimmed }));
+
+        try {
+            const report = await apiClient.submitLessonReport(id, trimmed);
+            // 서버 응답으로 정확한 content 반영
+            setClassReports(prev => ({ ...prev, [id]: report.content }));
+        } catch {
+            // 롤백
+            setReportedIds(prev => prev.filter(rid => rid !== id));
+            setClassReports(prev => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
+            throw new Error('보고서 저장에 실패했습니다. 다시 시도해주세요.');
+        }
+    };
+
+    /**
+     * GPS 스마트 알림 엔진 연동:
+     * 앱 진입/재개 시 현재 위치를 받아 수업별 알림 필요 여부를 평가하고
+     * 중복 없이 알림을 추가합니다.
+     */
+    const checkSmartAlerts = (position: CurrentPosition | null) => {
+        const now = new Date();
+        const lessonsForAlert = classes.map((c) => ({
+            lessonId: c.id,
+            startsAt: c.date + 'T' + (c.time.split(' - ')[0] ?? '09:00') + ':00',
+            venueLat: c.venueLat ?? null,
+            venueLng: c.venueLng ?? null,
+        }));
+        const results = evaluateAllLessons(lessonsForAlert, position, firedNotificationKeys, now);
+        if (results.length === 0) return;
+
+        const newKeys = new Set(firedNotificationKeys);
+        const newNotifications: AppNotification[] = [];
+
+        results.forEach(({ lessonId, alerts }) => {
+            const cls = classes.find((c) => c.id === lessonId);
+            alerts.forEach((alertType) => {
+                const key = buildNotificationKey(lessonId, alertType, now);
+                if (!newKeys.has(key)) {
+                    newKeys.add(key);
+                    const title =
+                        alertType === 'DEPARTURE' ? '출발 필요'
+                        : alertType === 'LATE_RISK' ? '지각 위험'
+                        : '도착 가능';
+                    const body =
+                        alertType === 'ARRIVAL_PROXIMITY'
+                            ? `${cls?.title ?? '수업'} 목적지 근처에 도착했습니다.`
+                            : `${cls?.title ?? '수업'} 시작 전에 출발하세요.`;
+                    newNotifications.push({
+                        id: key,
+                        type: alertType,
+                        title,
+                        time: now.toISOString(),
+                        target: { lessonId },
+                    });
+                }
+            });
+        });
+
+        if (newNotifications.length > 0) {
+            setFiredNotificationKeys(newKeys);
+            setNotifications((prev) => [...prev, ...newNotifications]);
         }
     };
 
@@ -329,7 +423,8 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         <ScheduleContext.Provider value={{
             classes, addClass, notifications, removeNotification, isProposalResolved, proposalStatus, resolveProposal,
             departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds,
-            classReports, getClassReport, handleClassAction, submitClassReport, fetchLessons
+            classReports, getClassReport, handleClassAction, submitClassReport, fetchLessons,
+            checkSmartAlerts, checkinPhases,
         }}>
             {children}
         </ScheduleContext.Provider>

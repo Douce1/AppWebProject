@@ -18,8 +18,13 @@ import {
   ApiLesson,
   ApiLessonReport,
   ApiLessonRequest,
+  ApiMonthSubmission,
+  ApiNotificationSettings,
+  ApiPushDevice,
+  ApiSettlement,
   AuthLoginResponse,
   LectureRecordView,
+  NotificationSettingsUpdate,
 } from './types';
 import type { SubmitContractSignaturePayload } from './types';
 import {
@@ -313,6 +318,19 @@ export const httpClient = {
     return putJson<ApiAvailabilitySlot[]>('/availability/me', body);
   },
 
+  async getMonthSubmission(month: string): Promise<ApiMonthSubmission> {
+    return getJson<ApiMonthSubmission>(
+      `/availability/me/month-submission?month=${encodeURIComponent(month)}`,
+    );
+  },
+
+  async updateMonthSubmission(month: string, isUnavailable: boolean): Promise<ApiMonthSubmission> {
+    return putJson<ApiMonthSubmission>('/availability/me/month-submission', {
+      month,
+      isUnavailable,
+    });
+  },
+
   async getLessons(): Promise<ApiLesson[]> {
     return getJson<ApiLesson[]>('/lessons');
   },
@@ -397,6 +415,10 @@ export const httpClient = {
 
   async getLessonReports(): Promise<ApiLessonReport[]> {
     return getJson<ApiLessonReport[]>('/lesson-reports');
+  },
+
+  async submitLessonReport(lessonId: string, content: string): Promise<ApiLessonReport> {
+    return postJson<ApiLessonReport>(`/lessons/${encodeURIComponent(lessonId)}/report`, { content });
   },
 
   async getLectureHistory(): Promise<LectureRecordView[]> {
@@ -499,5 +521,35 @@ export const httpClient = {
 
   async confirmDocument(documentId: string): Promise<void> {
     return postJson<void>(`/documents/${documentId}/confirm`);
+  },
+
+  // ---- Settlements API ----
+
+  async getSettlements(month?: string): Promise<ApiSettlement[]> {
+    const query = month ? `?month=${encodeURIComponent(month)}` : '';
+    return getJson<ApiSettlement[]>(`/settlements${query}`);
+  },
+
+  // ---- Push Device Registration API ----
+
+  async registerPushDevice(body: {
+    pushToken: string;
+    platform: 'ios' | 'android' | 'web';
+  }): Promise<ApiPushDevice> {
+    return postJson<ApiPushDevice>('/push/devices', body);
+  },
+
+  async deregisterPushDevice(deviceId: string): Promise<void> {
+    return deleteJson<void>(`/push/devices/${encodeURIComponent(deviceId)}`);
+  },
+
+  // ---- Notification Settings API ----
+
+  async getNotificationSettings(): Promise<ApiNotificationSettings> {
+    return getJson<ApiNotificationSettings>('/me/notification-settings');
+  },
+
+  async updateNotificationSettings(body: NotificationSettingsUpdate): Promise<ApiNotificationSettings> {
+    return putJson<ApiNotificationSettings>('/me/notification-settings', body);
   },
 };
