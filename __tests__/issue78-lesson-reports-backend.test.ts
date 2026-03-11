@@ -209,7 +209,7 @@ describe('optimisticAdd', () => {
 
     test('T19 — 원본 배열/객체 불변', () => {
         const ids = ['L000'];
-        const reports = { L000: '기존' };
+        const reports: Record<string, string> = { L000: '기존' };
         optimisticAdd(ids, reports, 'L001', '새');
         expect(ids).toHaveLength(1);
         expect(reports['L001']).toBeUndefined();

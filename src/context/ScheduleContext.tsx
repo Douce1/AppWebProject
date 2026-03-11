@@ -237,9 +237,10 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // 2. If can end class, handle end class
         if (canEndClassIds.includes(id) && !endedClassIds.includes(id)) {
             const requestId = lessonRequestMap[id];
+            let coords: Awaited<ReturnType<typeof getLocationForCheckin>> = null;
             if (requestId) {
                 try {
-                    const coords = await getLocationForCheckin();
+                    coords = await getLocationForCheckin();
                     await apiClient.checkinByAssignment(requestId, {
                         eventType: 'FINISH',
                         idempotencyKey: `FINISH_${requestId}_${Date.now()}`,
@@ -280,9 +281,10 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // 3. If can arrive, handle arrive
         if (canArriveIds.includes(id) && !arrivedIds.includes(id)) {
             const requestId = lessonRequestMap[id];
+            let coords: Awaited<ReturnType<typeof getLocationForCheckin>> = null;
             if (requestId) {
                 try {
-                    const coords = await getLocationForCheckin();
+                    coords = await getLocationForCheckin();
                     await apiClient.checkinByAssignment(requestId, {
                         eventType: 'ARRIVE',
                         idempotencyKey: `ARRIVE_${requestId}_${Date.now()}`,

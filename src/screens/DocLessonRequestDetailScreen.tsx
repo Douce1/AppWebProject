@@ -90,7 +90,13 @@ export default function DocLessonRequestDetailScreen() {
         Alert.alert(
           '수락 완료',
           '요청을 수락하여 새로운 계약서가 발송되었습니다.',
-          [{ text: '계약 확인하기', onPress: () => router.replace('/docs?targetTab=계약' as any) }],
+          [{
+            text: '계약 확인하기',
+            onPress: () => router.replace({
+              pathname: '/(tabs)/docs',
+              params: { targetTab: '계약' },
+            }),
+          }],
         );
       }
     } catch (error: unknown) {

@@ -21,6 +21,7 @@ export default function DocsImportScreen() {
     const [errorMessage, setErrorMessage] = useState('');
     const [isPdf, setIsPdf] = useState(false);
     const [pdfFileName, setPdfFileName] = useState('');
+    const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
 
     const pickImage = async (useCamera: boolean) => {
         try {
@@ -54,6 +55,7 @@ export default function DocsImportScreen() {
                 setErrorMessage('');
                 setIsPdf(false);
                 setPdfFileName('');
+                setUploadedDocumentId(null);
             }
         } catch (error) {
             console.error('Image picking error:', error);
@@ -74,6 +76,7 @@ export default function DocsImportScreen() {
                 setPdfFileName(result.assets[0].name);
                 setOcrFailed(false);
                 setErrorMessage('');
+                setUploadedDocumentId(null);
             }
         } catch (error) {
             console.error('Document picking error:', error);
@@ -85,32 +88,48 @@ export default function DocsImportScreen() {
         if (!imageUri) return;
 
         setIsUploading(true);
+        let documentId = uploadedDocumentId;
         try {
-            let extractedText = '';
-
-            if (!isPdf) {
-                const recognizeResult = await TextRecognition.recognize(imageUri);
-                extractedText = recognizeResult.text?.trim() || '';
-
-                if (!extractedText) {
-                    setOcrFailed(true);
-                    setErrorMessage('이미지에서 글자를 찾을 수 없습니다.\n다시 촬영하시거나 직접 입력해주세요.');
-                    setIsUploading(false);
-                    return;
-                }
-            }
-
-            // 1) Upload image/document to get documentId
             const mimeType = isPdf ? 'application/pdf' : 'image/jpeg';
             const fileName = isPdf ? (pdfFileName || 'document.pdf') : 'document.jpg';
             const documentType = isPdf ? 'CONTRACT_PDF' : 'CONTRACT_IMAGE';
-            const doc = await httpClient.uploadDocument(imageUri, mimeType, fileName, documentType);
+
+            if (!documentId) {
+                const doc = await httpClient.uploadDocument(
+                    imageUri,
+                    mimeType,
+                    fileName,
+                    documentType,
+                );
+                documentId = doc.documentId;
+                setUploadedDocumentId(documentId);
+            }
+
+            let extractedText = '';
+            if (!isPdf) {
+                const recognizeResult = await TextRecognition.recognize(imageUri);
+                extractedText = recognizeResult.text?.trim() || '';
+            }
+
+            if (!isPdf && !extractedText) {
+                setOcrFailed(true);
+                setErrorMessage('이미지에서 글자를 찾을 수 없습니다.\n다시 촬영하시거나 직접 입력해주세요.');
+                return;
+            }
 
             // 2) Send to the parsing API (server takes care of PDF text extraction if ocrText is omitted)
-            await httpClient.extractDocumentDraft(doc.documentId, { ocrText: extractedText || undefined });
+            await httpClient.extractDocumentDraft(documentId, {
+                ocrText: extractedText || undefined,
+            });
 
             // Move to review screen with documentId
-            router.push(`/docs/review?documentId=${doc.documentId}&imageUri=${encodeURIComponent(imageUri)}` as any);
+            router.push({
+                pathname: '/docs/review',
+                params: {
+                    documentId,
+                    imageUri,
+                },
+            });
         } catch (error: any) {
             console.error('OCR/Upload error:', error);
             setOcrFailed(true);
@@ -164,7 +183,26 @@ export default function DocsImportScreen() {
                                     <TouchableOpacity style={styles.retakeButtonSmall} onPress={() => { setOcrFailed(false); setImageUri(null); }}>
                                         <Text style={styles.retakeButtonTextSmall}>다시 선택하기</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity style={styles.manualEntryButton} onPress={() => router.push('/docs/review' as any)}>
+                                    <TouchableOpacity
+                                        style={styles.manualEntryButton}
+                                        onPress={() => {
+                                            if (!uploadedDocumentId) {
+                                                Alert.alert(
+                                                    '문서 업로드 필요',
+                                                    '문서 업로드가 완료되지 않아 직접 입력을 이어갈 수 없습니다. 다시 시도해주세요.',
+                                                );
+                                                return;
+                                            }
+
+                                            router.push({
+                                                pathname: '/docs/review',
+                                                params: {
+                                                    documentId: uploadedDocumentId,
+                                                    imageUri,
+                                                },
+                                            });
+                                        }}
+                                    >
                                         <Text style={styles.manualEntryButtonText}>직접 입력하기</Text>
                                     </TouchableOpacity>
                                 </View>

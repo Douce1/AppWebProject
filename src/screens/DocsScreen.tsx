@@ -1,5 +1,5 @@
 import { Colors, Radius, Shadows } from '@/constants/theme';
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert, Pressable } from 'react-native';
 import { Bell, Camera, FileText } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -9,15 +9,20 @@ import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
 import { NotificationTopBar } from '@/src/components/organisms/NotificationTopBar';
 import { useContractsQuery, useLessonRequestsQuery, useRespondToRequestMutation } from '../query/hooks';
 
+const DOCS_TABS = ['서류', '계약', '요청/제안'] as const;
+
 export default function DocsScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const params = useLocalSearchParams();
+    const params = useLocalSearchParams<{ targetTab?: string | string[] }>();
+    const targetTab = typeof params.targetTab === 'string'
+        ? params.targetTab
+        : Array.isArray(params.targetTab)
+          ? params.targetTab[0]
+          : undefined;
 
-    const tabs = ['서류', '계약', '요청/제안'];
-    const initialTabIndex = params.targetTab ? tabs.indexOf(params.targetTab as string) : 0;
-    const [selectedTabIndex, setSelectedTabIndex] = useState(initialTabIndex >= 0 ? initialTabIndex : 0);
-    const selectedTab = tabs[selectedTabIndex];
+    const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+    const selectedTab = DOCS_TABS[selectedTabIndex];
     const contractFilterStatuses: (ContractStatus | 'ALL')[] = ['ALL', 'SENT', 'INSTRUCTOR_SIGNED', 'FULLY_SIGNED'];
     const [contractStatusFilter, setContractStatusFilter] = useState<ContractStatus | 'ALL'>('ALL');
     const [rejectModalOpenFor, setRejectModalOpenFor] = useState<string | null>(null);
@@ -32,6 +37,17 @@ export default function DocsScreen() {
     const contractsError = contractsQuery.isError ? '계약 목록을 불러오지 못했습니다.' : null;
     const requestsError = lessonRequestsQuery.isError ? '수업 요청 목록을 불러오지 못했습니다.' : null;
     const respondingRequestId = respondToRequestMutation.variables?.requestId ?? null;
+
+    useEffect(() => {
+        if (!targetTab) {
+            return;
+        }
+
+        const nextIndex = DOCS_TABS.indexOf(targetTab as (typeof DOCS_TABS)[number]);
+        if (nextIndex >= 0) {
+            setSelectedTabIndex(nextIndex);
+        }
+    }, [targetTab]);
 
     const contractStatusLabel = (s: ContractStatus): string => {
         const map: Record<ContractStatus, string> = {
@@ -150,7 +166,7 @@ export default function DocsScreen() {
 
             {/* Top Tabs (Segmented) */}
             <SegmentedTabs
-                tabs={tabs}
+                tabs={[...DOCS_TABS]}
                 activeIndex={selectedTabIndex}
                 onChange={setSelectedTabIndex}
             />
@@ -165,7 +181,7 @@ export default function DocsScreen() {
                         {/* 외부 계약서 등록 CTA 카드 */}
                         <TouchableOpacity 
                             style={styles.importCard} 
-                            onPress={() => router.push('/docs/import' as any)}
+                            onPress={() => router.push({ pathname: '/docs/import' })}
                         >
                             <View style={styles.importIconContainer}>
                                 <Camera color={Colors.brandInk} size={24} />
@@ -226,7 +242,10 @@ export default function DocsScreen() {
                                         </View>
                                         <TouchableOpacity
                                             style={styles.viewButton}
-                                            onPress={() => router.push(`/docs/contract?contractId=${encodeURIComponent(c.contractId)}`)}
+                                            onPress={() => router.push({
+                                                pathname: '/(tabs)/docs/contract',
+                                                params: { contractId: c.contractId },
+                                            })}
                                         >
                                             <Text style={styles.viewButtonText}>보기</Text>
                                         </TouchableOpacity>
@@ -304,7 +323,10 @@ export default function DocsScreen() {
                                         styles.pendingRequestItemCard,
                                         pressed && styles.requestItemCardPressed,
                                     ]}
-                                    onPress={() => router.push(`/docs/request?requestId=${encodeURIComponent(req.requestId)}`)}
+                                    onPress={() => router.push({
+                                        pathname: './request',
+                                        params: { requestId: req.requestId },
+                                    })}
                                 >
                                     <View style={styles.requestItemHeader}>
                                         <Text style={styles.requestItemTitle}>{lessonTitle}</Text>
@@ -397,7 +419,10 @@ export default function DocsScreen() {
                                         styles.requestItemCard,
                                         pressed && styles.requestItemCardPressed,
                                     ]}
-                                    onPress={() => router.push(`/docs/request?requestId=${encodeURIComponent(req.requestId)}`)}
+                                    onPress={() => router.push({
+                                        pathname: './request',
+                                        params: { requestId: req.requestId },
+                                    })}
                                 >
                                     <View style={styles.requestItemHeader}>
                                         <Text style={styles.requestItemTitle}>{lessonTitle}</Text>

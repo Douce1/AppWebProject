@@ -118,6 +118,10 @@ interface RequestOptions extends RequestInit {
   retryOnUnauthorized?: boolean;
 }
 
+function isFormDataBody(body: RequestInit['body'] | null | undefined): body is FormData {
+  return typeof FormData !== 'undefined' && body instanceof FormData;
+}
+
 let authFailureHandler: AuthFailureHandler = () => {
   router.replace('/login');
 };
@@ -178,7 +182,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   } = options;
 
   const requestHeaders = new Headers(headers);
-  if (init.body && !requestHeaders.has('Content-Type')) {
+  if (init.body && !isFormDataBody(init.body) && !requestHeaders.has('Content-Type')) {
     requestHeaders.set('Content-Type', 'application/json');
   }
 
@@ -541,27 +545,10 @@ export const httpClient = {
     if (documentType) {
       formData.append('type', documentType);
     }
-
-    const accessToken = await getAccessToken();
-    const response = await fetch(`${API_BASE_URL}/documents/upload`, {
+    return requestJson<ApiDocument>('/documents/upload', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: formData as any,
+      body: formData,
     });
-
-    if (!response.ok) {
-      const err = await buildApiError(response, '/documents');
-      // eslint-disable-next-line no-console
-      console.log('[httpClient] upload error', {
-        status: err.status,
-        code: err.code,
-        message: err.message,
-      });
-      throw err;
-    }
-    return response.json();
   },
 
   async getDocument(documentId: string): Promise<ApiDocument> {

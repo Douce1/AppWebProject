@@ -73,10 +73,23 @@ export default function AppSettingsScreen() {
     };
 
     const handleConfirmLogout = async () => {
+        let pushCleanupFailed = false;
+
         try {
             await deregisterPushDevice();
+        } catch {
+            pushCleanupFailed = true;
+        }
+
+        try {
             await clearTokens();
             router.replace('/login');
+            if (pushCleanupFailed) {
+                Alert.alert(
+                    '로그아웃 완료',
+                    '세션은 종료되었지만 푸시 디바이스 해제는 완료되지 않았습니다.',
+                );
+            }
         } catch {
             Alert.alert('로그아웃 실패', '로그아웃 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
         }

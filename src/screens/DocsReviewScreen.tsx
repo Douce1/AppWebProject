@@ -8,14 +8,35 @@ import { httpClient } from '@/src/api/httpClient';
 import type { ApiDocumentDraft } from '@/src/api/types';
 import { useSchedule } from '../context/ScheduleContext';
 
+function getSingleParam(
+    value: string | string[] | undefined,
+): string | undefined {
+    return typeof value === 'string'
+        ? value
+        : Array.isArray(value)
+          ? value[0]
+          : undefined;
+}
+
+function toEditableDateTime(value: string | null | undefined): string {
+    if (!value) {
+        return '';
+    }
+
+    return value.replace('T', ' ').trim().slice(0, 16);
+}
+
 export default function DocsReviewScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const params = useLocalSearchParams();
+    const params = useLocalSearchParams<{
+        documentId?: string | string[];
+        imageUri?: string | string[];
+    }>();
     
     const { fetchLessons, classes } = useSchedule();
-    const documentId = params.documentId as string;
-    const imageUri = params.imageUri as string;
+    const documentId = getSingleParam(params.documentId);
+    const imageUri = getSingleParam(params.imageUri);
 
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -46,8 +67,8 @@ export default function DocsReviewScreen() {
                     setDraft({
                         lectureTitle: parsed.lectureTitle || '',
                         companyName: parsed.companyName || '',
-                        startsAt: parsed.startsAt?.split('T')[0] || '',
-                        endsAt: parsed.endsAt?.split('T')[0] || '',
+                        startsAt: toEditableDateTime(parsed.startsAt),
+                        endsAt: toEditableDateTime(parsed.endsAt),
                         region: parsed.region || '',
                         museum: parsed.museum || '',
                         payAmount: parsed.payAmount || null,
@@ -153,6 +174,11 @@ export default function DocsReviewScreen() {
     };
 
     const handleSave = async () => {
+        if (!documentId) {
+            Alert.alert('등록 실패', '문서 ID가 없어 저장할 수 없습니다. 문서를 다시 업로드해주세요.');
+            return;
+        }
+
         if (!draft.lectureTitle || !draft.startsAt || !draft.endsAt) {
             Alert.alert('필수 입력', '강의명, 시작일시, 종료일시는 필수입니다.');
             return;
