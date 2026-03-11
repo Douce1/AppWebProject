@@ -373,7 +373,7 @@ export default function CareerSettingScreen() {
           filtered.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={styles.card}
+              style={styles.listItemBox}
               activeOpacity={0.8}
               onPress={() =>
                 router.push({
@@ -382,14 +382,24 @@ export default function CareerSettingScreen() {
                 })
               }
             >
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardHourBadge}>{item.durationHours}시간</Text>
+              <View style={[styles.listItemField, styles.listItemFieldFirst]}>
+                <Text style={styles.listItemLabel}>강의명</Text>
+                <Text style={styles.listItemValue}>{item.title}</Text>
               </View>
-              <Text style={styles.cardMetaText}>{item.date}</Text>
-              <Text style={styles.cardMetaText}>
-                {item.region} · {item.museum}
-              </Text>
+              <View style={styles.listItemField}>
+                <Text style={styles.listItemLabel}>날짜</Text>
+                <Text style={styles.listItemValue}>{item.date}</Text>
+              </View>
+              <View style={styles.listItemField}>
+                <Text style={styles.listItemLabel}>권역 · 기관</Text>
+                <Text style={styles.listItemValue}>
+                  {item.region} · {item.museum}
+                </Text>
+              </View>
+              <View style={styles.listItemField}>
+                <Text style={styles.listItemLabel}>총 강의 시간</Text>
+                <Text style={styles.listItemValueHighlight}>{item.durationHours}시간</Text>
+              </View>
             </TouchableOpacity>
           ))
         )}
@@ -504,31 +514,36 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   emptyText: { fontSize: 14, color: '#9CA3AF' },
-  card: {
+  listItemBox: {
+    marginTop: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     borderRadius: 12,
+    backgroundColor: Colors.surfaceAlt,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 12,
-    marginTop: 10,
-    backgroundColor: '#F9FAFB',
+    borderColor: Colors.border,
   },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  listItemField: {
+    marginTop: 12,
+  },
+  listItemFieldFirst: {
+    marginTop: 0,
+  },
+  listItemLabel: {
+    fontSize: 13,
+    color: Colors.mutedForeground,
     marginBottom: 4,
   },
-  cardTitle: { fontSize: 14, fontWeight: '600', color: '#111827', flex: 1, marginRight: 8 },
-  cardHourBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: Colors.surfaceSoft,
-    fontSize: 12,
-    color: Colors.brandInk,
-    overflow: 'hidden',
+  listItemValue: {
+    fontSize: 14,
+    color: Colors.foreground,
+    lineHeight: 20,
   },
-  cardMetaText: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  listItemValueHighlight: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.foreground,
+  },
   inputGroup: {
     flex: 1,
     marginRight: 8,
