@@ -70,6 +70,11 @@ export interface ApiLesson {
   lectureTitle: string;
   region: string;
   museum: string;
+  venueName?: string;
+  venueAddress?: string;
+  venueLat?: number;
+  venueLng?: number;
+  kakaoPlaceId?: string;
   guideNotionUrl: string;
   payAmount: number;
   studentCount: number;
