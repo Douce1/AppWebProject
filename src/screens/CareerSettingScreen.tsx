@@ -383,22 +383,24 @@ export default function CareerSettingScreen() {
               }
             >
               <View style={[styles.listItemField, styles.listItemFieldFirst]}>
-                <Text style={styles.listItemLabel}>강의명</Text>
-                <Text style={styles.listItemValue}>{item.title}</Text>
-              </View>
-              <View style={styles.listItemField}>
-                <Text style={styles.listItemLabel}>날짜</Text>
-                <Text style={styles.listItemValue}>{item.date}</Text>
-              </View>
-              <View style={styles.listItemField}>
-                <Text style={styles.listItemLabel}>권역 · 기관</Text>
                 <Text style={styles.listItemValue}>
-                  {item.region} · {item.museum}
+                  강의명 : {item.title}
                 </Text>
               </View>
               <View style={styles.listItemField}>
-                <Text style={styles.listItemLabel}>총 강의 시간</Text>
-                <Text style={styles.listItemValueHighlight}>{item.durationHours}시간</Text>
+                <Text style={styles.listItemValue}>
+                  날짜 : {item.date}
+                </Text>
+              </View>
+              <View style={styles.listItemField}>
+                <Text style={styles.listItemValue}>
+                  권역 · 기관 : {item.region} · {item.museum}
+                </Text>
+              </View>
+              <View style={styles.listItemField}>
+                <Text style={styles.listItemValueHighlight}>
+                  총 강의 시간 : {item.durationHours}시간
+                </Text>
               </View>
             </TouchableOpacity>
           ))
