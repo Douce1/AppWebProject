@@ -156,11 +156,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const roomTitle = chatRooms.find(r => r.roomId === roomId)?.title ?? '채팅방';
 
-        // 소켓으로 전송 (mock에서는 즉시 echo 콜백 발생)
+        // 메시지 저장 경로는 websocket 하나로 고정한다.
+        // HTTP까지 같이 호출하면 backend 저장 로직이 2번 타서 중복 메시지가 생긴다.
         chatSocket.sendMessage(roomId, text, roomTitle);
-
-        // API에도 저장 (mock에서는 즉시 반환)
-        apiClient.sendChatMessage(roomId, text).catch(console.error);
     }, [chatRooms]);
 
     const markAsRead = useCallback((roomId: string) => {
