@@ -1,5 +1,5 @@
 import { Colors, Shadows } from '@/constants/theme';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,9 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { apiClient } from '../api/apiClient';
 import { getContractErrorMessage, SIGN_TOKEN_EXPIRED } from '../api/contractErrors';
-import { useContractDetailQuery, useReauthContractMutation, useSignContractMutation } from '../query/hooks';
+import type { ApiContractDetail } from '../api/types';
 
 function parseContentJson(contentJson: string | undefined): { title: string; content: string }[] {
   if (!contentJson) return [];
@@ -29,6 +30,9 @@ export default function DocContractDetailScreen() {
   const router = useRouter();
   const contractId = typeof params.contractId === 'string' ? params.contractId : Array.isArray(params.contractId) ? params.contractId[0] : undefined;
 
+  const [detail, setDetail] = useState<ApiContractDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [signModalVisible, setSignModalVisible] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
   const [consentTextVersion] = useState('1.0');
@@ -36,37 +40,57 @@ export default function DocContractDetailScreen() {
   const [submitErrorCode, setSubmitErrorCode] = useState<string | null>(null);
   const [signToken, setSignToken] = useState<string | null>(null);
   const [signTokenExpiresAt, setSignTokenExpiresAt] = useState<string | null>(null);
-  const contractDetailQuery = useContractDetailQuery(contractId);
-  const reauthContractMutation = useReauthContractMutation();
-  const signContractMutation = useSignContractMutation(contractId);
-  const detail = contractDetailQuery.data ?? null;
-  const loading = contractDetailQuery.isLoading || contractDetailQuery.isFetching;
-  const errorCode = contractDetailQuery.isError
-    ? ((contractDetailQuery.error as Error & { code?: string })?.code ?? 'CONTRACT_NOT_FOUND')
-    : null;
-  const reauthLoading = reauthContractMutation.isPending;
-  const submitting = signContractMutation.isPending;
+  const [reauthLoading, setReauthLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadContract = useCallback(async () => {
+    if (!contractId) {
+      setLoading(false);
+      setErrorCode('CONTRACT_NOT_FOUND');
+      return;
+    }
+    setLoading(true);
+    setErrorCode(null);
+    try {
+      const loaded = await apiClient.getContract(contractId);
+      setDetail(loaded);
+    } catch (err: unknown) {
+      const e = err as Error & { code?: string };
+      setErrorCode(e?.code ?? 'CONTRACT_NOT_FOUND');
+      setDetail(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [contractId]);
+
+  useEffect(() => {
+    loadContract();
+  }, [loadContract]);
 
   const handleOpenSign = async () => {
     if (!contractId) return;
     setConsentGiven(false);
     setSubmitError(null);
     setSubmitErrorCode(null);
+    setReauthLoading(true);
     try {
-      const { signToken, expiresAt } = await reauthContractMutation.mutateAsync(contractId);
+      const { signToken, expiresAt } = await apiClient.reauthContract(contractId);
       setSignToken(signToken);
       setSignTokenExpiresAt(expiresAt);
       setSignModalVisible(true);
     } catch (err: unknown) {
       const e = err as Error & { code?: string; status?: number };
       Alert.alert('서명 준비 실패', getContractErrorMessage(e?.code, e?.status));
+    } finally {
+      setReauthLoading(false);
     }
   };
 
   const handleRetryReauth = async () => {
     if (!contractId) return;
+    setReauthLoading(true);
     try {
-      const { signToken, expiresAt } = await reauthContractMutation.mutateAsync(contractId);
+      const { signToken, expiresAt } = await apiClient.reauthContract(contractId);
       setSignToken(signToken);
       setSignTokenExpiresAt(expiresAt);
       setSubmitError(null);
@@ -75,6 +99,8 @@ export default function DocContractDetailScreen() {
       const e = err as Error & { code?: string; status?: number };
       setSubmitError(getContractErrorMessage(e?.code, e?.status));
       setSubmitErrorCode(e?.code ?? null);
+    } finally {
+      setReauthLoading(false);
     }
   };
 
@@ -85,10 +111,11 @@ export default function DocContractDetailScreen() {
       setSubmitErrorCode('CONSENT_REQUIRED');
       return;
     }
+    setSubmitting(true);
     setSubmitError(null);
     setSubmitErrorCode(null);
     try {
-      await signContractMutation.mutateAsync({
+      const updated = await apiClient.signContract(contractId, {
         consentGiven: true,
         consentTextVersion,
         signToken,
@@ -102,6 +129,8 @@ export default function DocContractDetailScreen() {
       const e = err as Error & { code?: string; status?: number };
       setSubmitErrorCode(e?.code ?? null);
       setSubmitError(getContractErrorMessage(e?.code, e?.status));
+    } finally {
+      setSubmitting(false);
     }
   };
 
