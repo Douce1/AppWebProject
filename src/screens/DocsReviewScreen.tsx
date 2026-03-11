@@ -24,6 +24,7 @@ export default function DocsReviewScreen() {
     // we would fetch the document's draft from the server if it wasn't returned earlier.
     const [draft, setDraft] = useState<ApiDocumentDraft>({
         lectureTitle: '',
+        companyName: '',
         startsAt: '',
         endsAt: '',
         region: '',
@@ -39,12 +40,14 @@ export default function DocsReviewScreen() {
             setIsLoading(true);
             try {
                 const doc = await httpClient.getDocument(documentId);
+                console.log('[DEBUG DocsReviewScreen] getDocument response:', JSON.stringify(doc, null, 2));
                 if (mounted && doc.draft && doc.draft.parsedJson) {
                     const parsed = doc.draft.parsedJson as ApiDocumentDraft;
                     setDraft({
                         lectureTitle: parsed.lectureTitle || '',
-                        startsAt: parsed.startsAt || '',
-                        endsAt: parsed.endsAt || '',
+                        companyName: parsed.companyName || '',
+                        startsAt: parsed.startsAt?.split('T')[0] || '',
+                        endsAt: parsed.endsAt?.split('T')[0] || '',
                         region: parsed.region || '',
                         museum: parsed.museum || '',
                         payAmount: parsed.payAmount || null,
@@ -260,6 +263,17 @@ export default function DocsReviewScreen() {
                             value={draft.museum || ''}
                             onChangeText={(text) => handleChange('museum', text)}
                             placeholder="기관명 입력"
+                            placeholderTextColor="#94A3B8"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>소속 (회사/업체명) <Text style={styles.required}>*</Text></Text>
+                        <TextInput
+                            style={styles.input}
+                            value={draft.companyName || ''}
+                            onChangeText={(text) => handleChange('companyName', text)}
+                            placeholder="회사명/업체명 입력"
                             placeholderTextColor="#94A3B8"
                         />
                     </View>

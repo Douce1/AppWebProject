@@ -449,7 +449,7 @@ export const httpClient = {
   },
 
   async sendChatMessage(roomId: string, text: string): Promise<ApiChatMessage> {
-    return postJson<ApiChatMessage>(`/chat/rooms/${roomId}/messages`, { text });
+    return postJson<ApiChatMessage>(`/chat/rooms/${roomId}/messages`, { content: text });
   },
 
   async markRoomAsRead(roomId: string): Promise<void> {
@@ -516,7 +516,7 @@ export const httpClient = {
     documentId: string,
     draft: Partial<ApiDocumentDraft>,
   ): Promise<ApiDocument> {
-    return patchJson<ApiDocument>(`/documents/${documentId}/draft`, { draft });
+    return patchJson<ApiDocument>(`/documents/${documentId}/draft`, { parsedJson: draft });
   },
 
   async confirmDocument(documentId: string): Promise<void> {

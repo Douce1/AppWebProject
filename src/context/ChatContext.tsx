@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState, useRef } from 'react';
 import { apiClient } from '../api/apiClient';
 import { ApiChatMessage, ApiChatRoom } from '../api/types';
 import { ChatMessagePayload, chatSocket } from '../services/chatSocket';
@@ -34,6 +34,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [messagesMap, setMessagesMap] = useState<Record<string, ApiChatMessage[]>>({});
     const [isConnected, setIsConnected] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const myUserIdRef = useRef<string | null>(null);
 
     // 초기 데이터 로드
     useEffect(() => {
@@ -41,6 +42,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const init = async () => {
             try {
+                // Fetch my user profile to know my userId
+                const profile = await apiClient.getInstructorProfile().catch(() => null);
+                if (mounted && profile) {
+                    myUserIdRef.current = profile.userId;
+                }
+
                 const rooms = await apiClient.getChatRooms();
                 if (!mounted) return;
                 setChatRooms(rooms);
@@ -50,7 +57,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 for (const room of rooms) {
                     const msgs = await apiClient.getChatMessages(room.roomId);
                     if (!mounted) return;
-                    msgEntries[room.roomId] = msgs.items;
+                    // Inject real isMine by comparing senderUserId with myUserId
+                    msgEntries[room.roomId] = msgs.items.map(m => ({
+                        ...m,
+                        isMine: m.senderUserId === myUserIdRef.current || m.senderUserId === 'me'
+                    }));
                 }
                 setMessagesMap(msgEntries);
 
@@ -83,7 +94,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         const handleMessage = (payload: ChatMessagePayload) => {
             // isMine: senderUserId === 'me' (mock) or 현재 로그인 userId (실서버에서는 senderUserId 비교)
-            const isMine = payload.senderUserId === 'me';
+            const isMine = payload.senderUserId === 'me' || payload.senderUserId === myUserIdRef.current;
             const newMsg: ApiChatMessage = {
                 messageId: payload.messageId,
                 roomId: payload.roomId,
