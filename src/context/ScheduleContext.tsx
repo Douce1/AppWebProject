@@ -1,9 +1,23 @@
 import * as Location from 'expo-location';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import { apiClient } from '../api/apiClient';
-import { transitionPhase, type CheckinPhase } from '../services/checkinStateMachine';
+import {
+    buildPhaseMap,
+    extractIdSets,
+    transitionPhase,
+    type CheckinPhase,
+} from '../services/checkinStateMachine';
 import { evaluateAllLessons, buildNotificationKey, type CurrentPosition } from '../services/gpsNotificationEngine';
+import { queryKeys } from '../query/queryKeys';
+import {
+    useAttendanceEventsQuery,
+    useLessonReportsQuery,
+    useLessonRequestsQuery,
+    useLessonsQuery,
+} from '../query/hooks';
+import type { ApiAttendanceEvent } from '../api/types';
 
 export interface ClassSession {
   id: string;
@@ -80,8 +94,12 @@ const ScheduleContext = createContext<ScheduleContextType>({
 });
 
 export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [classes, setClasses] = useState<ClassSession[]>([]);
-    const [lessonRequestMap, setLessonRequestMap] = useState<Record<string, string>>({});
+    const queryClient = useQueryClient();
+    const lessonsQuery = useLessonsQuery();
+    const lessonRequestsQuery = useLessonRequestsQuery();
+    const attendanceEventsQuery = useAttendanceEventsQuery();
+    const lessonReportsQuery = useLessonReportsQuery();
+    const [manualClasses, setManualClasses] = useState<ClassSession[]>([]);
 
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
@@ -98,134 +116,98 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     const addClass = (newClass: ClassSession) => {
-        setClasses(prev => [...prev, newClass]);
+        setManualClasses(prev => [...prev, newClass]);
     };
-
-    const [departedIds, setDepartedIds] = useState<string[]>([]);
-    const [canArriveIds, setCanArriveIds] = useState<string[]>([]);
-    const [arrivedIds, setArrivedIds] = useState<string[]>([]);
-    const [canEndClassIds, setCanEndClassIds] = useState<string[]>([]);
-    const [endedClassIds, setEndedClassIds] = useState<string[]>([]);
-    const [readyToReportIds, setReadyToReportIds] = useState<string[]>([]);
-    const [reportedIds, setReportedIds] = useState<string[]>([]);
-    const [classReports, setClassReports] = useState<Record<string, string>>({});
     // 중복 알림 방지 키 집합 (GPS 스마트 알림 엔진 연동)
     const [firedNotificationKeys, setFiredNotificationKeys] = useState<Set<string>>(new Set());
     // 수업별 체크인 단계 (상태 머신)
-    const [checkinPhases, setCheckinPhases] = useState<Record<string, CheckinPhase>>({});
+    const [localCheckinPhases, setLocalCheckinPhases] = useState<Record<string, CheckinPhase>>({});
+
+    const classes = useMemo(() => {
+        const lessons = lessonsQuery.data ?? [];
+        const mapped: ClassSession[] = lessons
+            .filter((lesson) => lesson.status !== 'PENDING')
+            .map((lesson) => {
+                const start = new Date(lesson.startsAt);
+                const end = new Date(lesson.endsAt);
+                const pad = (n: number) => n.toString().padStart(2, '0');
+                const date = lesson.startsAt.slice(0, 10);
+                const time = `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(
+                    end.getHours(),
+                )}:${pad(end.getMinutes())}`;
+                const location = `${lesson.region} ${lesson.museum}`;
+                return {
+                    id: lesson.lessonId,
+                    title: lesson.lectureTitle,
+                    date,
+                    location,
+                    time,
+                    isExternal: lesson.isExternal,
+                    documentId: lesson.documentId,
+                    venueName: lesson.venueName,
+                    venueAddress: lesson.venueAddress,
+                    venueLat: lesson.venueLat,
+                    venueLng: lesson.venueLng,
+                    kakaoPlaceId: lesson.kakaoPlaceId,
+                };
+            });
+        return [...mapped, ...manualClasses];
+    }, [lessonsQuery.data, manualClasses]);
+
+    const lessonRequestMap = useMemo(() => {
+        const accepted = (lessonRequestsQuery.data ?? []).filter((r) => r.status === 'ACCEPTED');
+        return accepted.reduce<Record<string, string>>((acc, request) => {
+            acc[request.lessonId] = request.requestId;
+            return acc;
+        }, {});
+    }, [lessonRequestsQuery.data]);
+
+    const classReports = useMemo(() => {
+        const reports = lessonReportsQuery.data ?? [];
+        return reports.reduce<Record<string, string>>((acc, report) => {
+            acc[report.lessonId] = report.content;
+            return acc;
+        }, {});
+    }, [lessonReportsQuery.data]);
+
+    const reportedIds = useMemo(() => Object.keys(classReports), [classReports]);
+
+    const checkinPhases = useMemo(() => {
+        const basePhaseMap = buildPhaseMap(
+            ((attendanceEventsQuery.data ?? []) as ApiAttendanceEvent[]).map((event) => ({
+                lessonId: event.lessonId,
+                eventType: event.eventType,
+                isValid: event.isValid,
+            })),
+        );
+
+        reportedIds.forEach((lessonId) => {
+            const current = basePhaseMap[lessonId] ?? 'ENDED';
+            basePhaseMap[lessonId] = transitionPhase(current, 'REPORT');
+        });
+
+        return { ...basePhaseMap, ...localCheckinPhases };
+    }, [attendanceEventsQuery.data, localCheckinPhases, reportedIds]);
+
+    const {
+        departedIds,
+        arrivedIds,
+        endedIds: endedClassIds,
+        canArriveIds,
+        canEndIds: canEndClassIds,
+        readyToReportIds,
+    } = useMemo(() => extractIdSets(checkinPhases), [checkinPhases]);
 
     const getClassReport = (id: string): string | null => classReports[id] ?? null;
 
     const fetchLessons = async () => {
-        let mounted = true;
-        try {
-            const lessons = await apiClient.getLessons();
-            if (!mounted) return;
-            const mapped: ClassSession[] = lessons
-                .filter(lesson => lesson.status !== 'PENDING')
-                .map((lesson) => {
-                    const start = new Date(lesson.startsAt);
-                    const end = new Date(lesson.endsAt);
-                    const pad = (n: number) => n.toString().padStart(2, '0');
-                    const date = lesson.startsAt.slice(0, 10);
-                    const time = `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(
-                        end.getHours(),
-                    )}:${pad(end.getMinutes())}`;
-                    const location = `${lesson.region} ${lesson.museum}`;
-                    return {
-                      id: lesson.lessonId,
-                      title: lesson.lectureTitle,
-                      date,
-                      location,
-                      time,
-                      isExternal: lesson.isExternal,
-                      documentId: lesson.documentId,
-                      venueName: lesson.venueName,
-                      venueAddress: lesson.venueAddress,
-                      venueLat: lesson.venueLat,
-                      venueLng: lesson.venueLng,
-                      kakaoPlaceId: lesson.kakaoPlaceId,
-                    };
-            });
-            setClasses(mapped);
-
-            try {
-                const [requests, events, reports] = await Promise.all([
-                    apiClient.getLessonRequests(),
-                    apiClient.getAttendanceEvents(),
-                    apiClient.getLessonReports(),
-                ]);
-                if (!mounted) return;
-
-                // 서버 보고서 기반 초기화
-                const serverReportedIds = reports.map((r) => r.lessonId);
-                const serverReports: Record<string, string> = {};
-                reports.forEach((r) => {
-                    serverReports[r.lessonId] = r.content;
-                });
-                setReportedIds(serverReportedIds);
-                setClassReports(serverReports);
-
-                const accepted = requests.filter((r) => r.status === 'ACCEPTED');
-                const nextMap: Record<string, string> = {};
-                accepted.forEach((r) => {
-                    nextMap[r.lessonId] = r.requestId;
-                });
-                setLessonRequestMap(nextMap);
-
-                const departedSet = new Set<string>();
-                const arrivedSet = new Set<string>();
-                const finishedSet = new Set<string>();
-
-                events.forEach((e) => {
-                    if (!e.isValid) return;
-                    const lessonId = e.lessonId;
-                    if (e.eventType === 'DEPART') {
-                        departedSet.add(lessonId);
-                    } else if (e.eventType === 'ARRIVE') {
-                        departedSet.add(lessonId);
-                        arrivedSet.add(lessonId);
-                    } else if (e.eventType === 'FINISH') {
-                        departedSet.add(lessonId);
-                        arrivedSet.add(lessonId);
-                        finishedSet.add(lessonId);
-                    }
-                });
-
-                const canArriveSet = new Set<string>();
-                const canEndSet = new Set<string>();
-                mapped.forEach((c) => {
-                    if (departedSet.has(c.id) && !arrivedSet.has(c.id)) {
-                        canArriveSet.add(c.id);
-                    }
-                    if (arrivedSet.has(c.id) && !finishedSet.has(c.id)) {
-                        canEndSet.add(c.id);
-                    }
-                });
-
-                setDepartedIds(Array.from(departedSet));
-                setArrivedIds(Array.from(arrivedSet));
-                setEndedClassIds(Array.from(finishedSet));
-                setCanArriveIds(Array.from(canArriveSet));
-                setCanEndClassIds(Array.from(canEndSet));
-            } catch {
-                if (!mounted) return;
-                Alert.alert('불러오기 실패', '수업 요청/출강 이벤트를 불러오지 못했습니다. 다시 시도해주세요.');
-            }
-        } catch {
-            if (!mounted) return;
-            Alert.alert('불러오기 실패', '수업 목록을 불러오지 못했습니다. 다시 시도해주세요.');
-        }
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: queryKeys.lessons }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.lessonRequests }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.attendanceEvents }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.lessonReports }),
+        ]);
     };
-
-    useEffect(() => {
-        fetchLessons();
-        return () => {
-            // Can't efficiently unmount the internal promises without AbortController, but state updates are safe enough now, as React handles it better. 
-            // mounted state variable is kept in fetchLessons but we don't have scope here. 
-            // It's fine for our use-case since fetchLessons executes independently.
-        };
-    }, []);
 
     const handleClassAction = async (id: string) => {
         // 1. If ready to report (handled by modal, so we skip it here but could alert)
@@ -272,9 +254,25 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 }
             }
 
-            setEndedClassIds(prev => [...prev, id]);
-            setReadyToReportIds(prev => [...prev, id]);
-            setCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'ARRIVED', 'FINISH') }));
+            queryClient.setQueryData<ApiAttendanceEvent[]>(queryKeys.attendanceEvents, (prev = []) => [
+                ...prev,
+                {
+                    attendanceEventId: `optimistic-finish-${requestId ?? id}`,
+                    companyId: '',
+                    lessonId: id,
+                    instructorId: '',
+                    eventType: 'FINISH',
+                    occurredAt: new Date().toISOString(),
+                    lat: coords?.lat ?? 0,
+                    lng: coords?.lng ?? 0,
+                    accuracyMeters: coords?.accuracyMeters ?? 0,
+                    distanceMeters: 0,
+                    timingStatus: 'ON_TIME',
+                    locationStatus: 'OK',
+                    isValid: true,
+                },
+            ]);
+            setLocalCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'ARRIVED', 'FINISH') }));
             Alert.alert('강의 종료', '강의가 종료되었습니다.');
             return;
         }
@@ -299,9 +297,25 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 }
             }
 
-            setArrivedIds(prev => [...prev, id]);
-            setCanEndClassIds(prev => [...prev, id]);
-            setCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'DEPARTED', 'ARRIVE') }));
+            queryClient.setQueryData<ApiAttendanceEvent[]>(queryKeys.attendanceEvents, (prev = []) => [
+                ...prev,
+                {
+                    attendanceEventId: `optimistic-arrive-${requestId ?? id}`,
+                    companyId: '',
+                    lessonId: id,
+                    instructorId: '',
+                    eventType: 'ARRIVE',
+                    occurredAt: new Date().toISOString(),
+                    lat: coords?.lat ?? 0,
+                    lng: coords?.lng ?? 0,
+                    accuracyMeters: coords?.accuracyMeters ?? 0,
+                    distanceMeters: 0,
+                    timingStatus: 'ON_TIME',
+                    locationStatus: 'OK',
+                    isValid: true,
+                },
+            ]);
+            setLocalCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'DEPARTED', 'ARRIVE') }));
             Alert.alert('도착 완료', '도착이 등록되었습니다. 강의를 진행해주세요.');
             return;
         }
@@ -336,9 +350,25 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     }
                 }
 
-                setDepartedIds(prev => [...prev, id]);
-                setCanArriveIds(prev => [...prev, id]);
-                setCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'IDLE', 'DEPART') }));
+                queryClient.setQueryData<ApiAttendanceEvent[]>(queryKeys.attendanceEvents, (prev = []) => [
+                    ...prev,
+                    {
+                        attendanceEventId: `optimistic-depart-${requestId ?? id}`,
+                        companyId: '',
+                        lessonId: id,
+                        instructorId: '',
+                        eventType: 'DEPART',
+                        occurredAt: new Date().toISOString(),
+                        lat: location.coords.latitude,
+                        lng: location.coords.longitude,
+                        accuracyMeters: location.coords.accuracy ?? 0,
+                        distanceMeters: 0,
+                        timingStatus: 'ON_TIME',
+                        locationStatus: 'OK',
+                        isValid: true,
+                    },
+                ]);
+                setLocalCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'IDLE', 'DEPART') }));
                 Alert.alert('출발 완료', '출발이 등록되었습니다. 안전하게 이동하세요.');
 
             } catch {
@@ -351,22 +381,28 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const trimmed = text.trim();
         if (!trimmed) return;
 
-        // Optimistic update
-        setReportedIds(prev => [...prev, id]);
-        setClassReports(prev => ({ ...prev, [id]: trimmed }));
+        const previousReports = queryClient.getQueryData(queryKeys.lessonReports) as any[] | undefined;
+        queryClient.setQueryData<any[]>(queryKeys.lessonReports, (prev = []) => [
+            ...prev.filter((report) => report.lessonId !== id),
+            {
+                lessonReportId: `optimistic-report-${id}`,
+                companyId: '',
+                lessonId: id,
+                instructorId: '',
+                content: trimmed,
+                submittedAt: new Date().toISOString(),
+            },
+        ]);
+        setLocalCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'ENDED', 'REPORT') }));
 
         try {
             const report = await apiClient.submitLessonReport(id, trimmed);
-            // 서버 응답으로 정확한 content 반영
-            setClassReports(prev => ({ ...prev, [id]: report.content }));
+            queryClient.setQueryData<any[]>(queryKeys.lessonReports, (prev = []) => [
+                ...prev.filter((item) => item.lessonId !== id),
+                report,
+            ]);
         } catch {
-            // 롤백
-            setReportedIds(prev => prev.filter(rid => rid !== id));
-            setClassReports(prev => {
-                const next = { ...prev };
-                delete next[id];
-                return next;
-            });
+            queryClient.setQueryData(queryKeys.lessonReports, previousReports ?? []);
             throw new Error('보고서 저장에 실패했습니다. 다시 시도해주세요.');
         }
     };

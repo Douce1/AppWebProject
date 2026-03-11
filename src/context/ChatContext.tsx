@@ -1,10 +1,18 @@
-import React, { createContext, useCallback, useContext, useEffect, useState, useRef } from 'react';
+import {
+    useQueries,
+    useQueryClient,
+} from '@tanstack/react-query';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { ApiChatMessage, ApiChatRoom } from '../api/types';
 import { apiClient } from '../api/apiClient';
-import { ApiChatMessage, ApiChatRoom } from '../api/types';
+import {
+    useChatRoomsQuery,
+    useInstructorProfileQuery,
+    useUnreadCountQuery,
+} from '../query/hooks';
+import { queryKeys } from '../query/queryKeys';
 import { ChatMessagePayload, chatSocket } from '../services/chatSocket';
 import { getAccessToken } from '../store/authStore';
-
-// ---- Context Type ----
 
 interface ChatContextType {
     chatRooms: ApiChatRoom[];
@@ -12,7 +20,6 @@ interface ChatContextType {
     sendMessage: (roomId: string, text: string) => void;
     markAsRead: (roomId: string) => void;
     unreadCount: number;
-    /** 안읽은 메시지 목록 (알림센터용) */
     unreadMessages: ApiChatMessage[];
     isConnected: boolean;
 }
@@ -27,61 +34,60 @@ const ChatContext = createContext<ChatContextType>({
     isConnected: false,
 });
 
-// ---- Provider ----
-
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [chatRooms, setChatRooms] = useState<ApiChatRoom[]>([]);
-    const [messagesMap, setMessagesMap] = useState<Record<string, ApiChatMessage[]>>({});
+    const queryClient = useQueryClient();
+    const instructorProfileQuery = useInstructorProfileQuery();
+    const chatRoomsQuery = useChatRoomsQuery();
+    const unreadCountQuery = useUnreadCountQuery();
     const [isConnected, setIsConnected] = useState(false);
-    const [unreadCount, setUnreadCount] = useState(0);
     const myUserIdRef = useRef<string | null>(null);
 
-    // 초기 데이터 로드
+    const chatRooms = chatRoomsQuery.data ?? [];
+    const unreadCount = unreadCountQuery.data ?? 0;
+
+    useEffect(() => {
+        if (instructorProfileQuery.data?.userId) {
+            myUserIdRef.current = instructorProfileQuery.data.userId;
+        }
+    }, [instructorProfileQuery.data?.userId]);
+
+    const messageQueries = useQueries({
+        queries: chatRooms.map((room) => ({
+            queryKey: queryKeys.chatMessages(room.roomId),
+            queryFn: () => apiClient.getChatMessages(room.roomId),
+            staleTime: 30 * 1000,
+        })),
+    });
+
+    const messagesMap = useMemo(() => {
+        const entries: Record<string, ApiChatMessage[]> = {};
+        chatRooms.forEach((room, index) => {
+            const items = messageQueries[index]?.data?.items ?? [];
+            entries[room.roomId] = items.map((message) => ({
+                ...message,
+                isMine:
+                    message.senderUserId === 'me' ||
+                    message.senderUserId === myUserIdRef.current,
+            }));
+        });
+        return entries;
+    }, [chatRooms, messageQueries]);
+
     useEffect(() => {
         let mounted = true;
 
-        const init = async () => {
+        const connectSocket = async () => {
             try {
-                // Fetch my user profile to know my userId
-                const profile = await apiClient.getInstructorProfile().catch(() => null);
-                if (mounted && profile) {
-                    myUserIdRef.current = profile.userId;
-                }
-
-                const rooms = await apiClient.getChatRooms();
-                if (!mounted) return;
-                setChatRooms(rooms);
-
-                // 각 방의 메시지도 미리 로드
-                const msgEntries: Record<string, ApiChatMessage[]> = {};
-                for (const room of rooms) {
-                    const msgs = await apiClient.getChatMessages(room.roomId);
-                    if (!mounted) return;
-                    // Inject real isMine by comparing senderUserId with myUserId
-                    msgEntries[room.roomId] = msgs.items.map(m => ({
-                        ...m,
-                        isMine: m.senderUserId === myUserIdRef.current || m.senderUserId === 'me'
-                    }));
-                }
-                setMessagesMap(msgEntries);
-
-                // 서버 기준 전체 unreadCount 조회
-                const serverUnread = await apiClient.getUnreadCount();
-                if (!mounted) return;
-                setUnreadCount(serverUnread);
-
-                // 소켓 연결 (인증 토큰 포함)
                 const accessToken = await getAccessToken();
                 if (!mounted) return;
                 chatSocket.connect(accessToken ?? undefined);
                 setIsConnected(true);
-            } catch (e) {
-                // eslint-disable-next-line no-console
-                console.error('[ChatContext] Failed to init chat:', e);
+            } catch (error) {
+                console.error('[ChatContext] Failed to connect socket:', error);
             }
         };
 
-        void init();
+        void connectSocket();
 
         return () => {
             mounted = false;
@@ -90,12 +96,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, []);
 
-    // 실시간 메시지 수신
     useEffect(() => {
         const handleMessage = (payload: ChatMessagePayload) => {
-            // isMine: senderUserId === 'me' (mock) or 현재 로그인 userId (실서버에서는 senderUserId 비교)
-            const isMine = payload.senderUserId === 'me' || payload.senderUserId === myUserIdRef.current;
-            const newMsg: ApiChatMessage = {
+            const isMine =
+                payload.senderUserId === 'me' ||
+                payload.senderUserId === myUserIdRef.current;
+            const newMessage: ApiChatMessage = {
                 messageId: payload.messageId,
                 roomId: payload.roomId,
                 senderUserId: payload.senderUserId,
@@ -106,46 +112,49 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 isMine,
             };
 
-            // 메시지 맵에 추가
-            setMessagesMap(prev => ({
-                ...prev,
-                [payload.roomId]: [...(prev[payload.roomId] || []), newMsg],
-            }));
+            queryClient.setQueryData(
+                queryKeys.chatMessages(payload.roomId),
+                (prev: { items: ApiChatMessage[]; nextCursor: string | null } | undefined) => ({
+                    items: [...(prev?.items ?? []), newMessage],
+                    nextCursor: prev?.nextCursor ?? null,
+                }),
+            );
 
-            // 방 목록 갱신 (lastMessage 객체 형식으로) + 전체 unreadCount 갱신
-            setChatRooms(prev => {
-                const updated = prev.map(room => {
-                    if (room.roomId === payload.roomId) {
-                        const nextUnread = isMine ? room.unreadCount : room.unreadCount + 1;
-                        return {
-                            ...room,
-                            lastMessage: {
-                                messageId: payload.messageId,
-                                messageType: payload.messageType,
-                                content: payload.content,
-                                senderUserId: payload.senderUserId,
-                                sentAt: payload.sentAt,
-                            },
-                            updatedAt: payload.sentAt,
-                            unreadCount: nextUnread,
-                        };
-                    }
-                    return room;
+            queryClient.setQueryData<ApiChatRoom[]>(queryKeys.chatRooms, (prev = []) => {
+                const nextRooms = prev.map((room) => {
+                    if (room.roomId !== payload.roomId) return room;
+                    return {
+                        ...room,
+                        lastMessage: {
+                            messageId: payload.messageId,
+                            messageType: payload.messageType,
+                            content: payload.content,
+                            senderUserId: payload.senderUserId,
+                            sentAt: payload.sentAt,
+                        },
+                        updatedAt: payload.sentAt,
+                        unreadCount: isMine ? room.unreadCount : room.unreadCount + 1,
+                    };
                 });
-                // 최신 메시지 방을 맨 위로
-                updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-                setUnreadCount(updated.reduce((sum, r) => sum + r.unreadCount, 0));
-                return updated;
+
+                nextRooms.sort(
+                    (a, b) =>
+                        new Date(b.updatedAt).getTime() -
+                        new Date(a.updatedAt).getTime(),
+                );
+                return nextRooms;
             });
+
+            queryClient.setQueryData<number>(queryKeys.unreadCount, (prev = 0) => (
+                isMine ? prev : prev + 1
+            ));
         };
 
         chatSocket.onMessage(handleMessage);
         return () => {
             chatSocket.offMessage(handleMessage);
         };
-    }, []);
-
-    // ---- Actions ----
+    }, [queryClient]);
 
     const getMessages = useCallback((roomId: string): ApiChatMessage[] => {
         return messagesMap[roomId] || [];
@@ -153,51 +162,42 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const sendMessage = useCallback((roomId: string, text: string) => {
         if (!text.trim()) return;
-
-        const roomTitle = chatRooms.find(r => r.roomId === roomId)?.title ?? '채팅방';
-
-        // 메시지 저장 경로는 websocket 하나로 고정한다.
-        // HTTP까지 같이 호출하면 backend 저장 로직이 2번 타서 중복 메시지가 생긴다.
+        const roomTitle = chatRooms.find((room) => room.roomId === roomId)?.title ?? '채팅방';
         chatSocket.sendMessage(roomId, text, roomTitle);
     }, [chatRooms]);
 
     const markAsRead = useCallback((roomId: string) => {
-        // 로컬 상태 즉시 업데이트
-        setMessagesMap(prev => {
-            // 백엔드에 isRead 없음 — unreadCount만 0으로 갱신
-            return prev;
+        queryClient.setQueryData<ApiChatRoom[]>(queryKeys.chatRooms, (prev = []) =>
+            prev.map((room) =>
+                room.roomId === roomId ? { ...room, unreadCount: 0 } : room,
+            ),
+        );
+        queryClient.setQueryData<number>(queryKeys.unreadCount, (prev = 0) => {
+            const roomUnreadCount = chatRooms.find((room) => room.roomId === roomId)?.unreadCount ?? 0;
+            return Math.max(0, prev - roomUnreadCount);
         });
 
-        setChatRooms(prev => {
-            const updated = prev.map(room =>
-                room.roomId === roomId ? { ...room, unreadCount: 0 } : room
-            );
-            setUnreadCount(updated.reduce((sum, r) => sum + r.unreadCount, 0));
-            return updated;
-        });
-
-        // 소켓 + API 호출
         chatSocket.readRoom(roomId);
         apiClient.markRoomAsRead(roomId).catch(console.error);
-    }, []);
+    }, [chatRooms, queryClient]);
 
-    // ---- Computed ----
-    // 안읽은 메시지: unreadCount > 0인 방의 메시지만 (읽음 처리된 방은 제외)
-    const unreadRoomIds = new Set(chatRooms.filter(r => r.unreadCount > 0).map(r => r.roomId));
-    const unreadMessages: ApiChatMessage[] = Object.values(messagesMap)
+    const unreadRoomIds = new Set(chatRooms.filter((room) => room.unreadCount > 0).map((room) => room.roomId));
+    const unreadMessages = Object.values(messagesMap)
         .flat()
-        .filter(m => !m.isMine && unreadRoomIds.has(m.roomId));
+        .filter((message) => !message.isMine && unreadRoomIds.has(message.roomId));
 
     return (
-        <ChatContext.Provider value={{
-            chatRooms,
-            getMessages,
-            sendMessage,
-            markAsRead,
-            unreadCount,
-            unreadMessages,
-            isConnected,
-        }}>
+        <ChatContext.Provider
+            value={{
+                chatRooms,
+                getMessages,
+                sendMessage,
+                markAsRead,
+                unreadCount,
+                unreadMessages,
+                isConnected,
+            }}
+        >
             {children}
         </ChatContext.Provider>
     );
