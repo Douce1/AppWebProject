@@ -4,13 +4,18 @@ import { Alert } from 'react-native';
 import { apiClient } from '../api/apiClient';
 
 export interface ClassSession {
-    id: string;
-    title: string;
-    date: string; // YYYY-MM-DD format
-    location: string;
-    time: string;
-    isExternal?: boolean;
-    documentId?: string | null;
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD format
+  location: string;
+  time: string;
+  isExternal?: boolean;
+  documentId?: string | null;
+  venueName?: string;
+  venueAddress?: string;
+  venueLat?: number;
+  venueLng?: number;
+  kakaoPlaceId?: string;
 }
 
 export interface AppNotification {
@@ -116,13 +121,18 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 )}:${pad(end.getMinutes())}`;
                 const location = `${lesson.region} ${lesson.museum}`;
                 return {
-                    id: lesson.lessonId,
-                    title: lesson.lectureTitle,
-                    date,
-                    location,
-                    time,
-                    isExternal: lesson.isExternal,
-                    documentId: lesson.documentId,
+                  id: lesson.lessonId,
+                  title: lesson.lectureTitle,
+                  date,
+                  location,
+                  time,
+                  isExternal: lesson.isExternal,
+                  documentId: lesson.documentId,
+                  venueName: lesson.venueName,
+                  venueAddress: lesson.venueAddress,
+                  venueLat: lesson.venueLat,
+                  venueLng: lesson.venueLng,
+                  kakaoPlaceId: lesson.kakaoPlaceId,
                 };
             });
             setClasses(mapped);
