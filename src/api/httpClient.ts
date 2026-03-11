@@ -61,6 +61,7 @@ function resolveBaseUrl(): string {
 
 const BASE_URL = resolveBaseUrl();
 export const API_BASE_URL = BASE_URL;
+
 // Debug: show where the app is pointing for APIs
 // This will print once on bundle load in the Metro terminal.
 // eslint-disable-next-line no-console
@@ -214,6 +215,13 @@ export async function postJson<T>(path: string, body?: unknown): Promise<T> {
 export async function putJson<T>(path: string, body: unknown): Promise<T> {
   return requestJson<T>(path, {
     method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function patchJson<T>(path: string, body: unknown): Promise<T> {
+  return requestJson<T>(path, {
+    method: 'PATCH',
     body: JSON.stringify(body),
   });
 }
@@ -433,16 +441,19 @@ export const httpClient = {
 
   // --- Document Import APIs ---
 
-  async uploadDocument(imageUri: string): Promise<ApiDocument> {
+  async uploadDocument(imageUri: string, mimeType = 'image/jpeg', name = 'document.jpg', documentType?: 'CONTRACT_IMAGE' | 'CONTRACT_PDF'): Promise<ApiDocument> {
     const formData = new FormData();
     formData.append('file', {
       uri: imageUri,
-      name: 'document.jpg',
-      type: 'image/jpeg',
+      name,
+      type: mimeType,
     } as any);
+    if (documentType) {
+      formData.append('type', documentType);
+    }
 
     const accessToken = await getAccessToken();
-    const response = await fetch(`${API_BASE_URL}/documents`, {
+    const response = await fetch(`${API_BASE_URL}/documents/upload`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -451,7 +462,14 @@ export const httpClient = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to upload document');
+      const err = await buildApiError(response, '/documents');
+      // eslint-disable-next-line no-console
+      console.log('[httpClient] upload error', {
+        status: err.status,
+        code: err.code,
+        message: err.message,
+      });
+      throw err;
     }
     return response.json();
   },
@@ -462,21 +480,21 @@ export const httpClient = {
 
   async extractDocumentDraft(
     documentId: string,
-    payload: { text: string },
+    payload: { ocrText?: string },
   ): Promise<ApiDocument> {
     return postJson<ApiDocument>(`/documents/${documentId}/extract`, payload);
   },
 
   // backwards-compatible alias
-  async extractDocument(documentId: string, text: string): Promise<ApiDocument> {
-    return this.extractDocumentDraft(documentId, { text });
+  async extractDocument(documentId: string, text?: string): Promise<ApiDocument> {
+    return this.extractDocumentDraft(documentId, { ocrText: text });
   },
 
   async updateDocumentDraft(
     documentId: string,
     draft: Partial<ApiDocumentDraft>,
   ): Promise<ApiDocument> {
-    return putJson<ApiDocument>(`/documents/${documentId}/draft`, { draft });
+    return patchJson<ApiDocument>(`/documents/${documentId}/draft`, { draft });
   },
 
   async confirmDocument(documentId: string): Promise<void> {

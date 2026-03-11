@@ -2,10 +2,12 @@ import { Colors, Radius, Shadows } from '@/constants/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, BookOpen, CheckCircle2, Phone, User } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSchedule } from '../context/ScheduleContext';
 import { apiClient } from '../api/apiClient';
+import { API_BASE_URL } from '../api/httpClient';
+import { getAccessToken } from '../store/authStore';
 
 export default function ClassDetailScreen() {
     const params = useLocalSearchParams();
@@ -206,15 +208,25 @@ export default function ClassDetailScreen() {
                     </View>
 
                     {classInfo.isExternal && classInfo.documentId && (
-                        <TouchableOpacity 
-                            style={styles.originalDocButton} 
-                            onPress={() => {
-                                Alert.alert('문서 보기', '원본 문서 이미지 호출을 위한 API 연동이 필요합니다. (Backend TBD)');
-                            }}
-                        >
-                            <BookOpen size={18} color={Colors.brandInk} style={{ marginRight: 8 }} />
-                            <Text style={styles.originalDocButtonText}>외부 원본 문서 보기</Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={styles.originalDocButton} 
+                                onPress={async () => {
+                                    try {
+                                        const token = await getAccessToken();
+                                        if (!token) {
+                                            Alert.alert('오류', '로그인 정보가 없습니다.');
+                                            return;
+                                        }
+                                        const url = `${API_BASE_URL}/documents/${classInfo.documentId}/file?token=${token}`;
+                                        Linking.openURL(url);
+                                    } catch (e) {
+                                        Alert.alert('오류', '원본 문서 열람에 실패했습니다.');
+                                    }
+                                }}
+                            >
+                                <BookOpen size={18} color={Colors.brandInk} style={{ marginRight: 8 }} />
+                                <Text style={styles.originalDocButtonText}>외부 원본 문서 보기</Text>
+                            </TouchableOpacity>
                     )}
                 </View>
 

@@ -32,9 +32,36 @@ export default function DocsReviewScreen() {
     });
 
     useEffect(() => {
-        // Ideally, we'd fetch the extracted draft by documentId here 
-        // to populate the form if we didn't receive it in router params.
-        // For now, we leave it empty for manual review.
+        if (!documentId) return;
+
+        let mounted = true;
+        const loadDocument = async () => {
+            setIsLoading(true);
+            try {
+                const doc = await httpClient.getDocument(documentId);
+                if (mounted && doc.draft && doc.draft.parsedJson) {
+                    const parsed = doc.draft.parsedJson as ApiDocumentDraft;
+                    setDraft({
+                        lectureTitle: parsed.lectureTitle || '',
+                        startsAt: parsed.startsAt || '',
+                        endsAt: parsed.endsAt || '',
+                        region: parsed.region || '',
+                        museum: parsed.museum || '',
+                        payAmount: parsed.payAmount || null,
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to preload document:', error);
+            } finally {
+                if (mounted) setIsLoading(false);
+            }
+        };
+
+        loadDocument();
+
+        return () => {
+            mounted = false;
+        };
     }, [documentId]);
 
     const [conflictWarning, setConflictWarning] = useState<string | null>(null);
@@ -157,6 +184,7 @@ export default function DocsReviewScreen() {
         <KeyboardAvoidingView 
             style={[styles.container, { paddingTop: insets.top }]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
             <View style={styles.topBar}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -251,7 +279,7 @@ export default function DocsReviewScreen() {
                             <Text style={styles.label}>강의료 (예상)</Text>
                             <TextInput
                                 style={styles.input}
-                                value={draft.payAmount ? draft.payAmount.toString() : ''}
+                                value={draft.payAmount ? draft.payAmount.toLocaleString() : ''}
                                 onChangeText={(text) => handleChange('payAmount', text)}
                                 placeholder="숫자만 입력"
                                 keyboardType="numeric"
@@ -262,7 +290,7 @@ export default function DocsReviewScreen() {
                 </View>
             </ScrollView>
 
-            <View style={[styles.bottomBar, { paddingBottom: Math.max(20, insets.bottom) }]}>
+            <View style={[styles.bottomBar, { paddingBottom: Math.max(34, insets.bottom + 14) }]}>
                 <TouchableOpacity 
                     style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
                     disabled={isSaving}

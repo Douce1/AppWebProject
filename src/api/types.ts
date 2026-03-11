@@ -263,6 +263,9 @@ export interface ApiDocument {
   status: 'UPLOADED' | 'DRAFT_READY' | 'CONFIRMED';
   /** 문서 소스 타입 (현재는 외부 문서만 지원) */
   sourceType: 'EXTERNAL_DOCUMENT';
-  draft: ApiDocumentDraft | null;
+  draft: {
+    draftId?: string;
+    parsedJson: ApiDocumentDraft;
+  } | null;
   createdAt: string;
 }

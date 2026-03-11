@@ -101,19 +101,20 @@ export default function DocsImportScreen() {
             }
 
             // 1) Upload image/document to get documentId
-            const doc = await httpClient.uploadDocument(imageUri);
-            
-            // 2) Send text to the parsing API (if present)
-            if (extractedText) {
-                await httpClient.extractDocumentDraft(doc.documentId, { text: extractedText });
-            }
-            
+            const mimeType = isPdf ? 'application/pdf' : 'image/jpeg';
+            const fileName = isPdf ? (pdfFileName || 'document.pdf') : 'document.jpg';
+            const documentType = isPdf ? 'CONTRACT_PDF' : 'CONTRACT_IMAGE';
+            const doc = await httpClient.uploadDocument(imageUri, mimeType, fileName, documentType);
+
+            // 2) Send to the parsing API (server takes care of PDF text extraction if ocrText is omitted)
+            await httpClient.extractDocumentDraft(doc.documentId, { ocrText: extractedText || undefined });
+
             // Move to review screen with documentId
             router.push(`/docs/review?documentId=${doc.documentId}&imageUri=${encodeURIComponent(imageUri)}` as any);
         } catch (error: any) {
             console.error('OCR/Upload error:', error);
             setOcrFailed(true);
-            
+
             const errMsg = error?.message || '';
             if (errMsg.includes("doesn't seem to be linked") || errMsg.includes("Expo managed workflow")) {
                 setErrorMessage('기본 Expo 앱 환경에서는 자동 텍스트 추출이 지원되지 않습니다.\n앱을 빌드하거나, 아래 버튼을 눌러 직접 정보를 입력해주세요.');
@@ -135,8 +136,8 @@ export default function DocsImportScreen() {
                 <View style={{ width: 40 }} />
             </View>
 
-            <ScrollView 
-                style={styles.contentScroll} 
+            <ScrollView
+                style={styles.contentScroll}
                 contentContainerStyle={styles.contentScrollContainer}
             >
                 <Text style={styles.headerTitle}>외부 계약 등록</Text>
@@ -155,7 +156,7 @@ export default function DocsImportScreen() {
                         ) : (
                             <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="contain" />
                         )}
-                        
+
                         {ocrFailed ? (
                             <View style={styles.errorContainer}>
                                 <Text style={styles.errorText}>{errorMessage}</Text>
@@ -213,7 +214,7 @@ export default function DocsImportScreen() {
             </ScrollView>
 
             <View style={[styles.bottomBar, { paddingBottom: Math.max(32, insets.bottom + 16) }]}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.nextButton, (!imageUri || isUploading) && styles.nextButtonDisabled]}
                     disabled={!imageUri || isUploading}
                     onPress={handleNext}
