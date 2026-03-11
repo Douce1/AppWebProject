@@ -21,16 +21,23 @@ function formatMonth(isoMonth: string): string {
     return `${year}년 ${parseInt(month, 10)}월`;
 }
 
+/** undefined/null이어도 크래시 없이 포맷 (toLocaleString 오류 방지) */
+function formatAmount(value: number | undefined | null): string {
+    const n = value != null && Number.isFinite(value) ? value : 0;
+    return n.toLocaleString();
+}
+
 function formatScheduledPayDate(iso: string | null | undefined): string {
     if (!iso) return '미정';
     const d = new Date(iso);
     return `${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
-function calcTax(gross: number) {
-    const incomeTax = Math.floor(gross * 0.03);
-    const localTax = Math.floor(gross * 0.003);
-    return { incomeTax, localTax, net: gross - incomeTax - localTax };
+function calcTax(gross: number | undefined | null) {
+    const g = gross != null && Number.isFinite(gross) ? gross : 0;
+    const incomeTax = Math.floor(g * 0.03);
+    const localTax = Math.floor(g * 0.003);
+    return { incomeTax, localTax, net: g - incomeTax - localTax };
 }
 
 export function getCurrentMonth(): string {
@@ -194,7 +201,7 @@ export default function IncomeScreen() {
                     <>
                         <View style={styles.amountRow}>
                             <Text style={styles.amountText}>
-                                {currentMonthSettlement.grossAmount.toLocaleString()}
+                                {formatAmount(currentMonthSettlement.grossAmount)}
                             </Text>
                             <Text style={styles.currencyText}>원</Text>
                         </View>
@@ -207,7 +214,7 @@ export default function IncomeScreen() {
                             <View style={styles.statBox}>
                                 <Text style={styles.statLabel}>시급</Text>
                                 <Text style={styles.statValue}>
-                                    {currentMonthSettlement.hourlyRate.toLocaleString()}원
+                                    {formatAmount(currentMonthSettlement.hourlyRate)}원
                                 </Text>
                             </View>
                         </View>
@@ -293,10 +300,10 @@ export default function IncomeScreen() {
                             </View>
                             <View style={{ alignItems: 'flex-end' }}>
                                 <Text style={styles.historyAmount}>
-                                    {item.grossAmount.toLocaleString()}원
+                                    {formatAmount(item.grossAmount)}원
                                 </Text>
                                 <Text style={styles.historyTaxAmount}>
-                                    실수령 {(item.grossAmount * 0.967).toLocaleString()}원
+                                    실수령 {formatAmount(item.grossAmount != null ? item.grossAmount * 0.967 : 0)}원
                                 </Text>
                             </View>
                         </TouchableOpacity>
@@ -378,7 +385,7 @@ export default function IncomeScreen() {
                         </View>
 
                         {selectedDetail && (() => {
-                            const { incomeTax, localTax, net } = calcTax(selectedDetail.grossAmount);
+                            const { incomeTax, localTax, net } = calcTax(selectedDetail?.grossAmount);
                             return (
                                 <View style={styles.receiptBox}>
                                     <View style={styles.receiptRow}>
@@ -388,26 +395,26 @@ export default function IncomeScreen() {
                                     <View style={styles.receiptRow}>
                                         <Text style={styles.receiptLabel}>기본 시급</Text>
                                         <Text style={styles.receiptValue}>
-                                            {selectedDetail.hourlyRate.toLocaleString()}원
+                                            {formatAmount(selectedDetail.hourlyRate)}원
                                         </Text>
                                     </View>
                                     <View style={[styles.receiptRow, styles.receiptRowBorder]}>
                                         <Text style={styles.receiptLabel}>총 지급액 (세전)</Text>
                                         <Text style={styles.receiptValue}>
-                                            {selectedDetail.grossAmount.toLocaleString()}원
+                                            {formatAmount(selectedDetail.grossAmount)}원
                                         </Text>
                                     </View>
                                     <View style={styles.receiptRow}>
                                         <Text style={styles.receiptLabel}>사업소득세 (3%)</Text>
-                                        <Text style={styles.receiptValue}>-{incomeTax.toLocaleString()}원</Text>
+                                        <Text style={styles.receiptValue}>-{formatAmount(incomeTax)}원</Text>
                                     </View>
                                     <View style={styles.receiptRow}>
                                         <Text style={styles.receiptLabel}>지방소득세 (0.3%)</Text>
-                                        <Text style={styles.receiptValue}>-{localTax.toLocaleString()}원</Text>
+                                        <Text style={styles.receiptValue}>-{formatAmount(localTax)}원</Text>
                                     </View>
                                     <View style={[styles.receiptRow, styles.receiptRowTotal]}>
                                         <Text style={styles.receiptTotalLabel}>실수령액 (세후)</Text>
-                                        <Text style={styles.receiptTotalValue}>{net.toLocaleString()}원</Text>
+                                        <Text style={styles.receiptTotalValue}>{formatAmount(net)}원</Text>
                                     </View>
                                 </View>
                             );
