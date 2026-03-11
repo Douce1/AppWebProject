@@ -395,6 +395,10 @@ export const httpClient = {
     return getJson<ApiLessonReport[]>('/lesson-reports');
   },
 
+  async submitLessonReport(lessonId: string, content: string): Promise<ApiLessonReport> {
+    return postJson<ApiLessonReport>(`/lessons/${encodeURIComponent(lessonId)}/report`, { content });
+  },
+
   async getLectureHistory(): Promise<LectureRecordView[]> {
     const [lessons, reports] = await Promise.all([
       this.getLessons(),
