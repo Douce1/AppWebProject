@@ -1,33 +1,71 @@
 import { useRouter } from 'expo-router';
-import { FileText, RefreshCcw, Settings, TrendingUp, X } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FileText, RefreshCcw, X } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { Colors, Radius, Shadows } from '@/constants/theme';
 import { Button } from '@/src/components/atoms/Button';
 import { httpClient } from '@/src/api/httpClient';
 import { NotificationTopBar } from '@/src/components/organisms/NotificationTopBar';
+import type { ApiSettlement } from '@/src/api/types';
+
+function formatMonth(isoMonth: string): string {
+    const [year, month] = isoMonth.split('-');
+    return `${year}년 ${parseInt(month, 10)}월`;
+}
+
+function formatScheduledPayDate(iso: string | null | undefined): string {
+    if (!iso) return '미정';
+    const d = new Date(iso);
+    return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
+function calcTax(gross: number) {
+    const incomeTax = Math.floor(gross * 0.03);
+    const localTax = Math.floor(gross * 0.003);
+    return { incomeTax, localTax, net: gross - incomeTax - localTax };
+}
 
 export default function IncomeScreen() {
     const router = useRouter();
-    const [selectedDetail, setSelectedDetail] = useState<any>(null);
-    const [testMessage, setTestMessage] = useState<string | null>(null);
-    const [testError, setTestError] = useState<string | null>(null);
-    const [isTesting, setIsTesting] = useState(false);
+    const [settlements, setSettlements] = useState<ApiSettlement[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [selectedDetail, setSelectedDetail] = useState<ApiSettlement | null>(null);
 
-    const handleTestApiCall = async () => {
-        setIsTesting(true);
-        setTestError(null);
+    const currentMonth = (() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    })();
+
+    const loadSettlements = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
         try {
-            const lessons = await httpClient.getLessons();
-            setTestMessage(`백엔드 연결 성공 (수업 ${lessons.length}개)`);
-        } catch (error) {
-            const message =
-                error instanceof Error ? error.message : '요청 중 알 수 없는 오류가 발생했습니다.';
-            setTestError(message);
+            const data = await httpClient.getSettlements();
+            setSettlements(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : '정산 데이터를 불러오지 못했습니다.');
         } finally {
-            setIsTesting(false);
+            setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadSettlements();
+    }, [loadSettlements]);
+
+    const currentMonthSettlement = settlements.find((s) => s.month === currentMonth);
+    const pastSettlements = settlements
+        .filter((s) => s.month !== currentMonth)
+        .sort((a, b) => b.month.localeCompare(a.month));
 
     return (
         <ScrollView style={styles.container}>
@@ -35,94 +73,113 @@ export default function IncomeScreen() {
                 <NotificationTopBar title="수입/정산" />
             </View>
 
+            {/* 이번 달 카드 */}
             <View style={styles.incomeCard}>
                 <Text style={styles.incomeLabel}>이번 달 예상 수입 (세전)</Text>
-                <Text style={[styles.taxDeductedText, { marginTop: 8 }]}>
-                    정산 데이터는 곧 백엔드 API와 연동될 예정입니다.
-                </Text>
+
+                {isLoading ? (
+                    <ActivityIndicator color={Colors.brandInk} style={{ marginVertical: 12 }} />
+                ) : error ? (
+                    <Text style={styles.errorText}>{error}</Text>
+                ) : currentMonthSettlement ? (
+                    <>
+                        <View style={styles.amountRow}>
+                            <Text style={styles.amountText}>
+                                {currentMonthSettlement.grossAmount.toLocaleString()}
+                            </Text>
+                            <Text style={styles.currencyText}>원</Text>
+                        </View>
+                        <View style={styles.statsRow}>
+                            <View style={styles.statBox}>
+                                <Text style={styles.statLabel}>총 수업 시간</Text>
+                                <Text style={styles.statValue}>{currentMonthSettlement.totalHours}h</Text>
+                            </View>
+                            <View style={styles.verticalDivider} />
+                            <View style={styles.statBox}>
+                                <Text style={styles.statLabel}>시급</Text>
+                                <Text style={styles.statValue}>
+                                    {currentMonthSettlement.hourlyRate.toLocaleString()}원
+                                </Text>
+                            </View>
+                        </View>
+                    </>
+                ) : (
+                    <Text style={styles.taxDeductedText}>이번 달 정산 데이터가 없습니다.</Text>
+                )}
 
                 <View style={styles.divider} />
 
                 <View style={styles.paymentRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <RefreshCcw color={Colors.brandInk} size={14} style={{ marginRight: 6 }} />
-                        <Text style={styles.paymentText}>지급 예정일: 11월 10일</Text>
-                    </View>
-                    <TouchableOpacity
-                        onPress={() => setSelectedDetail({ month: '10월', amount: 3450000, hours: 68 })}
-                        style={{ paddingVertical: 5, paddingHorizontal: 10, backgroundColor: '#F3C742', borderRadius: 18 }}
-                    >
-                        <Text style={{ color: '#FFF0C2', fontWeight: 'bold', fontSize: 12.5 }}>상세보기 &gt;</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            <View style={styles.historySection}>
-                <Text style={styles.sectionTitle}>정산 내역</Text>
-
-                <View
-                    style={{
-                        marginBottom: 12,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                    }}
-                >
-                    <Text style={{ fontSize: 13, color: Colors.mutedForeground }}>
-                        백엔드 /lessons API 연결 테스트
-                    </Text>
-                    <TouchableOpacity
-                        onPress={handleTestApiCall}
-                        disabled={isTesting}
-                        style={{
-                            paddingVertical: 6,
-                            paddingHorizontal: 10,
-                            borderRadius: 14,
-                            backgroundColor: Colors.brandMint,
-                            opacity: isTesting ? 0.6 : 1,
-                        }}
-                    >
-                        <Text
-                            style={{
-                                fontSize: 12,
-                                fontWeight: '600',
-                                color: Colors.brandInk,
-                            }}
-                        >
-                            {isTesting ? '요청 중...' : '테스트 호출'}
+                        <Text style={styles.paymentText}>
+                            지급 예정일:{' '}
+                            {currentMonthSettlement
+                                ? formatScheduledPayDate(currentMonthSettlement.scheduledPayDate)
+                                : '미정'}
                         </Text>
+                    </View>
+                    {currentMonthSettlement && (
+                        <TouchableOpacity
+                            onPress={() => setSelectedDetail(currentMonthSettlement)}
+                            style={styles.detailButton}
+                        >
+                            <Text style={styles.detailButtonText}>상세보기 &gt;</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+
+            {/* 정산 내역 */}
+            <View style={styles.historySection}>
+                <View style={styles.historyHeader}>
+                    <Text style={styles.sectionTitle}>정산 내역</Text>
+                    <TouchableOpacity onPress={loadSettlements} disabled={isLoading} style={styles.refreshButton}>
+                        <RefreshCcw color={Colors.brandInk} size={16} />
                     </TouchableOpacity>
                 </View>
 
-                {testMessage && (
-                    <Text
-                        style={{
-                            fontSize: 12,
-                            color: Colors.brandMint,
-                            marginBottom: 8,
-                        }}
-                    >
-                        {testMessage}
-                    </Text>
-                )}
-                {testError && (
-                    <Text
-                        style={{
-                            fontSize: 12,
-                            color: 'red',
-                            marginBottom: 8,
-                        }}
-                    >
-                        {testError}
-                    </Text>
+                {isLoading && <ActivityIndicator color={Colors.brandInk} />}
+
+                {!isLoading && !error && pastSettlements.length === 0 && (
+                    <Text style={styles.emptyHistoryText}>이전 정산 내역이 없습니다.</Text>
                 )}
 
-                <Text style={[styles.sectionTitle, styles.emptyHistoryText]}>
-                    정산 내역은 아직 API에 연결되지 않았습니다.
-                </Text>
+                {!isLoading &&
+                    pastSettlements.map((item) => (
+                        <TouchableOpacity
+                            key={item.settlementId}
+                            style={styles.historyItem}
+                            onPress={() => setSelectedDetail(item)}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                <View style={styles.historyIconBox}>
+                                    <FileText color={Colors.brandInk} size={20} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.historyTitle}>{formatMonth(item.month)} 정산</Text>
+                                    <Text style={styles.historyDate}>
+                                        {item.paidAt
+                                            ? `지급 완료: ${new Date(item.paidAt).toLocaleDateString('ko-KR')}`
+                                            : item.status === 'PENDING'
+                                            ? '정산 대기'
+                                            : item.status}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={styles.historyAmount}>
+                                    {item.grossAmount.toLocaleString()}원
+                                </Text>
+                                <Text style={styles.historyTaxAmount}>
+                                    실수령 {(item.grossAmount * 0.967).toLocaleString()}원
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    ))}
             </View>
 
-            {/* Detail Modal */}
+            {/* 상세 모달 */}
             <Modal
                 visible={!!selectedDetail}
                 transparent={true}
@@ -132,40 +189,49 @@ export default function IncomeScreen() {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{selectedDetail?.month} 정산 상세 내역</Text>
+                            <Text style={styles.modalTitle}>
+                                {selectedDetail ? formatMonth(selectedDetail.month) : ''} 정산 상세 내역
+                            </Text>
                             <TouchableOpacity onPress={() => setSelectedDetail(null)}>
                                 <X size={24} color={Colors.brandInk} />
                             </TouchableOpacity>
                         </View>
 
-                        {selectedDetail && (
-                            <View style={styles.receiptBox}>
-                                <View style={styles.receiptRow}>
-                                    <Text style={styles.receiptLabel}>총 근무 시간</Text>
-                                    <Text style={styles.receiptValue}>{selectedDetail.hours}시간</Text>
+                        {selectedDetail && (() => {
+                            const { incomeTax, localTax, net } = calcTax(selectedDetail.grossAmount);
+                            return (
+                                <View style={styles.receiptBox}>
+                                    <View style={styles.receiptRow}>
+                                        <Text style={styles.receiptLabel}>총 근무 시간</Text>
+                                        <Text style={styles.receiptValue}>{selectedDetail.totalHours}시간</Text>
+                                    </View>
+                                    <View style={styles.receiptRow}>
+                                        <Text style={styles.receiptLabel}>기본 시급</Text>
+                                        <Text style={styles.receiptValue}>
+                                            {selectedDetail.hourlyRate.toLocaleString()}원
+                                        </Text>
+                                    </View>
+                                    <View style={[styles.receiptRow, styles.receiptRowBorder]}>
+                                        <Text style={styles.receiptLabel}>총 지급액 (세전)</Text>
+                                        <Text style={styles.receiptValue}>
+                                            {selectedDetail.grossAmount.toLocaleString()}원
+                                        </Text>
+                                    </View>
+                                    <View style={styles.receiptRow}>
+                                        <Text style={styles.receiptLabel}>사업소득세 (3%)</Text>
+                                        <Text style={styles.receiptValue}>-{incomeTax.toLocaleString()}원</Text>
+                                    </View>
+                                    <View style={styles.receiptRow}>
+                                        <Text style={styles.receiptLabel}>지방소득세 (0.3%)</Text>
+                                        <Text style={styles.receiptValue}>-{localTax.toLocaleString()}원</Text>
+                                    </View>
+                                    <View style={[styles.receiptRow, styles.receiptRowTotal]}>
+                                        <Text style={styles.receiptTotalLabel}>실수령액 (세후)</Text>
+                                        <Text style={styles.receiptTotalValue}>{net.toLocaleString()}원</Text>
+                                    </View>
                                 </View>
-                                <View style={styles.receiptRow}>
-                                    <Text style={styles.receiptLabel}>기본 시급</Text>
-                                    <Text style={styles.receiptValue}>50,000원</Text>
-                                </View>
-                                <View style={[styles.receiptRow, styles.receiptRowBorder]}>
-                                    <Text style={styles.receiptLabel}>총 지급액 (세전)</Text>
-                                    <Text style={styles.receiptValue}>{(selectedDetail.amount).toLocaleString()}원</Text>
-                                </View>
-                                <View style={styles.receiptRow}>
-                                    <Text style={styles.receiptLabel}>사업소득세 (3%)</Text>
-                                    <Text style={styles.receiptValue}>-{Math.floor(selectedDetail.amount * 0.03).toLocaleString()}원</Text>
-                                </View>
-                                <View style={styles.receiptRow}>
-                                    <Text style={styles.receiptLabel}>지방소득세 (0.3%)</Text>
-                                    <Text style={styles.receiptValue}>-{Math.floor(selectedDetail.amount * 0.003).toLocaleString()}원</Text>
-                                </View>
-                                <View style={[styles.receiptRow, styles.receiptRowTotal]}>
-                                    <Text style={styles.receiptTotalLabel}>실수령액 (세후)</Text>
-                                    <Text style={styles.receiptTotalValue}>{(selectedDetail.amount * 0.967).toLocaleString()}원</Text>
-                                </View>
-                            </View>
-                        )}
+                            );
+                        })()}
 
                         <Button
                             title="닫기"
@@ -189,24 +255,28 @@ const styles = StyleSheet.create({
     amountText: { color: '#F3C742', fontSize: 32, fontWeight: 'bold' },
     currencyText: { color: Colors.brandInk, fontSize: 18, marginLeft: 4, fontWeight: '600' },
     taxDeductedText: { color: Colors.brandInk, fontSize: 14, marginBottom: 20, fontWeight: '500', opacity: 0.7 },
+    errorText: { color: 'red', fontSize: 13, marginVertical: 8 },
     statsRow: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 10, padding: 12, marginBottom: 15 },
     statBox: { flex: 1, alignItems: 'center' },
     statLabel: { color: Colors.brandInk, fontSize: 12, marginBottom: 4, opacity: 0.7 },
     statValue: { color: Colors.brandInk, fontSize: 16, fontWeight: 'bold' },
     verticalDivider: { width: 1, backgroundColor: 'rgba(0,0,0,0.1)' },
-    increaseBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(243, 199, 66, 0.4)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-    increaseText: { color: Colors.brandInk, fontSize: 13, fontWeight: 'bold' },
     divider: { height: 1, backgroundColor: 'rgba(0,0,0,0.1)', marginVertical: 15 },
     paymentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     paymentText: { color: Colors.brandInk, fontSize: 14, opacity: 0.8 },
+    detailButton: { paddingVertical: 5, paddingHorizontal: 10, backgroundColor: '#F3C742', borderRadius: 18 },
+    detailButtonText: { color: '#FFF0C2', fontWeight: 'bold', fontSize: 12.5 },
     historySection: { paddingHorizontal: 20, marginTop: 10, paddingBottom: 100 },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.brandInk, marginBottom: 15 },
+    historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.brandInk },
+    refreshButton: { padding: 6 },
     historyItem: { backgroundColor: 'white', padding: 15, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, ...Shadows.card },
     historyIconBox: { backgroundColor: Colors.brandMint, padding: 10, borderRadius: 10, marginRight: 12 },
     historyTitle: { fontSize: 15, fontWeight: '600', color: Colors.brandInk, marginBottom: 4 },
     historyDate: { fontSize: 12, color: Colors.mutedForeground },
     historyAmount: { fontSize: 16, fontWeight: 'bold', color: Colors.brandInk },
     historyTaxAmount: { fontSize: 13, color: Colors.brandHoney, marginTop: 4, fontWeight: '500' },
+    emptyHistoryText: { fontSize: 14, fontWeight: '500', color: Colors.mutedForeground, marginTop: 8 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 25, minHeight: 400 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
@@ -219,6 +289,4 @@ const styles = StyleSheet.create({
     receiptValue: { color: Colors.brandInk, fontSize: 14, fontWeight: '500' },
     receiptTotalLabel: { color: Colors.brandInk, fontSize: 16, fontWeight: 'bold' },
     receiptTotalValue: { color: Colors.brandHoney, fontSize: 18, fontWeight: 'bold' },
-    emptyHistoryText: { fontSize: 14, fontWeight: '500', color: Colors.mutedForeground, marginTop: 8 },
 });
-
