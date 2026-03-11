@@ -14,6 +14,7 @@ import type {
   ApiLesson,
   ApiLessonReport,
   ApiLessonRequest,
+  SubmitContractSignaturePayload,
 } from '../api/types';
 import { queryKeys } from './queryKeys';
 
@@ -109,6 +110,28 @@ export function useContractsInvalidate() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.contract(contractId) });
     }
   };
+}
+
+export function useReauthContractMutation() {
+  return useMutation({
+    mutationFn: (contractId: string) => httpClient.reauthContract(contractId),
+  });
+}
+
+export function useSignContractMutation(contractId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SubmitContractSignaturePayload) =>
+      httpClient.signContract(contractId!, payload),
+    onSuccess: async (updated: ApiContractDetail) => {
+      if (!contractId) return;
+      queryClient.setQueryData(queryKeys.contract(contractId), updated);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.contract(contractId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.contracts }),
+      ]);
+    },
+  });
 }
 
 export function useChatRoomsQuery(
