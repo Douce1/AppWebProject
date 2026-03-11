@@ -3,7 +3,6 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert, Pressable } from 'react-native';
 import { Bell, Camera, FileText } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ApiContract, ApiLessonRequest, ContractStatus } from '../api/types';
 import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
@@ -33,17 +32,6 @@ export default function DocsScreen() {
     const contractsError = contractsQuery.isError ? '계약 목록을 불러오지 못했습니다.' : null;
     const requestsError = lessonRequestsQuery.isError ? '수업 요청 목록을 불러오지 못했습니다.' : null;
     const respondingRequestId = respondToRequestMutation.variables?.requestId ?? null;
-
-    useFocusEffect(
-        useCallback(() => {
-            if (selectedTab === '계약') {
-                contractsQuery.refetch();
-            }
-            if (selectedTab === '요청/제안') {
-                lessonRequestsQuery.refetch();
-            }
-        }, [contractsQuery, lessonRequestsQuery, selectedTab])
-    );
 
     const contractStatusLabel = (s: ContractStatus): string => {
         const map: Record<ContractStatus, string> = {
