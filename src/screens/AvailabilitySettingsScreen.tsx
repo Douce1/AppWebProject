@@ -200,7 +200,13 @@ export default function AvailabilitySettingsScreen() {
 
           try {
             const updated = await apiClient.updateMonthSubmission(viewMonth, next);
-            setMonthSubmission(updated);
+            if (updated && typeof updated.submittedAt === 'string') {
+              setMonthSubmission((s) =>
+                s
+                  ? { ...s, submittedAt: updated.submittedAt, isUnavailable: next }
+                  : { month: viewMonth, isUnavailable: next, submittedAt: updated.submittedAt },
+              );
+            }
 
             // 출강불가 제출 시: 해당 월 슬롯 백엔드 동기화
             if (next) {
@@ -256,6 +262,9 @@ export default function AvailabilitySettingsScreen() {
   }, [selectedDates, availability]);
 
   const handleDayPress = (day: { dateString: string }) => {
+    if (isUnavailable) {
+      return;
+    }
     const date = day.dateString;
     setFocusedDate(date);
     const hasSlots = availability[date] && availability[date].length > 0;
@@ -322,7 +331,19 @@ export default function AvailabilitySettingsScreen() {
       if (isUnavailable) {
         try {
           const updated = await apiClient.updateMonthSubmission(viewMonth, false);
-          setMonthSubmission(updated);
+          if (updated && typeof updated.submittedAt === 'string') {
+            setMonthSubmission({
+              month: viewMonth,
+              isUnavailable: false,
+              submittedAt: updated.submittedAt,
+            });
+          } else {
+            setMonthSubmission((s) =>
+              s
+                ? { ...s, isUnavailable: false, submittedAt: null }
+                : { month: viewMonth, isUnavailable: false, submittedAt: null },
+            );
+          }
         } catch {
           // 월 상태 해제 실패는 치명적이지 않으므로 알림만 표시
           Alert.alert(
@@ -450,26 +471,31 @@ export default function AvailabilitySettingsScreen() {
           </View>
           <View style={styles.slotRow}>
             <TextInput
-              style={styles.timeInput}
+              style={[styles.timeInput, isUnavailable && styles.timeInputDisabled]}
               value={startTimeInput}
               onChangeText={setStartTimeInput}
               placeholder="09:00"
               placeholderTextColor={Colors.mutedForeground}
+              editable={!isUnavailable}
             />
             <Text style={styles.slotDash}>~</Text>
             <TextInput
-              style={styles.timeInput}
+              style={[styles.timeInput, isUnavailable && styles.timeInputDisabled]}
               value={endTimeInput}
               onChangeText={setEndTimeInput}
               placeholder="18:00"
               placeholderTextColor={Colors.mutedForeground}
+              editable={!isUnavailable}
             />
           </View>
           <View style={styles.actionsRow}>
             <TouchableOpacity
-              style={[styles.deleteButton, !hasConfiguredInSelection && styles.deleteButtonDisabled]}
+              style={[
+                styles.deleteButton,
+                (!hasConfiguredInSelection || isUnavailable) && styles.deleteButtonDisabled,
+              ]}
               onPress={() => {
-                if (!hasConfiguredInSelection) return;
+                if (!hasConfiguredInSelection || isUnavailable) return;
                 Alert.alert(
                   '가능시간 삭제',
                   '선택한 날짜의 가능시간을 모두 삭제하시겠습니까?',
@@ -500,7 +526,7 @@ export default function AvailabilitySettingsScreen() {
                   ],
                 );
               }}
-              disabled={!hasConfiguredInSelection}
+              disabled={!hasConfiguredInSelection || isUnavailable}
             >
               <Text
                 style={[
@@ -512,15 +538,21 @@ export default function AvailabilitySettingsScreen() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.applyButton, !canApply && styles.applyButtonDisabled]}
+              style={[
+                styles.applyButton,
+                (!canApply || isUnavailable) && styles.applyButtonDisabled,
+              ]}
               onPress={applyTimeToSelectedDates}
-              disabled={!canApply}
+              disabled={!canApply || isUnavailable}
             >
-              <Plus color={canApply ? Colors.brandInk : '#9CA3AF'} size={20} />
+              <Plus
+                color={canApply && !isUnavailable ? Colors.brandInk : '#9CA3AF'}
+                size={20}
+              />
               <Text
                 style={[
                   styles.applyButtonText,
-                  !canApply && styles.applyButtonTextDisabled,
+                  (!canApply || isUnavailable) && styles.applyButtonTextDisabled,
                 ]}
               >
                 등록
@@ -602,6 +634,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: Colors.foreground,
+  },
+  timeInputDisabled: {
+    backgroundColor: '#F3F4F6',
+    color: '#9CA3AF',
   },
   slotDash: { marginHorizontal: 8, color: '#6B7280', fontWeight: '600' },
   actionsRow: {
