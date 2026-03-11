@@ -18,6 +18,7 @@ import {
   ApiLesson,
   ApiLessonReport,
   ApiLessonRequest,
+  ApiMonthSubmission,
   ApiNotificationSettings,
   ApiPushDevice,
   ApiSettlement,
@@ -307,6 +308,19 @@ export const httpClient = {
 
   async upsertAvailability(body: { slots: Array<{ availableStartAt: string; availableEndAt: string }> }): Promise<ApiAvailabilitySlot[]> {
     return putJson<ApiAvailabilitySlot[]>('/availability/me', body);
+  },
+
+  async getMonthSubmission(month: string): Promise<ApiMonthSubmission> {
+    return getJson<ApiMonthSubmission>(
+      `/availability/me/month-submission?month=${encodeURIComponent(month)}`,
+    );
+  },
+
+  async updateMonthSubmission(month: string, isUnavailable: boolean): Promise<ApiMonthSubmission> {
+    return putJson<ApiMonthSubmission>('/availability/me/month-submission', {
+      month,
+      isUnavailable,
+    });
   },
 
   async getLessons(): Promise<ApiLesson[]> {

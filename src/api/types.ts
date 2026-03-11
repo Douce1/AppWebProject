@@ -246,6 +246,14 @@ export interface ApiChatMessageList {
   nextCursor: string | null;
 }
 
+// ---- Monthly Availability Submission Types ----
+
+export interface ApiMonthSubmission {
+  month: string;           // "YYYY-MM"
+  isUnavailable: boolean;  // true = 해당 월 출강 불가 명시 제출
+  submittedAt: string | null; // ISO, 제출 시각 (미제출 시 null)
+}
+
 // ---- Push Notifications & Device Registration Types ----
 
 export interface ApiPushDevice {
