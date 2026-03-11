@@ -97,6 +97,12 @@ export interface ApiLessonRequest {
   cooldownUntil: string | null;
   requestedAt: string;   // ISO
   respondedAt: string | null; // ISO
+  lessonTitle?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  museum?: string | null;
+  region?: string | null;
+  venueName?: string | null;
 }
 
 export interface ApiContract {
