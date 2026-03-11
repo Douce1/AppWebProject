@@ -11,6 +11,7 @@ import type {
   ApiChatRoom,
   ApiContract,
   ApiContractDetail,
+  ApiInstructorProfile,
   ApiLesson,
   ApiLessonReport,
   ApiLessonRequest,
@@ -24,6 +25,16 @@ export function useLessonsQuery(
   return useQuery({
     queryKey: queryKeys.lessons,
     queryFn: () => httpClient.getLessons(),
+    ...options,
+  });
+}
+
+export function useInstructorProfileQuery(
+  options?: Omit<UseQueryOptions<ApiInstructorProfile>, 'queryKey' | 'queryFn'>,
+) {
+  return useQuery({
+    queryKey: queryKeys.instructorProfile,
+    queryFn: () => httpClient.getInstructorProfile(),
     ...options,
   });
 }
