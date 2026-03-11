@@ -1,5 +1,5 @@
 import { Colors, Radius, Shadows } from '@/constants/theme';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,13 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
-import { Plus } from 'lucide-react-native';
+import { AlertTriangle, CheckCircle2, Plus, XCircle } from 'lucide-react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { apiClient } from '../api/apiClient';
+import type { ApiMonthSubmission } from '../api/types';
 
 export type TimeSlot = { start: string; end: string };
 type AvailabilityMap = Record<string, TimeSlot[]>; // key: YYYY-MM-DD
@@ -27,14 +29,22 @@ type Marking = {
 };
 type MarkedDates = Record<string, Marking>;
 
-// 초기값 디폴트: 가능시간 없이 시작
 const SAMPLE_AVAILABILITY: AvailabilityMap = {};
 
-function formatDate(date: Date): string {
+export function formatDate(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+export function toYearMonth(dateString: string): string {
+  return dateString.slice(0, 7); // "YYYY-MM-DD" → "YYYY-MM"
+}
+
+export function formatMonthLabel(month: string): string {
+  const [year, m] = month.split('-');
+  return `${year}년 ${parseInt(m, 10)}월`;
 }
 
 function getDatesInRange(start: string, end: string): string[] {
@@ -62,7 +72,9 @@ export default function AvailabilitySettingsScreen() {
 
   const minDate = formatDate(today);
   const maxDate = formatDate(max);
+  const initialMonth = toYearMonth(minDate);
 
+  const [viewMonth, setViewMonth] = useState<string>(initialMonth);
   const [availability, setAvailability] = useState<AvailabilityMap>(SAMPLE_AVAILABILITY);
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [rangeStart, setRangeStart] = useState<string | null>(null);
@@ -71,7 +83,26 @@ export default function AvailabilitySettingsScreen() {
   const [endTimeInput, setEndTimeInput] = useState('18:00');
   const [rangeText, setRangeText] = useState('');
 
-  // 초기 진입 시 백엔드에서 기존 가용시간을 불러와서 캘린더에 표시
+  // 월별 제출 상태
+  const [monthSubmission, setMonthSubmission] = useState<ApiMonthSubmission | null>(null);
+  const [monthSubmissionLoading, setMonthSubmissionLoading] = useState(false);
+  const [monthSubmissionUpdating, setMonthSubmissionUpdating] = useState(false);
+
+  // 월별 제출 상태 조회
+  const loadMonthSubmission = useCallback(async (month: string) => {
+    setMonthSubmissionLoading(true);
+    try {
+      const data = await apiClient.getMonthSubmission(month);
+      setMonthSubmission(data);
+    } catch {
+      // 미제출 상태로 처리
+      setMonthSubmission({ month, isUnavailable: false, submittedAt: null });
+    } finally {
+      setMonthSubmissionLoading(false);
+    }
+  }, []);
+
+  // 초기 진입 시 기존 가용시간 + 이번 달 제출 상태 불러오기
   useEffect(() => {
     let mounted = true;
 
@@ -81,17 +112,14 @@ export default function AvailabilitySettingsScreen() {
         if (!mounted) return;
 
         const next: AvailabilityMap = {};
-
         const pad = (n: number) => n.toString().padStart(2, '0');
 
         slots.forEach((slot) => {
           const start = new Date(slot.availableStartAt);
           const end = new Date(slot.availableEndAt);
           const dateKey = formatDate(start);
-
           const startStr = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
           const endStr = `${pad(end.getHours())}:${pad(end.getMinutes())}`;
-
           const list = next[dateKey] ?? [];
           list.push({ start: startStr, end: endStr });
           next[dateKey] = list;
@@ -102,17 +130,25 @@ export default function AvailabilitySettingsScreen() {
         if (!mounted) return;
         const status = (error as { status?: number }).status;
         const message =
-          status != null ? `오류가 발생했습니다. (${status})` : '가용시간을 불러오지 못했습니다. 다시 시도해주세요.';
+          status != null
+            ? `오류가 발생했습니다. (${status})`
+            : '가용시간을 불러오지 못했습니다. 다시 시도해주세요.';
         Alert.alert('불러오기 실패', message);
       }
     };
 
     void loadAvailability();
+    void loadMonthSubmission(initialMonth);
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [initialMonth, loadMonthSubmission]);
+
+  // 표시 월이 변경될 때마다 제출 상태 재조회
+  useEffect(() => {
+    void loadMonthSubmission(viewMonth);
+  }, [viewMonth, loadMonthSubmission]);
 
   useEffect(() => {
     if (!selectedDates.length) {
@@ -125,28 +161,71 @@ export default function AvailabilitySettingsScreen() {
     setRangeText(start === end ? start : `${start} ~ ${end}`);
   }, [selectedDates]);
 
+  // 월 전체 출강 불가 토글
+  const handleMonthUnavailableToggle = async () => {
+    if (monthSubmissionUpdating) return;
+    const next = !(monthSubmission?.isUnavailable ?? false);
+
+    const title = next ? '이번 달 출강 불가 제출' : '출강 불가 취소';
+    const message = next
+      ? `${formatMonthLabel(viewMonth)}을 출강 불가로 제출하시겠습니까?\n운영팀에게 명시적으로 전달됩니다.`
+      : `${formatMonthLabel(viewMonth)} 출강 불가를 취소하시겠습니까?\n다시 출강 가능 상태가 됩니다.`;
+
+    Alert.alert(title, message, [
+      { text: '아니오', style: 'cancel' },
+      {
+        text: '확인',
+        style: next ? 'destructive' : 'default',
+        onPress: async () => {
+          setMonthSubmissionUpdating(true);
+          // Optimistic
+          const prev = monthSubmission;
+          setMonthSubmission((s) =>
+            s
+              ? { ...s, isUnavailable: next, submittedAt: next ? new Date().toISOString() : null }
+              : { month: viewMonth, isUnavailable: next, submittedAt: next ? new Date().toISOString() : null },
+          );
+          try {
+            const updated = await apiClient.updateMonthSubmission(viewMonth, next);
+            setMonthSubmission(updated);
+            Alert.alert(
+              next ? '출강 불가 제출 완료' : '출강 불가 취소 완료',
+              next
+                ? `${formatMonthLabel(viewMonth)}이 출강 불가로 제출되었습니다.`
+                : `${formatMonthLabel(viewMonth)} 출강 불가가 취소되었습니다.`,
+            );
+          } catch {
+            // 롤백
+            setMonthSubmission(prev);
+            Alert.alert('저장 실패', '월별 출강 상태 변경에 실패했습니다. 다시 시도해주세요.');
+          } finally {
+            setMonthSubmissionUpdating(false);
+          }
+        },
+      },
+    ]);
+  };
+
   const markedDates: MarkedDates = useMemo(() => {
     const marked: MarkedDates = {};
 
-    // 1) 서버에 이미 저장된 "설정 완료" 날짜들 → 보조 동작 버튼 색
     Object.keys(availability).forEach((date) => {
       const hasSlots = availability[date] && availability[date].length > 0;
       if (!hasSlots) return;
       marked[date] = {
         selected: true,
-        selectedColor: '#FFF0C2', // Button secondary background
+        selectedColor: '#FFF0C2',
         selectedTextColor: Colors.brandInk,
         marked: true,
         dotColor: Colors.brandHoney,
       };
     });
 
-    // 2) 현재 선택/편집 중인 날짜들 → 주요 동작 버튼 색
     selectedDates.forEach((date) => {
       const hasSlots = availability[date] && availability[date].length > 0;
       marked[date] = {
         selected: true,
-        selectedColor: Colors.brandHoney, // Button primary background
+        selectedColor: Colors.brandHoney,
         selectedTextColor: Colors.brandInk,
         marked: hasSlots || marked[date]?.marked,
         dotColor: Colors.brandHoney,
@@ -161,77 +240,31 @@ export default function AvailabilitySettingsScreen() {
     setFocusedDate(date);
     const hasSlots = availability[date] && availability[date].length > 0;
 
-    // 범위 시작이 아직 없을 때
     if (!rangeStart) {
-      // 이미 설정된 날짜를 누르면 해당 시간 값으로 수정 모드 진입 + 선택 시작
       if (hasSlots) {
         const firstSlot = availability[date][0];
         setStartTimeInput(firstSlot.start);
         setEndTimeInput(firstSlot.end);
       }
-
-      // 이미 선택된 날짜를 다시 누르면 전체 선택 해제
       if (selectedDates.length === 1 && selectedDates[0] === date) {
         setSelectedDates([]);
         return;
       }
-
-      // 새로운 범위 시작
       setRangeStart(date);
       setSelectedDates([date]);
       return;
     }
 
-    // 범위 시작이 있을 때 같은 날짜를 다시 누르면 범위 선택 취소
     if (rangeStart === date) {
       setRangeStart(null);
       setSelectedDates([]);
       return;
     }
 
-    // 시작~끝 범위를 한 번에 선택 (기존 데이터 유무와 상관없이 전체 포함)
     const range = getDatesInRange(rangeStart, date);
     setSelectedDates(range);
     setRangeStart(null);
   };
-
-  const applyTimeToSelectedDates = async () => {
-    if (!selectedDates.length) {
-      Alert.alert('알림', '가능시간을 적용할 날짜를 먼저 선택해주세요.');
-      return;
-    }
-
-    // 1) 로컬 상태 업데이트
-    const next: AvailabilityMap = { ...availability };
-    selectedDates.forEach((date) => {
-      next[date] = [{ start: startTimeInput, end: endTimeInput }];
-    });
-    setAvailability(next);
-
-    // 2) 백엔드에 UpsertMyAvailabilityDto 형태로 저장
-    const payloadSlots = buildPayloadSlots(next);
-
-    try {
-      await apiClient.upsertAvailability({ slots: payloadSlots });
-      Alert.alert('등록 완료', '선택한 날짜의 가능시간이 저장되었습니다.');
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.log('[AvailabilitySettingsScreen] failed to save availability', error);
-      Alert.alert('저장 실패', '가용시간 저장 중 오류가 발생했습니다.');
-    }
-
-    // 등록 후 선택 상태 초기화
-    setSelectedDates([]);
-    setRangeStart(null);
-    setRangeText('');
-  };
-
-  const currentSlots: TimeSlot[] = availability[focusedDate] ?? [];
-  const canApply = selectedDates.length > 0;
-  const hasSelection = selectedDates.length > 0 || !!rangeText;
-  const hasConfiguredInSelection = selectedDates.some(
-    (date) => availability[date] && availability[date].length > 0,
-  );
 
   const toIso = (date: string, time: string): string => {
     const [hh, mm] = time.split(':').map((v) => Number(v));
@@ -247,6 +280,39 @@ export default function AvailabilitySettingsScreen() {
         availableEndAt: toIso(date, slot.end),
       })),
     );
+
+  const applyTimeToSelectedDates = async () => {
+    if (!selectedDates.length) {
+      Alert.alert('알림', '가능시간을 적용할 날짜를 먼저 선택해주세요.');
+      return;
+    }
+
+    const next: AvailabilityMap = { ...availability };
+    selectedDates.forEach((date) => {
+      next[date] = [{ start: startTimeInput, end: endTimeInput }];
+    });
+    setAvailability(next);
+
+    const payloadSlots = buildPayloadSlots(next);
+    try {
+      await apiClient.upsertAvailability({ slots: payloadSlots });
+      Alert.alert('등록 완료', '선택한 날짜의 가능시간이 저장되었습니다.');
+    } catch {
+      Alert.alert('저장 실패', '가용시간 저장 중 오류가 발생했습니다.');
+    }
+
+    setSelectedDates([]);
+    setRangeStart(null);
+    setRangeText('');
+  };
+
+  const currentSlots: TimeSlot[] = availability[focusedDate] ?? [];
+  const canApply = selectedDates.length > 0;
+  const hasSelection = selectedDates.length > 0 || !!rangeText;
+  const hasConfiguredInSelection = selectedDates.some(
+    (date) => availability[date] && availability[date].length > 0,
+  );
+  const isUnavailable = monthSubmission?.isUnavailable ?? false;
 
   const allConfiguredSlots = useMemo(
     () =>
@@ -275,13 +341,100 @@ export default function AvailabilitySettingsScreen() {
         enableOnAndroid
         extraScrollHeight={40}
       >
+        {/* ── 월별 출강 상태 배너 ── */}
         <View style={styles.section}>
+          <View style={styles.monthBannerHeader}>
+            <Text style={styles.sectionTitle}>
+              월별 출강 상태
+            </Text>
+            <Text style={styles.monthLabel}>{formatMonthLabel(viewMonth)}</Text>
+          </View>
+
+          {monthSubmissionLoading ? (
+            <ActivityIndicator color={Colors.brandInk} style={{ marginVertical: 12 }} />
+          ) : (
+            <>
+              <View
+                style={[
+                  styles.statusBadge,
+                  isUnavailable ? styles.statusBadgeUnavailable : styles.statusBadgeAvailable,
+                ]}
+              >
+                {isUnavailable ? (
+                  <XCircle size={16} color="#DC2626" style={{ marginRight: 6 }} />
+                ) : (
+                  <CheckCircle2 size={16} color="#059669" style={{ marginRight: 6 }} />
+                )}
+                <Text
+                  style={[
+                    styles.statusBadgeText,
+                    isUnavailable ? styles.statusBadgeTextUnavailable : styles.statusBadgeTextAvailable,
+                  ]}
+                >
+                  {isUnavailable
+                    ? '출강 불가 제출됨'
+                    : monthSubmission?.submittedAt == null
+                    ? '미제출 (출강 가능)'
+                    : '출강 가능'}
+                </Text>
+              </View>
+
+              {isUnavailable && (
+                <View style={styles.warningRow}>
+                  <AlertTriangle size={14} color="#B45309" style={{ marginRight: 6 }} />
+                  <Text style={styles.warningText}>
+                    출강 불가 상태에서는 slot을 등록해도 운영팀에게 불가로 표시됩니다.
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[
+                  styles.unavailableButton,
+                  isUnavailable ? styles.unavailableButtonCancel : styles.unavailableButtonSubmit,
+                  monthSubmissionUpdating && styles.unavailableButtonDisabled,
+                ]}
+                onPress={handleMonthUnavailableToggle}
+                disabled={monthSubmissionUpdating}
+              >
+                {monthSubmissionUpdating ? (
+                  <ActivityIndicator size="small" color={isUnavailable ? '#DC2626' : Colors.brandInk} />
+                ) : (
+                  <Text
+                    style={[
+                      styles.unavailableButtonText,
+                      isUnavailable ? styles.unavailableButtonTextCancel : styles.unavailableButtonTextSubmit,
+                    ]}
+                  >
+                    {isUnavailable
+                      ? `${formatMonthLabel(viewMonth)} 출강 불가 취소`
+                      : `${formatMonthLabel(viewMonth)} 출강 불가로 제출`}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+
+        {/* ── 기존 캘린더 섹션 ── */}
+        <View style={styles.section}>
+          {isUnavailable && (
+            <View style={styles.calendarWarningBanner}>
+              <AlertTriangle size={14} color="#92400E" style={{ marginRight: 6 }} />
+              <Text style={styles.calendarWarningText}>
+                출강 불가 상태입니다. 해제 후 slot을 등록해주세요.
+              </Text>
+            </View>
+          )}
           <Text style={styles.sectionTitle}>가능 날짜 선택 (오늘 ~ 2개월)</Text>
           <Calendar
             minDate={minDate}
             maxDate={maxDate}
             markedDates={markedDates}
             onDayPress={handleDayPress}
+            onMonthChange={(month: { dateString: string }) => {
+              setViewMonth(toYearMonth(month.dateString));
+            }}
           />
         </View>
 
@@ -304,6 +457,7 @@ export default function AvailabilitySettingsScreen() {
               onChangeText={setStartTimeInput}
               placeholder="09:00"
               placeholderTextColor={Colors.mutedForeground}
+              editable={!isUnavailable}
             />
             <Text style={styles.slotDash}>~</Text>
             <TextInput
@@ -312,6 +466,7 @@ export default function AvailabilitySettingsScreen() {
               onChangeText={setEndTimeInput}
               placeholder="18:00"
               placeholderTextColor={Colors.mutedForeground}
+              editable={!isUnavailable}
             />
           </View>
           <View style={styles.actionsRow}>
@@ -328,29 +483,20 @@ export default function AvailabilitySettingsScreen() {
                       text: '확인',
                       style: 'destructive',
                       onPress: async () => {
-                        // 1) 로컬 상태에서 선택된 날짜 삭제
                         const next: AvailabilityMap = { ...availability };
                         selectedDates.forEach((date) => {
-                          if (next[date]) {
-                            delete next[date];
-                          }
+                          if (next[date]) delete next[date];
                         });
                         setAvailability(next);
                         setSelectedDates([]);
                         setRangeStart(null);
                         setRangeText('');
 
-                        // 2) 백엔드에 전체 가용시간 상태를 다시 저장
                         const payloadSlots = buildPayloadSlots(next);
                         try {
                           await apiClient.upsertAvailability({ slots: payloadSlots });
                           Alert.alert('삭제 완료', '선택한 날짜의 가능시간이 삭제되었습니다.');
-                        } catch (error) {
-                          // eslint-disable-next-line no-console
-                          console.log(
-                            '[AvailabilitySettingsScreen] failed to delete availability',
-                            error,
-                          );
+                        } catch {
                           Alert.alert('삭제 실패', '가용시간 삭제 중 오류가 발생했습니다.');
                         }
                       },
@@ -370,12 +516,20 @@ export default function AvailabilitySettingsScreen() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.applyButton, !canApply && styles.applyButtonDisabled]}
+              style={[
+                styles.applyButton,
+                (!canApply || isUnavailable) && styles.applyButtonDisabled,
+              ]}
               onPress={applyTimeToSelectedDates}
-              disabled={!canApply}
+              disabled={!canApply || isUnavailable}
             >
-              <Plus color={canApply ? Colors.brandInk : '#9CA3AF'} size={20} />
-              <Text style={[styles.applyButtonText, !canApply && styles.applyButtonTextDisabled]}>
+              <Plus color={canApply && !isUnavailable ? Colors.brandInk : '#9CA3AF'} size={20} />
+              <Text
+                style={[
+                  styles.applyButtonText,
+                  (!canApply || isUnavailable) && styles.applyButtonTextDisabled,
+                ]}
+              >
                 등록
               </Text>
             </TouchableOpacity>
@@ -404,21 +558,78 @@ export default function AvailabilitySettingsScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: Colors.background },
-  section: { backgroundColor: 'white', marginHorizontal: 16, marginTop: 16, padding: 16, borderRadius: 12 },
+  section: {
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+  },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginBottom: 12 },
+  // 월별 상태 배너
+  monthBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  monthLabel: { fontSize: 14, fontWeight: '600', color: Colors.brandInk },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  statusBadgeAvailable: { backgroundColor: '#ECFDF5' },
+  statusBadgeUnavailable: { backgroundColor: '#FEF2F2' },
+  statusBadgeText: { fontSize: 14, fontWeight: '600' },
+  statusBadgeTextAvailable: { color: '#059669' },
+  statusBadgeTextUnavailable: { color: '#DC2626' },
+  warningRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFBEB',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  warningText: { fontSize: 12, color: '#92400E', flex: 1 },
+  unavailableButton: {
+    paddingVertical: 13,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  unavailableButtonSubmit: {
+    borderColor: '#DC2626',
+    backgroundColor: '#FEF2F2',
+  },
+  unavailableButtonCancel: {
+    borderColor: '#059669',
+    backgroundColor: '#ECFDF5',
+  },
+  unavailableButtonDisabled: { opacity: 0.5 },
+  unavailableButtonText: { fontSize: 14, fontWeight: '700' },
+  unavailableButtonTextSubmit: { color: '#DC2626' },
+  unavailableButtonTextCancel: { color: '#059669' },
+  // 캘린더 경고
+  calendarWarningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  calendarWarningText: { fontSize: 12, color: '#92400E', flex: 1 },
+  // 기존 스타일 유지
   timeHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   activeHint: { fontSize: 12, color: Colors.brandInk, fontWeight: '600' },
   rangeText: { fontSize: 12, color: '#4B5563', marginTop: 4 },
-  rangeInput: {
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#111827',
-  },
   emptyText: { color: '#9CA3AF', fontSize: 14, marginBottom: 8 },
   slotRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   timeInput: {
@@ -450,10 +661,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#FEF2F2',
   },
-  deleteButtonDisabled: {
-    borderColor: '#FECACA',
-    backgroundColor: '#FFF7ED',
-  },
+  deleteButtonDisabled: { borderColor: '#FECACA', backgroundColor: '#FFF7ED' },
   deleteButtonText: { fontSize: 14, fontWeight: '600', color: Colors.colorError },
   deleteButtonTextDisabled: { color: '#FDA4A4' },
   applyButton: {
@@ -466,9 +674,7 @@ const styles = StyleSheet.create({
     ...Radius.button,
     backgroundColor: Colors.brandHoney,
   },
-  applyButtonDisabled: {
-    backgroundColor: '#E5E7EB',
-  },
+  applyButtonDisabled: { backgroundColor: '#E5E7EB' },
   applyButtonText: { color: Colors.brandInk, fontWeight: '700', marginLeft: 6 },
   applyButtonTextDisabled: { color: '#9CA3AF' },
   slotDisplayRow: { paddingVertical: 8 },
