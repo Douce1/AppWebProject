@@ -167,13 +167,17 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [chatRooms]);
 
     const markAsRead = useCallback((roomId: string) => {
+        const roomUnreadCount = chatRooms.find((room) => room.roomId === roomId)?.unreadCount ?? 0;
+        if (roomUnreadCount === 0) {
+            return;
+        }
+
         queryClient.setQueryData<ApiChatRoom[]>(queryKeys.chatRooms, (prev = []) =>
             prev.map((room) =>
                 room.roomId === roomId ? { ...room, unreadCount: 0 } : room,
             ),
         );
         queryClient.setQueryData<number>(queryKeys.unreadCount, (prev = 0) => {
-            const roomUnreadCount = chatRooms.find((room) => room.roomId === roomId)?.unreadCount ?? 0;
             return Math.max(0, prev - roomUnreadCount);
         });
 
