@@ -145,9 +145,14 @@ export default function DocContractDetailScreen() {
   }
 
   if (errorCode || !detail) {
+    const message = getContractErrorMessage(errorCode ?? undefined);
+    const idInfo = contractId ? `\n(ID: ${contractId})` : '';
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorText}>{getContractErrorMessage(errorCode ?? undefined)}</Text>
+        <Text style={styles.errorText}>
+          {message}
+          {idInfo}
+        </Text>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>목록으로</Text>
         </TouchableOpacity>

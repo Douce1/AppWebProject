@@ -38,7 +38,9 @@ export default function DocsScreen() {
         setContractsError(null);
         setContractsLoading(true);
         httpClient.getContracts()
-            .then((list) => { if (mounted) setContracts(list); })
+            .then((list) => {
+                if (mounted) setContracts(list);
+            })
             .catch(() => {
                 if (mounted) {
                     setContracts([]);
@@ -249,7 +251,10 @@ export default function DocsScreen() {
 
                         {!requestsLoading && !requestsError && lessonRequests.map((req) => {
                             const isPending = req.status === 'PENDING';
-                            const isResponded = req.status === 'ACCEPTED' || req.status === 'REJECTED' || req.status === 'CANCELLED';
+                            const isResponded =
+                                req.status === 'ACCEPTED' ||
+                                req.status === 'REJECTED' ||
+                                req.status === 'CANCELLED';
                             const requestedDate = req.requestedAt.slice(0, 10);
                             const isRejectingThis = rejectModalOpenFor === req.requestId;
                             const isBusy = respondingRequestId === req.requestId;
@@ -270,28 +275,30 @@ export default function DocsScreen() {
                                     {req.rejectionReason && (
                                         <Text style={styles.requestItemMeta}>거절 사유: {req.rejectionReason}</Text>
                                     )}
-                                    <View style={styles.requestActions}>
-                                        <TouchableOpacity
-                                            style={[styles.acceptButton, (!isPending || isBusy) && { opacity: 0.6 }]}
-                                            onPress={() => handleRespond(req.requestId, 'ACCEPT')}
-                                            disabled={!isPending || isBusy}
-                                        >
-                                            <Text style={styles.acceptButtonText}>
-                                                {isBusy && isPending ? '처리 중...' : '수락'}
-                                            </Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={[styles.rejectButton, (!isPending || isBusy) && { opacity: 0.6 }]}
-                                            onPress={() => {
-                                                if (!isPending || isBusy) return;
-                                                setRejectModalOpenFor(isRejectingThis ? null : req.requestId);
-                                                setRejectReason('');
-                                            }}
-                                            disabled={!isPending || isBusy}
-                                        >
-                                            <Text style={styles.rejectButtonText}>거절</Text>
-                                        </TouchableOpacity>
-                                    </View>
+                                    {isPending && (
+                                        <View style={styles.requestActions}>
+                                            <TouchableOpacity
+                                                style={[styles.acceptButton, isBusy && { opacity: 0.6 }]}
+                                                onPress={() => handleRespond(req.requestId, 'ACCEPT')}
+                                                disabled={isBusy}
+                                            >
+                                                <Text style={styles.acceptButtonText}>
+                                                    {isBusy ? '처리 중...' : '수락'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.rejectButton, isBusy && { opacity: 0.6 }]}
+                                                onPress={() => {
+                                                    if (isBusy) return;
+                                                    setRejectModalOpenFor(isRejectingThis ? null : req.requestId);
+                                                    setRejectReason('');
+                                                }}
+                                                disabled={isBusy}
+                                            >
+                                                <Text style={styles.rejectButtonText}>거절</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
                                     {isPending && isRejectingThis && (
                                         <View style={styles.rejectInputContainer}>
                                             <TextInput
