@@ -31,14 +31,14 @@ export function CalendarStrip({ dates, activeDateStr, onDateSelect, onViewAll, c
 
             {/* Strip */}
             <View style={styles.weekRow}>
-                {dates.map((date, idx) => {
+                {dates.map((date) => {
                     const dateStr = toLocalISOString(date);
                     const isSelected = dateStr === activeDateStr;
                     const hasClass = classesForDates[dateStr];
 
                     return (
                         <TouchableOpacity
-                            key={idx}
+                            key={dateStr}
                             style={[styles.dayContainer, isSelected && styles.todayContainer]}
                             onPress={() => onDateSelect(dateStr)}
                         >

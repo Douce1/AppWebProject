@@ -52,7 +52,7 @@ export function BottomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 
                     return (
                         <TouchableOpacity
-                            key={index}
+                            key={route.key}
                             accessibilityRole="button"
                             accessibilityState={isFocused ? { selected: true } : {}}
                             accessibilityLabel={options.tabBarAccessibilityLabel}

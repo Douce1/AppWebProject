@@ -541,8 +541,8 @@ export default function AvailabilitySettingsScreen() {
           {allConfiguredSlots.length === 0 ? (
             <Text style={styles.emptyText}>등록된 가능시간이 없습니다.</Text>
           ) : (
-            allConfiguredSlots.map((item, index) => (
-              <View key={`${item.date}-${index}`} style={styles.slotDisplayRow}>
+            allConfiguredSlots.map((item) => (
+              <View key={`${item.date}-${item.start}`} style={styles.slotDisplayRow}>
                 <Text style={styles.slotDisplayText}>
                   {item.date} {item.start}-{item.end}
                 </Text>
