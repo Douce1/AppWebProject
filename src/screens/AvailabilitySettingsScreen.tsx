@@ -314,8 +314,24 @@ export default function AvailabilitySettingsScreen() {
     setAvailability(next);
 
     const payloadSlots = buildPayloadSlots(next);
+
     try {
       await apiClient.upsertAvailability({ slots: payloadSlots });
+
+      // 출강 불가 상태에서 slot을 등록하면 자동으로 출강 불가 해제
+      if (isUnavailable) {
+        try {
+          const updated = await apiClient.updateMonthSubmission(viewMonth, false);
+          setMonthSubmission(updated);
+        } catch {
+          // 월 상태 해제 실패는 치명적이지 않으므로 알림만 표시
+          Alert.alert(
+            '상태 동기화 실패',
+            '가용시간은 저장되었지만 출강 불가 상태 해제에는 실패했습니다. 다시 시도해주세요.',
+          );
+        }
+      }
+
       Alert.alert('등록 완료', '선택한 날짜의 가능시간이 저장되었습니다.');
     } catch {
       Alert.alert('저장 실패', '가용시간 저장 중 오류가 발생했습니다.');
@@ -332,33 +348,6 @@ export default function AvailabilitySettingsScreen() {
     (date) => availability[date] && availability[date].length > 0,
   );
   const isUnavailable = monthSubmission?.isUnavailable ?? false;
-
-  const allConfiguredSlots = useMemo(
-    () =>
-      Object.entries(availability)
-        .filter(([, slots]) => slots && slots.length > 0)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .flatMap(([date, slots]) =>
-          (slots ?? []).map((slot) => ({
-            date,
-            start: slot.start,
-            end: slot.end,
-          })),
-        ),
-    [availability],
-  );
-
-  // 월별 요약 (등록된 가능시간 섹션용)
-  const slotsByMonth = useMemo(() => {
-    const map: Record<string, { dates: Set<string>; slots: number }> = {};
-    allConfiguredSlots.forEach(({ date }) => {
-      const ym = date.slice(0, 7);
-      if (!map[ym]) map[ym] = { dates: new Set(), slots: 0 };
-      map[ym].dates.add(date);
-      map[ym].slots++;
-    });
-    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
-  }, [allConfiguredSlots]);
 
   return (
     <KeyboardAvoidingView
@@ -466,7 +455,6 @@ export default function AvailabilitySettingsScreen() {
               onChangeText={setStartTimeInput}
               placeholder="09:00"
               placeholderTextColor={Colors.mutedForeground}
-              editable={!isUnavailable}
             />
             <Text style={styles.slotDash}>~</Text>
             <TextInput
@@ -475,7 +463,6 @@ export default function AvailabilitySettingsScreen() {
               onChangeText={setEndTimeInput}
               placeholder="18:00"
               placeholderTextColor={Colors.mutedForeground}
-              editable={!isUnavailable}
             />
           </View>
           <View style={styles.actionsRow}>
@@ -525,18 +512,15 @@ export default function AvailabilitySettingsScreen() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.applyButton,
-                (!canApply || isUnavailable) && styles.applyButtonDisabled,
-              ]}
+              style={[styles.applyButton, !canApply && styles.applyButtonDisabled]}
               onPress={applyTimeToSelectedDates}
-              disabled={!canApply || isUnavailable}
+              disabled={!canApply}
             >
-              <Plus color={canApply && !isUnavailable ? Colors.brandInk : '#9CA3AF'} size={20} />
+              <Plus color={canApply ? Colors.brandInk : '#9CA3AF'} size={20} />
               <Text
                 style={[
                   styles.applyButtonText,
-                  (!canApply || isUnavailable) && styles.applyButtonTextDisabled,
+                  !canApply && styles.applyButtonTextDisabled,
                 ]}
               >
                 등록
@@ -545,22 +529,6 @@ export default function AvailabilitySettingsScreen() {
           </View>
         </View>
 
-        {/* ── 등록된 가능시간 (월별 요약) ── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>등록된 가능시간 요약</Text>
-          {slotsByMonth.length === 0 ? (
-            <Text style={styles.emptyText}>등록된 가능시간이 없습니다.</Text>
-          ) : (
-            slotsByMonth.map(([month, { dates, slots }]) => (
-              <View key={month} style={styles.monthlySummaryRow}>
-                <Text style={styles.monthlySummaryLabel}>{formatMonthLabel(month)}</Text>
-                <Text style={styles.monthlySummaryCount}>
-                  {dates.size}일 · {slots}개 슬롯
-                </Text>
-              </View>
-            ))
-          )}
-        </View>
       </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
@@ -669,15 +637,4 @@ const styles = StyleSheet.create({
   applyButtonDisabled: { backgroundColor: '#E5E7EB' },
   applyButtonText: { color: Colors.brandInk, fontWeight: '700', marginLeft: 6 },
   applyButtonTextDisabled: { color: '#9CA3AF' },
-  // 월별 요약
-  monthlySummaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  monthlySummaryLabel: { fontSize: 14, fontWeight: '600', color: '#374151' },
-  monthlySummaryCount: { fontSize: 13, color: '#6B7280' },
 });
