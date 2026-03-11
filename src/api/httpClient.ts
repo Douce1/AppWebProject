@@ -18,9 +18,12 @@ import {
   ApiLesson,
   ApiLessonReport,
   ApiLessonRequest,
+  ApiNotificationSettings,
+  ApiPushDevice,
   ApiSettlement,
   AuthLoginResponse,
   LectureRecordView,
+  NotificationSettingsUpdate,
 } from './types';
 import type { SubmitContractSignaturePayload } from './types';
 import {
@@ -489,5 +492,28 @@ export const httpClient = {
   async getSettlements(month?: string): Promise<ApiSettlement[]> {
     const query = month ? `?month=${encodeURIComponent(month)}` : '';
     return getJson<ApiSettlement[]>(`/settlements${query}`);
+  },
+
+  // ---- Push Device Registration API ----
+
+  async registerPushDevice(body: {
+    pushToken: string;
+    platform: 'ios' | 'android' | 'web';
+  }): Promise<ApiPushDevice> {
+    return postJson<ApiPushDevice>('/push/devices', body);
+  },
+
+  async deregisterPushDevice(deviceId: string): Promise<void> {
+    return deleteJson<void>(`/push/devices/${encodeURIComponent(deviceId)}`);
+  },
+
+  // ---- Notification Settings API ----
+
+  async getNotificationSettings(): Promise<ApiNotificationSettings> {
+    return getJson<ApiNotificationSettings>('/me/notification-settings');
+  },
+
+  async updateNotificationSettings(body: NotificationSettingsUpdate): Promise<ApiNotificationSettings> {
+    return putJson<ApiNotificationSettings>('/me/notification-settings', body);
   },
 };

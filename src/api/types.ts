@@ -246,6 +246,27 @@ export interface ApiChatMessageList {
   nextCursor: string | null;
 }
 
+// ---- Push Notifications & Device Registration Types ----
+
+export interface ApiPushDevice {
+  deviceId: string;
+  instructorId: string;
+  pushToken: string;
+  platform: 'ios' | 'android' | 'web';
+  isActive: boolean;
+  registeredAt: string; // ISO
+}
+
+export interface ApiNotificationSettings {
+  instructorId: string;
+  pushEnabled: boolean;
+  lessonReminder: boolean;
+  paymentNotification: boolean;
+  chatNotification: boolean;
+}
+
+export type NotificationSettingsUpdate = Partial<Omit<ApiNotificationSettings, 'instructorId'>>;
+
 // ---- Settlements API Types ----
 
 export type SettlementStatus = 'PENDING' | 'PAID' | 'CANCELLED';
