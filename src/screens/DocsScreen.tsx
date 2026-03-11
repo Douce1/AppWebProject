@@ -107,6 +107,42 @@ export default function DocsScreen() {
     const pendingLessonRequests = lessonRequests.filter((request) => request.status === 'PENDING');
     const respondedLessonRequests = lessonRequests.filter((request) => request.status !== 'PENDING');
 
+    const formatLessonSchedule = (req: ApiLessonRequest): string => {
+        if (!req.startsAt) return '일정 정보 없음';
+        const start = new Date(req.startsAt);
+        if (Number.isNaN(start.getTime())) return '일정 정보 없음';
+        const end = req.endsAt ? new Date(req.endsAt) : null;
+        const date = new Intl.DateTimeFormat('ko-KR', {
+            month: 'numeric',
+            day: 'numeric',
+            weekday: 'short',
+        }).format(start);
+        const startTime = new Intl.DateTimeFormat('ko-KR', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: false,
+        }).format(start);
+
+        if (!end || Number.isNaN(end.getTime())) {
+            return `${date} ${startTime}`;
+        }
+
+        const endTime = new Intl.DateTimeFormat('ko-KR', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: false,
+        }).format(end);
+
+        return `${date} ${startTime} - ${endTime}`;
+    };
+
+    const formatLessonLocation = (req: ApiLessonRequest): string => {
+        const parts = [req.region, req.museum, req.venueName].filter(
+            (value): value is string => Boolean(value && value.trim()),
+        );
+        return parts.length > 0 ? parts.join(' · ') : '장소 정보 없음';
+    };
+
     const formatContractDate = (c: ApiContract): string => {
         if (c.effectiveFrom && c.effectiveTo) return `${c.effectiveFrom.slice(0, 10)} ~ ${c.effectiveTo.slice(0, 10)}`;
         if (c.effectiveFrom) return `${c.effectiveFrom.slice(0, 10)} 체결`;
@@ -306,16 +342,20 @@ export default function DocsScreen() {
                             const requestedDate = req.requestedAt.slice(0, 10);
                             const isRejectingThis = rejectModalOpenFor === req.requestId;
                             const isBusy = respondingRequestId === req.requestId;
+                            const lessonTitle = req.lessonTitle?.trim() || '수업명 미정';
+                            const lessonSchedule = formatLessonSchedule(req);
+                            const lessonLocation = formatLessonLocation(req);
 
                             return (
                                 <View key={req.requestId} style={[styles.requestItemCard, styles.pendingRequestItemCard]}>
                                     <View style={styles.requestItemHeader}>
-                                        <Text style={styles.requestItemTitle}>수업 요청</Text>
+                                        <Text style={styles.requestItemTitle}>{lessonTitle}</Text>
                                         <Text style={[styles.requestItemStatus, styles.pendingRequestItemStatus]}>미응답</Text>
                                     </View>
-                                    <Text style={styles.requestItemMeta}>요청 ID: {req.requestId}</Text>
-                                    <Text style={styles.requestItemMeta}>수업 ID: {req.lessonId}</Text>
+                                    <Text style={styles.requestItemPrimaryMeta}>{lessonSchedule}</Text>
+                                    <Text style={styles.requestItemMeta}>{lessonLocation}</Text>
                                     <Text style={styles.requestItemMeta}>요청일: {requestedDate}</Text>
+                                    <Text style={styles.requestItemFootnote}>요청 ID {req.requestId} · 수업 ID {req.lessonId}</Text>
                                     {isPending && (
                                         <View style={styles.requestActions}>
                                             <TouchableOpacity
@@ -390,6 +430,9 @@ export default function DocsScreen() {
                                 req.status === 'REJECTED' ||
                                 req.status === 'CANCELLED';
                             const requestedDate = req.requestedAt.slice(0, 10);
+                            const lessonTitle = req.lessonTitle?.trim() || '수업명 미정';
+                            const lessonSchedule = formatLessonSchedule(req);
+                            const lessonLocation = formatLessonLocation(req);
                             const statusLabel =
                                 req.status === 'ACCEPTED' ? '수락됨' :
                                     req.status === 'REJECTED' ? '거절됨' :
@@ -398,12 +441,13 @@ export default function DocsScreen() {
                             return (
                                 <View key={req.requestId} style={styles.requestItemCard}>
                                     <View style={styles.requestItemHeader}>
-                                        <Text style={styles.requestItemTitle}>응답 완료 요청</Text>
+                                        <Text style={styles.requestItemTitle}>{lessonTitle}</Text>
                                         <Text style={styles.requestItemStatus}>{statusLabel}</Text>
                                     </View>
-                                    <Text style={styles.requestItemMeta}>요청 ID: {req.requestId}</Text>
-                                    <Text style={styles.requestItemMeta}>수업 ID: {req.lessonId}</Text>
+                                    <Text style={styles.requestItemPrimaryMeta}>{lessonSchedule}</Text>
+                                    <Text style={styles.requestItemMeta}>{lessonLocation}</Text>
                                     <Text style={styles.requestItemMeta}>요청일: {requestedDate}</Text>
+                                    <Text style={styles.requestItemFootnote}>요청 ID {req.requestId} · 수업 ID {req.lessonId}</Text>
                                     {req.rejectionReason && (
                                         <Text style={styles.requestItemMeta}>거절 사유: {req.rejectionReason}</Text>
                                     )}
@@ -494,9 +538,11 @@ const styles = StyleSheet.create({
     requestItemCard: { marginTop: 10, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 12, backgroundColor: Colors.surfaceSoft },
     pendingRequestItemCard: { backgroundColor: '#FFF7E8', borderWidth: 1, borderColor: '#F3C742' },
     requestItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-    requestItemTitle: { fontSize: 13, fontWeight: '600', color: '#111827' },
+    requestItemTitle: { fontSize: 15, fontWeight: '700', color: '#111827', flex: 1, marginRight: 8 },
     requestItemStatus: { fontSize: 12, fontWeight: '600', color: Colors.brandInk },
     pendingRequestItemStatus: { color: '#B45309' },
+    requestItemPrimaryMeta: { fontSize: 13, color: '#374151', marginTop: 2, fontWeight: '600' },
     requestItemMeta: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    requestItemFootnote: { fontSize: 11, color: '#9CA3AF', marginTop: 6 },
     requestFooterNote: { fontSize: 11, color: '#9CA3AF', marginTop: 6 },
 });
