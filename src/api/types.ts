@@ -310,6 +310,7 @@ export interface ApiSettlementSummary {
 
 export interface ApiDocumentDraft {
   lectureTitle: string | null;
+  companyName: string | null;
   startsAt: string | null;
   endsAt: string | null;
   region: string | null;
