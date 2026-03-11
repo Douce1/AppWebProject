@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { FileText, RefreshCcw, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, FileText, RefreshCcw, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -33,6 +33,89 @@ function calcTax(gross: number) {
     return { incomeTax, localTax, net: gross - incomeTax - localTax };
 }
 
+export function getCurrentMonth(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function formatPeriodLabel(start: string, end: string): string {
+    return `${start} ~ ${end}`;
+}
+
+export function filterSettlementsByPeriod(
+    settlements: ApiSettlement[],
+    startMonth: string,
+    endMonth: string,
+): ApiSettlement[] {
+    return settlements.filter((s) => s.month >= startMonth && s.month <= endMonth);
+}
+
+export function addMonths(ym: string, delta: number): string {
+    const [y, m] = ym.split('-').map(Number);
+    const date = new Date(y, m - 1 + delta, 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function clampMonth(value: string, min: string, max: string): string {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+// MonthPicker component: a simple +/- year-month selector
+interface MonthPickerProps {
+    label: string;
+    value: string; // YYYY-MM
+    minValue?: string;
+    maxValue?: string;
+    onChange: (val: string) => void;
+}
+
+function MonthPicker({ label, value, minValue, maxValue, onChange }: MonthPickerProps) {
+    const canDecrement = !minValue || addMonths(value, -1) >= minValue;
+    const canIncrement = !maxValue || addMonths(value, 1) <= maxValue;
+
+    return (
+        <View style={pickerStyles.container}>
+            <Text style={pickerStyles.label}>{label}</Text>
+            <View style={pickerStyles.row}>
+                <TouchableOpacity
+                    onPress={() => canDecrement && onChange(addMonths(value, -1))}
+                    disabled={!canDecrement}
+                    style={[pickerStyles.arrow, !canDecrement && pickerStyles.arrowDisabled]}
+                >
+                    <ChevronLeft size={20} color={canDecrement ? Colors.brandInk : Colors.mutedForeground} />
+                </TouchableOpacity>
+                <Text style={pickerStyles.value}>{formatMonth(value)}</Text>
+                <TouchableOpacity
+                    onPress={() => canIncrement && onChange(addMonths(value, 1))}
+                    disabled={!canIncrement}
+                    style={[pickerStyles.arrow, !canIncrement && pickerStyles.arrowDisabled]}
+                >
+                    <ChevronRight size={20} color={canIncrement ? Colors.brandInk : Colors.mutedForeground} />
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+}
+
+const pickerStyles = StyleSheet.create({
+    container: { marginBottom: 16 },
+    label: { fontSize: 13, color: Colors.mutedForeground, marginBottom: 8, fontWeight: '500' },
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: Colors.surfaceSoft,
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 10,
+    },
+    arrow: { padding: 6 },
+    arrowDisabled: { opacity: 0.4 },
+    value: { fontSize: 16, fontWeight: '700', color: Colors.brandInk, flex: 1, textAlign: 'center' },
+});
+
 export default function IncomeScreen() {
     const router = useRouter();
     const [settlements, setSettlements] = useState<ApiSettlement[]>([]);
@@ -40,10 +123,14 @@ export default function IncomeScreen() {
     const [error, setError] = useState<string | null>(null);
     const [selectedDetail, setSelectedDetail] = useState<ApiSettlement | null>(null);
 
-    const currentMonth = (() => {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    })();
+    const currentMonth = getCurrentMonth();
+
+    // Period filter state
+    const [filterStart, setFilterStart] = useState(currentMonth);
+    const [filterEnd, setFilterEnd] = useState(currentMonth);
+    const [showFilterModal, setShowFilterModal] = useState(false);
+    const [tempStart, setTempStart] = useState(currentMonth);
+    const [tempEnd, setTempEnd] = useState(currentMonth);
 
     const loadSettlements = useCallback(async () => {
         setIsLoading(true);
@@ -63,9 +150,31 @@ export default function IncomeScreen() {
     }, [loadSettlements]);
 
     const currentMonthSettlement = settlements.find((s) => s.month === currentMonth);
-    const pastSettlements = settlements
-        .filter((s) => s.month !== currentMonth)
+
+    const filteredSettlements = filterSettlementsByPeriod(settlements, filterStart, filterEnd)
         .sort((a, b) => b.month.localeCompare(a.month));
+
+    const openFilterModal = () => {
+        setTempStart(filterStart);
+        setTempEnd(filterEnd);
+        setShowFilterModal(true);
+    };
+
+    const applyFilter = () => {
+        setFilterStart(tempStart);
+        setFilterEnd(tempEnd);
+        setShowFilterModal(false);
+    };
+
+    const handleTempStartChange = (val: string) => {
+        setTempStart(val);
+        if (val > tempEnd) setTempEnd(val);
+    };
+
+    const handleTempEndChange = (val: string) => {
+        setTempEnd(val);
+        if (val < tempStart) setTempStart(val);
+    };
 
     return (
         <ScrollView style={styles.container}>
@@ -134,19 +243,34 @@ export default function IncomeScreen() {
             <View style={styles.historySection}>
                 <View style={styles.historyHeader}>
                     <Text style={styles.sectionTitle}>정산 내역</Text>
-                    <TouchableOpacity onPress={loadSettlements} disabled={isLoading} style={styles.refreshButton}>
-                        <RefreshCcw color={Colors.brandInk} size={16} />
-                    </TouchableOpacity>
+                    <View style={styles.historyHeaderRight}>
+                        <TouchableOpacity
+                            onPress={openFilterModal}
+                            style={styles.periodPill}
+                            testID="period-filter-pill"
+                        >
+                            <Text style={styles.periodPillText}>
+                                {formatPeriodLabel(filterStart, filterEnd)}
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={loadSettlements} disabled={isLoading} style={styles.refreshButton}>
+                            <RefreshCcw color={Colors.brandInk} size={16} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {isLoading && <ActivityIndicator color={Colors.brandInk} />}
 
-                {!isLoading && !error && pastSettlements.length === 0 && (
-                    <Text style={styles.emptyHistoryText}>이전 정산 내역이 없습니다.</Text>
+                {!isLoading && !error && filteredSettlements.length === 0 && (
+                    <Text style={styles.emptyHistoryText}>
+                        {filterStart === filterEnd
+                            ? `${formatMonth(filterStart)} 정산 내역이 없습니다.`
+                            : `${formatMonth(filterStart)} ~ ${formatMonth(filterEnd)} 정산 내역이 없습니다.`}
+                    </Text>
                 )}
 
                 {!isLoading &&
-                    pastSettlements.map((item) => (
+                    filteredSettlements.map((item) => (
                         <TouchableOpacity
                             key={item.settlementId}
                             style={styles.historyItem}
@@ -178,6 +302,62 @@ export default function IncomeScreen() {
                         </TouchableOpacity>
                     ))}
             </View>
+
+            {/* 기간 필터 모달 */}
+            <Modal
+                visible={showFilterModal}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowFilterModal(false)}
+                testID="filter-modal"
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>기간 설정</Text>
+                            <TouchableOpacity onPress={() => setShowFilterModal(false)}>
+                                <X size={24} color={Colors.brandInk} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <MonthPicker
+                            label="시작 월"
+                            value={tempStart}
+                            maxValue={tempEnd}
+                            onChange={handleTempStartChange}
+                        />
+                        <MonthPicker
+                            label="종료 월"
+                            value={tempEnd}
+                            minValue={tempStart}
+                            onChange={handleTempEndChange}
+                        />
+
+                        <View style={styles.filterPreview}>
+                            <Text style={styles.filterPreviewText}>
+                                선택 기간: {formatPeriodLabel(tempStart, tempEnd)}
+                            </Text>
+                        </View>
+
+                        <View style={styles.filterActions}>
+                            <TouchableOpacity
+                                onPress={() => setShowFilterModal(false)}
+                                style={styles.cancelButton}
+                                testID="filter-cancel"
+                            >
+                                <Text style={styles.cancelButtonText}>취소</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={applyFilter}
+                                style={styles.applyButton}
+                                testID="filter-apply"
+                            >
+                                <Text style={styles.applyButtonText}>적용</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             {/* 상세 모달 */}
             <Modal
@@ -268,8 +448,20 @@ const styles = StyleSheet.create({
     detailButtonText: { color: '#FFF0C2', fontWeight: 'bold', fontSize: 12.5 },
     historySection: { paddingHorizontal: 20, marginTop: 10, paddingBottom: 100 },
     historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15 },
+    historyHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.brandInk },
     refreshButton: { padding: 6 },
+    periodPill: {
+        paddingVertical: 5,
+        paddingHorizontal: 12,
+        backgroundColor: Colors.brandMint,
+        borderRadius: 20,
+    },
+    periodPillText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: Colors.brandInk,
+    },
     historyItem: { backgroundColor: 'white', padding: 15, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, ...Shadows.card },
     historyIconBox: { backgroundColor: Colors.brandMint, padding: 10, borderRadius: 10, marginRight: 12 },
     historyTitle: { fontSize: 15, fontWeight: '600', color: Colors.brandInk, marginBottom: 4 },
@@ -278,9 +470,35 @@ const styles = StyleSheet.create({
     historyTaxAmount: { fontSize: 13, color: Colors.brandHoney, marginTop: 4, fontWeight: '500' },
     emptyHistoryText: { fontSize: 14, fontWeight: '500', color: Colors.mutedForeground, marginTop: 8 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 25, minHeight: 400 },
+    modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 25, minHeight: 300 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     modalTitle: { fontSize: 20, fontWeight: 'bold', color: Colors.brandInk },
+    filterPreview: {
+        backgroundColor: Colors.surfaceSoft,
+        borderRadius: 10,
+        padding: 12,
+        marginBottom: 16,
+        alignItems: 'center',
+    },
+    filterPreviewText: { fontSize: 14, fontWeight: '600', color: Colors.brandInk },
+    filterActions: { flexDirection: 'row', gap: 12 },
+    cancelButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        alignItems: 'center',
+    },
+    cancelButtonText: { fontSize: 15, fontWeight: '600', color: Colors.mutedForeground },
+    applyButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        backgroundColor: Colors.brandHoney,
+        alignItems: 'center',
+    },
+    applyButtonText: { fontSize: 15, fontWeight: '700', color: Colors.brandInk },
     receiptBox: { backgroundColor: Colors.surfaceSoft, padding: 20, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, marginBottom: 25 },
     receiptRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
     receiptRowBorder: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: Colors.border, borderStyle: 'dashed' },
