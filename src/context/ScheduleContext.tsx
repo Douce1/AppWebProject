@@ -121,29 +121,31 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         try {
             const lessons = await apiClient.getLessons();
             if (!mounted) return;
-            const mapped: ClassSession[] = lessons.map((lesson) => {
-                const start = new Date(lesson.startsAt);
-                const end = new Date(lesson.endsAt);
-                const pad = (n: number) => n.toString().padStart(2, '0');
-                const date = lesson.startsAt.slice(0, 10);
-                const time = `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(
-                    end.getHours(),
-                )}:${pad(end.getMinutes())}`;
-                const location = `${lesson.region} ${lesson.museum}`;
-                return {
-                  id: lesson.lessonId,
-                  title: lesson.lectureTitle,
-                  date,
-                  location,
-                  time,
-                  isExternal: lesson.isExternal,
-                  documentId: lesson.documentId,
-                  venueName: lesson.venueName,
-                  venueAddress: lesson.venueAddress,
-                  venueLat: lesson.venueLat,
-                  venueLng: lesson.venueLng,
-                  kakaoPlaceId: lesson.kakaoPlaceId,
-                };
+            const mapped: ClassSession[] = lessons
+                .filter(lesson => lesson.status !== 'PENDING')
+                .map((lesson) => {
+                    const start = new Date(lesson.startsAt);
+                    const end = new Date(lesson.endsAt);
+                    const pad = (n: number) => n.toString().padStart(2, '0');
+                    const date = lesson.startsAt.slice(0, 10);
+                    const time = `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(
+                        end.getHours(),
+                    )}:${pad(end.getMinutes())}`;
+                    const location = `${lesson.region} ${lesson.museum}`;
+                    return {
+                      id: lesson.lessonId,
+                      title: lesson.lectureTitle,
+                      date,
+                      location,
+                      time,
+                      isExternal: lesson.isExternal,
+                      documentId: lesson.documentId,
+                      venueName: lesson.venueName,
+                      venueAddress: lesson.venueAddress,
+                      venueLat: lesson.venueLat,
+                      venueLng: lesson.venueLng,
+                      kakaoPlaceId: lesson.kakaoPlaceId,
+                    };
             });
             setClasses(mapped);
 

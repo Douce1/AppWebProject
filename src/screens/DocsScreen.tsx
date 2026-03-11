@@ -1,13 +1,15 @@
 import { Colors, Radius, Shadows } from '@/constants/theme';
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { Bell, Camera, FileText } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { httpClient } from '../api/httpClient';
 import type { ApiContract, ApiLessonRequest, ContractStatus } from '../api/types';
 import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
 import { NotificationTopBar } from '@/src/components/organisms/NotificationTopBar';
+import { useSchedule } from '../context/ScheduleContext';
 
 export default function DocsScreen() {
     const insets = useSafeAreaInsets();
@@ -18,6 +20,7 @@ export default function DocsScreen() {
     const initialTabIndex = params.targetTab ? tabs.indexOf(params.targetTab as string) : 0;
     const [selectedTabIndex, setSelectedTabIndex] = useState(initialTabIndex >= 0 ? initialTabIndex : 0);
     const selectedTab = tabs[selectedTabIndex];
+    const { fetchLessons } = useSchedule();
 
     const [contracts, setContracts] = useState<ApiContract[]>([]);
     const [contractsLoading, setContractsLoading] = useState(false);
@@ -32,49 +35,54 @@ export default function DocsScreen() {
     const [rejectReason, setRejectReason] = useState('');
     const [respondingRequestId, setRespondingRequestId] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (selectedTab !== '계약') return;
-        let mounted = true;
-        setContractsError(null);
-        setContractsLoading(true);
-        httpClient.getContracts()
-            .then((list) => {
-                if (mounted) setContracts(list);
-            })
-            .catch(() => {
-                if (mounted) {
-                    setContracts([]);
-                    setContractsError('계약 목록을 불러오지 못했습니다.');
-                }
-            })
-            .finally(() => { if (mounted) setContractsLoading(false); });
-        return () => { mounted = false; };
-    }, [selectedTab]);
+    useFocusEffect(
+        useCallback(() => {
+            if (selectedTab !== '계약') return;
+            let mounted = true;
+            setContractsError(null);
+            setContractsLoading(true);
+            httpClient.getContracts()
+                .then((list) => {
+                    if (mounted) setContracts(list);
+                })
+                .catch(() => {
+                    if (mounted) {
+                        setContracts([]);
+                        setContractsError('계약 목록을 불러오지 못했습니다.');
+                    }
+                })
+                .finally(() => { if (mounted) setContractsLoading(false); });
+            return () => { mounted = false; };
+        }, [selectedTab])
+    );
 
-    useEffect(() => {
-        if (selectedTab !== '요청/제안') return;
-        let mounted = true;
-        setRequestsError(null);
-        setRequestsLoading(true);
+    // 이슈 #121: 요청/제안 탭을 열 때마다 항상 최신 목록으로 다시 불러오기 (useFocusEffect)
+    useFocusEffect(
+        useCallback(() => {
+            if (selectedTab !== '요청/제안') return;
+            let mounted = true;
+            setRequestsError(null);
+            setRequestsLoading(true);
 
-        httpClient.getLessonRequests()
-            .then((list) => {
-                if (!mounted) return;
-                setLessonRequests(list);
-            })
-            .catch((error: unknown) => {
-                if (!mounted) return;
-                // eslint-disable-next-line no-console
-                console.log('[DocsScreen] failed to load lesson-requests', error);
-                setRequestsError('수업 요청 목록을 불러오지 못했습니다.');
-                setLessonRequests([]);
-            })
-            .finally(() => {
-                if (mounted) setRequestsLoading(false);
-            });
+            httpClient.getLessonRequests()
+                .then((list) => {
+                    if (!mounted) return;
+                    setLessonRequests(list);
+                })
+                .catch((error: unknown) => {
+                    if (!mounted) return;
+                    // eslint-disable-next-line no-console
+                    console.log('[DocsScreen] failed to load lesson-requests', error);
+                    setRequestsError('수업 요청 목록을 불러오지 못했습니다.');
+                    setLessonRequests([]);
+                })
+                .finally(() => {
+                    if (mounted) setRequestsLoading(false);
+                });
 
-        return () => { mounted = false; };
-    }, [selectedTab]);
+            return () => { mounted = false; };
+        }, [selectedTab])
+    );
 
     const contractStatusLabel = (s: ContractStatus): string => {
         const map: Record<ContractStatus, string> = {
@@ -114,6 +122,25 @@ export default function DocsScreen() {
             setLessonRequests((prev) =>
                 prev.map((r) => (r.requestId === updated.requestId ? updated : r)),
             );
+            // 수락/거절 성공 시 전체 일정도 동기화 (홈 대시보드에 즉시 띄우기 위함)
+            await fetchLessons();
+
+            if (action === 'ACCEPT') {
+                Alert.alert(
+                    '수락 완료',
+                    '요청을 수락하여 새로운 계약서가 발송되었습니다. 확인하시겠습니까?',
+                    [
+                        { text: '나중에', style: 'cancel' },
+                        { 
+                            text: '계약 확인하기', 
+                            onPress: () => {
+                                // '계약' 탭 인덱스는 1
+                                setSelectedTabIndex(1);
+                            }
+                        }
+                    ]
+                );
+            }
         } catch (error: unknown) {
             const e = error as { status?: number; message?: string };
             let message = e.message ?? '요청 처리 중 오류가 발생했습니다.';
