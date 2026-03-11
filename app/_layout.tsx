@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ChatProvider } from '@/src/context/ChatContext';
 import { ProfileProvider } from '@/src/context/ProfileContext';
 import { ScheduleProvider } from '@/src/context/ScheduleContext';
+import { AppQueryProvider } from '@/src/query/AppQueryProvider';
 import { getAccessToken, subscribeAuthState } from '@/src/store/authStore';
 
 // JS 번들 로딩 중에는 스플래시 유지 (빈 화면 대신 스플래시 표시)
@@ -135,10 +136,12 @@ export default function RootLayout() {
   }
 
   return (
-    <ScheduleProvider>
-      <ChatProvider>
-        <ProfileProvider>{stack}</ProfileProvider>
-      </ChatProvider>
-    </ScheduleProvider>
+    <AppQueryProvider>
+      <ScheduleProvider>
+        <ChatProvider>
+          <ProfileProvider>{stack}</ProfileProvider>
+        </ChatProvider>
+      </ScheduleProvider>
+    </AppQueryProvider>
   );
 }
