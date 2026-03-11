@@ -27,7 +27,7 @@ export default function ChatRoomScreen() {
         if (roomId) {
             markAsRead(roomId);
         }
-    }, [roomId, roomMessages]);
+    }, [roomId, markAsRead]);
 
     // 방 입장 시 WebSocket join_room 호출
     useEffect(() => {
