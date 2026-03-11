@@ -88,6 +88,31 @@ interface DemoLoginPayload {
   userId?: string;
 }
 
+interface BackendContractVersionSummary {
+  version: number;
+  documentHashSha256: string;
+  documentFileKey?: string | null;
+  generatedAt: string;
+}
+
+interface BackendContractSignature {
+  contractId: string;
+  version: number;
+  signerRole: 'INSTRUCTOR' | 'ADMIN';
+  consentGiven: boolean;
+  consentTextVersion: string;
+  signTokenId?: string | null;
+  ipHash?: string | null;
+  userAgent?: string | null;
+  signedAt: string;
+  createdAt?: string;
+}
+
+interface BackendContractDetailDto extends ApiContract {
+  latestVersion?: BackendContractVersionSummary | null;
+  signatures?: BackendContractSignature[];
+}
+
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
   retryOnUnauthorized?: boolean;
@@ -259,6 +284,47 @@ function toLectureHistoryView(
   });
 }
 
+function toApiContractDetail(contract: BackendContractDetailDto): ApiContractDetail {
+  return {
+    contract: {
+      contractId: contract.contractId,
+      companyId: contract.companyId,
+      lessonId: contract.lessonId,
+      instructorId: contract.instructorId,
+      status: contract.status,
+      currentVersion: contract.currentVersion,
+      title: contract.title,
+      lessonTitle: contract.lessonTitle,
+      instructorName: contract.instructorName,
+      effectiveFrom: contract.effectiveFrom,
+      effectiveTo: contract.effectiveTo,
+    },
+    currentVersion: contract.latestVersion
+      ? {
+          contractId: contract.contractId,
+          version: contract.latestVersion.version,
+          contentJson: '',
+          documentHashSha256: contract.latestVersion.documentHashSha256,
+          documentFileKey: contract.latestVersion.documentFileKey ?? '',
+          createdAt: contract.latestVersion.generatedAt,
+        }
+      : null,
+    signatures: (contract.signatures ?? []).map((signature) => ({
+      contractId: signature.contractId,
+      version: signature.version,
+      signerRole:
+        signature.signerRole === 'ADMIN' ? 'OWNER' : signature.signerRole,
+      consentGiven: signature.consentGiven,
+      consentTextVersion: signature.consentTextVersion,
+      signTokenId: signature.signTokenId ?? null,
+      ipHash: signature.ipHash ?? null,
+      userAgent: signature.userAgent ?? null,
+      signedAt: signature.signedAt,
+      createdAt: signature.createdAt,
+    })),
+  };
+}
+
 export const httpClient = {
   async loginWithDemoAccount(payload: DemoLoginPayload): Promise<AuthLoginResponse> {
     return requestJson<AuthLoginResponse>('/auth/demo-login', {
@@ -354,9 +420,10 @@ export const httpClient = {
   },
 
   async getContract(contractId: string): Promise<ApiContractDetail> {
-    return getJson<ApiContractDetail>(
+    const contract = await getJson<BackendContractDetailDto>(
       `/contracts/${encodeURIComponent(contractId)}`,
     );
+    return toApiContractDetail(contract);
   },
 
   async getContractVersion(
@@ -386,10 +453,11 @@ export const httpClient = {
     contractId: string,
     payload: SubmitContractSignaturePayload,
   ): Promise<ApiContractDetail> {
-    return postJson<ApiContractDetail>(
+    const contract = await postJson<BackendContractDetailDto>(
       `/contracts/${encodeURIComponent(contractId)}/sign`,
       payload,
     );
+    return toApiContractDetail(contract);
   },
 
   async getAttendanceEvents(): Promise<ApiAttendanceEvent[]> {

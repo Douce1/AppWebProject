@@ -142,10 +142,11 @@ export interface ApiContractSignature {
   signerRole: ContractSignerRole;
   consentGiven: boolean;
   consentTextVersion: string;
-  signTokenId: string;
-  ipHash: string;
-  userAgent: string;
+  signTokenId?: string | null;
+  ipHash?: string | null;
+  userAgent?: string | null;
   signedAt: string; // ISO
+  createdAt?: string; // ISO
 }
 
 /** 계약 상세 응답 (getContract) */
