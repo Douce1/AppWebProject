@@ -22,7 +22,7 @@ const DEMO_INSTRUCTORS: DemoInstructor[] = [
   {
     email: 'teacher01@museum-demo.kr',
     name: '김철수 강사',
-    description: '계약완료 수업 확인용',
+    description: '배정 대기 요청 확인용',
   },
   {
     email: 'teacher02@museum-demo.kr',
@@ -32,7 +32,7 @@ const DEMO_INSTRUCTORS: DemoInstructor[] = [
   {
     email: 'teacher03@museum-demo.kr',
     name: '박지민 강사',
-    description: '배정 대기 요청 확인용',
+    description: '수락 후 계약 생성 확인용',
   },
   {
     email: 'teacher04@museum-demo.kr',
