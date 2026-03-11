@@ -201,7 +201,7 @@ export default function DocsScreen() {
                                             <FileText color="#10B981" size={24} />
                                         </View>
                                         <View style={styles.docInfo}>
-                                            <Text style={styles.docTitle}>{c.title ?? `계약 ${c.contractId}`}</Text>
+                                            <Text style={styles.docTitle}>{c.title?.trim() || '제목 없음'}</Text>
                                             <Text style={styles.docDate}>
                                                 {dateStr}
                                                 {dateStr ? ' · ' : ''}{contractStatusLabel(c.status)}

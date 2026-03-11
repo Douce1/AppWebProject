@@ -10,7 +10,7 @@ import {
   Modal,
   Alert,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '../api/apiClient';
 import { getContractErrorMessage, SIGN_TOKEN_EXPIRED } from '../api/contractErrors';
 import type { ApiContractDetail } from '../api/types';
@@ -27,6 +27,7 @@ function parseContentJson(contentJson: string | undefined): { title: string; con
 
 export default function DocContractDetailScreen() {
   const params = useLocalSearchParams<{ contractId?: string | string[] }>();
+  const router = useRouter();
   const contractId = typeof params.contractId === 'string' ? params.contractId : Array.isArray(params.contractId) ? params.contractId[0] : undefined;
 
   const [detail, setDetail] = useState<ApiContractDetail | null>(null);
@@ -147,6 +148,9 @@ export default function DocContractDetailScreen() {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>{getContractErrorMessage(errorCode ?? undefined)}</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backButtonText}>목록으로</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -184,7 +188,7 @@ export default function DocContractDetailScreen() {
     <>
       <ScrollView style={styles.container}>
         <View style={styles.card}>
-          <Text style={styles.title}>{contract.title ?? `계약 ${contract.contractId}`}</Text>
+          <Text style={styles.title}>{contract.title?.trim() || '제목 없음'}</Text>
           <Text style={styles.subTitle}>
             {period ? `계약기간: ${period}` : ''}
             {period ? ' · ' : ''}
@@ -304,6 +308,8 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background, padding: 20 },
   loadingText: { marginTop: 8, fontSize: 13, color: Colors.mutedForeground },
   errorText: { fontSize: 15, color: Colors.colorError, textAlign: 'center' },
+  backButton: { marginTop: 16, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12, backgroundColor: Colors.surfaceSoft, alignSelf: 'center' },
+  backButtonText: { fontSize: 15, fontWeight: '600', color: Colors.brandInk },
   card: {
     marginHorizontal: 16,
     marginBottom: 48,
