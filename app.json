@@ -20,7 +20,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.douce40.instructorapp"
+      "package": "com.douce40.instructorapp",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
