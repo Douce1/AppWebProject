@@ -13,6 +13,36 @@ import type { ApiNotificationSettings, NotificationSettingsUpdate } from '../api
 const DEVICE_ID_KEY = 'push_device_id';
 const NOTIFICATION_SETTINGS_KEY = 'notification_settings';
 
+// ─── WebSocket 중복 알림 방지 ──────────────────────────────────────────────────
+
+/**
+ * WebSocket으로 이미 수신한 이벤트 ID 집합.
+ * 포그라운드 Expo Push 핸들러에서 중복 알림을 무시하기 위해 사용합니다.
+ * TTL 없이 최대 200개까지만 보관 (순환 방지).
+ */
+const seenWsEventIds = new Set<string>();
+const MAX_SEEN_IDS = 200;
+
+/**
+ * WebSocket 수신 시 호출 — 해당 eventId를 "이미 처리됨"으로 표시합니다.
+ * notificationService와 chatSocket 사이의 결합 없이 단방향 마킹만 수행합니다.
+ */
+export function markWsEventSeen(eventId: string): void {
+    if (seenWsEventIds.size >= MAX_SEEN_IDS) {
+        // 가장 오래된 항목 하나 제거 (Set은 삽입 순서 유지)
+        const first = seenWsEventIds.values().next().value;
+        if (first !== undefined) seenWsEventIds.delete(first);
+    }
+    seenWsEventIds.add(eventId);
+}
+
+/**
+ * 이미 WebSocket으로 처리된 이벤트인지 확인합니다.
+ */
+export function isWsEventSeen(eventId: string): boolean {
+    return seenWsEventIds.has(eventId);
+}
+
 const DEFAULT_SETTINGS: ApiNotificationSettings = {
     instructorId: '',
     pushEnabled: true,
@@ -81,7 +111,13 @@ export function setupNotificationHandlers(): () => void {
 
     // 알림 탭 시 타입별 화면 이동
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data as { type?: string };
+        const data = response.notification.request.content.data as { type?: string; eventId?: string };
+
+        // WebSocket으로 이미 처리된 이벤트는 무시 (중복 알림 방지)
+        if (data?.eventId && isWsEventSeen(data.eventId)) {
+            return;
+        }
+
         if (data?.type === 'LESSON_REQUEST') {
             router.replace({ pathname: '/(tabs)/docs', params: { targetTab: '제안' } } as any);
         } else if (data?.type === 'CONTRACT_SENT') {
