@@ -5,6 +5,7 @@ import { Bell, Camera, FileText } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ApiContract, ApiLessonRequest, ContractStatus } from '../api/types';
+import { formatLessonCardLocation } from '../utils/lessonCardLocation';
 import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
 import { NotificationTopBar } from '@/src/components/organisms/NotificationTopBar';
 import { useContractsQuery, useLessonRequestsQuery, useRespondToRequestMutation } from '../query/hooks';
@@ -107,10 +108,12 @@ export default function DocsScreen() {
     };
 
     const formatLessonLocation = (req: ApiLessonRequest): string => {
-        const parts = [req.region, req.museum, req.venueName].filter(
-            (value): value is string => Boolean(value && value.trim()),
-        );
-        return parts.length > 0 ? parts.join(' · ') : '장소 정보 없음';
+        const loc = formatLessonCardLocation({
+            region: req.region ?? '',
+            museum: req.museum,
+            venueName: req.venueName,
+        });
+        return loc || '장소 정보 없음';
     };
 
     const lessonRequestStatusLabel = (status: ApiLessonRequest['status']): string => {
