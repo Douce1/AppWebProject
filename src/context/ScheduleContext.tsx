@@ -12,6 +12,16 @@ import {
     type CheckinPhase,
 } from '../services/checkinStateMachine';
 import { evaluateAllLessons, buildNotificationKey, type CurrentPosition } from '../services/gpsNotificationEngine';
+import {
+  createInitialDepartureAlertState,
+  evaluateDepartureAlerts,
+  evaluateMovementWithoutDeparture,
+  applyFiredAlerts,
+  updateLastEta,
+  buildDepartureAlertMessage,
+  type DepartureAlertState,
+} from '../services/departureAlertService';
+import { httpClient } from '../api/httpClient';
 import { queryKeys } from '../query/queryKeys';
 import {
     useAttendanceEventsQuery,
@@ -71,6 +81,7 @@ interface ScheduleContextType {
     submitClassReport: (id: string, text: string) => Promise<void>;
     fetchLessons: () => Promise<void>;
     checkSmartAlerts: (position: CurrentPosition | null) => void;
+    checkDepartureAlerts: (lessonId: string, lat: number, lng: number, hasDeparted: boolean, isMoving?: boolean) => Promise<void>;
     checkinPhases: Record<string, CheckinPhase>;
 
     // Location permission gate
@@ -100,6 +111,7 @@ const ScheduleContext = createContext<ScheduleContextType>({
     submitClassReport: async () => { },
     fetchLessons: async () => { },
     checkSmartAlerts: () => { },
+    checkDepartureAlerts: async () => { },
     checkinPhases: {},
     locationPermission: 'undetermined',
     requestLocationPermission: async () => { },
@@ -176,6 +188,10 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [firedNotificationKeys, setFiredNotificationKeys] = useState<Set<string>>(new Set());
     // 수업별 체크인 단계 (상태 머신)
     const [localCheckinPhases, setLocalCheckinPhases] = useState<Record<string, CheckinPhase>>({});
+    // 출발 알림 서비스 상태
+    const [departureAlertState, setDepartureAlertState] = useState<DepartureAlertState>(
+      createInitialDepartureAlertState(),
+    );
 
     const classes = useMemo(() => {
         const lessons = lessonsQuery.data ?? [];
@@ -542,6 +558,81 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     /**
+     * 출발 알림 서비스 연동:
+     * 주어진 수업에 대해 통근 리스크 API를 조회하고,
+     * 정책에 따라 최초 출발 알림 / ETA 악화 후속 알림을 발송합니다.
+     */
+    const checkDepartureAlerts = async (
+      lessonId: string,
+      lat: number,
+      lng: number,
+      hasDeparted: boolean,
+      isMoving: boolean = false,
+    ): Promise<void> => {
+      try {
+        const [risk, policy] = await Promise.all([
+          httpClient.getCommuteRisk(lessonId, lat, lng),
+          httpClient.getCommuteAlertPolicy(),
+        ]);
+
+        let currentState = departureAlertState;
+        const newNotifications: AppNotification[] = [];
+
+        // 출발 알림 평가
+        const departureAlerts = evaluateDepartureAlerts({
+          lessonId,
+          risk,
+          policy,
+          hasDeparted,
+          state: currentState,
+        });
+
+        for (const alert of departureAlerts) {
+          const msg = buildDepartureAlertMessage(alert);
+          newNotifications.push({
+            id: `departure-${alert.alertType}-${lessonId}-${Date.now()}`,
+            type: alert.alertType,
+            title: msg.title,
+            time: new Date().toISOString(),
+            target: { lessonId, riskLevel: alert.riskLevel, etaMinutes: alert.etaMinutes },
+          });
+        }
+
+        // 출발 미확인 이동 감지 알림 평가
+        const movementAlerts = evaluateMovementWithoutDeparture({
+          lessonId,
+          isMoving,
+          policy,
+          hasDeparted,
+          state: currentState,
+        });
+
+        for (const alert of movementAlerts) {
+          const msg = buildDepartureAlertMessage(alert);
+          newNotifications.push({
+            id: `departure-${alert.alertType}-${lessonId}-${Date.now()}`,
+            type: alert.alertType,
+            title: msg.title,
+            time: new Date().toISOString(),
+            target: { lessonId },
+          });
+        }
+
+        const allFired = [...departureAlerts, ...movementAlerts];
+        if (allFired.length > 0) {
+          currentState = applyFiredAlerts(currentState, allFired);
+          setDepartureAlertState(currentState);
+          setNotifications((prev) => [...prev, ...newNotifications]);
+        } else {
+          // ETA 기록 업데이트 (알림 없어도 추적)
+          setDepartureAlertState((prev) => updateLastEta(prev, lessonId, risk.etaMinutes));
+        }
+      } catch {
+        // 네트워크 오류 등은 조용히 무시 (알림 누락은 허용)
+      }
+    };
+
+    /**
      * GPS 스마트 알림 엔진 연동:
      * 앱 진입/재개 시 현재 위치를 받아 수업별 알림 필요 여부를 평가하고
      * 중복 없이 알림을 추가합니다.
@@ -596,7 +687,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             classes, addClass, notifications, removeNotification, isProposalResolved, proposalStatus, resolveProposal,
             departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds,
             classReports, getClassReport, handleClassAction, submitClassReport, fetchLessons,
-            checkSmartAlerts, checkinPhases,
+            checkSmartAlerts, checkDepartureAlerts, checkinPhases,
             locationPermission, requestLocationPermission, openLocationSettings,
         }}>
             {children}

@@ -7,6 +7,8 @@ import {
   ApiChatMessage,
   ApiChatMessageList,
   ApiChatRoom,
+  ApiCommuteAlertPolicy,
+  ApiCommuteRisk,
   ApiCompany,
   ApiContract,
   ApiContractDetail,
@@ -644,5 +646,17 @@ export const httpClient = {
 
   async updateNotificationSettings(body: NotificationSettingsUpdate): Promise<ApiNotificationSettings> {
     return putJson<ApiNotificationSettings>('/me/notification-settings', body);
+  },
+
+  // ---- Commute Risk & Alert Policy API ----
+
+  async getCommuteRisk(lessonId: string, lat: number, lng: number): Promise<ApiCommuteRisk> {
+    return getJson<ApiCommuteRisk>(
+      `/lessons/${encodeURIComponent(lessonId)}/commute-risk?lat=${lat}&lng=${lng}`,
+    );
+  },
+
+  async getCommuteAlertPolicy(): Promise<ApiCommuteAlertPolicy> {
+    return getJson<ApiCommuteAlertPolicy>('/lessons/commute-alert-policy');
   },
 };

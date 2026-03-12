@@ -343,6 +343,29 @@ export interface ApiSignatureAsset {
   updatedAt: string;
 }
 
+// ---- Commute Risk & Alert Policy Types ----
+
+export type CommuteRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH';
+
+export interface ApiCommuteRisk {
+  riskLevel: CommuteRiskLevel;
+  recommendedAction: string;
+  etaMinutes: number;
+  distanceMeters: number;
+  bufferMinutes: number;
+  riskScore: number;
+}
+
+export interface ApiCommuteAlertPolicy {
+  bufferMinutes: number;
+  lateRiskThresholdMinutes: number;
+  highRiskThresholdMinutes: number;
+  initialDepartureAlertEnabled: boolean;
+  etaDeteriorationFollowupEnabled: boolean;
+  stopAfterDepart: boolean;
+  movementWithoutDepartureAlertEnabled: boolean;
+}
+
 // ---- Document Import API Types ----
 
 export interface ApiDocumentDraft {
