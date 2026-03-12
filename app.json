@@ -29,6 +29,15 @@
     "plugins": [
       "expo-router",
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "수업 출강 추적을 위해 위치 권한이 필요합니다.",
+          "locationAlwaysPermission": "백그라운드에서 수업 출강 위치를 추적합니다.",
+          "locationWhenInUsePermission": "수업 출강 확인을 위해 위치 권한이 필요합니다.",
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
@@ -51,8 +60,9 @@
       "googleClientId": "",
       "router": {},
       "eas": {
-        "projectId": "8720899f-75e2-4d12-8be7-b017c6339af2"
+        "projectId": "7f046d6b-6b79-43a6-a343-4ac9abe354cd"
       }
-    }
+    },
+    "owner": "woong0322"
   }
 }
