@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { Bell, Settings, X } from 'lucide-react-native';
 import { Colors } from '@/constants/theme';
 import { useSchedule } from '@/src/context/ScheduleContext';
@@ -12,6 +12,7 @@ interface NotificationTopBarProps {
 
 export function NotificationTopBar({ title }: NotificationTopBarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { notifications, removeNotification } = useSchedule();
   const { unreadMessages, markAsRead } = useChat();
   const [sidePanelVisible, setSidePanelVisible] = useState(false);
@@ -36,7 +37,11 @@ export function NotificationTopBar({ title }: NotificationTopBarProps) {
             )}
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push('/settings' as any)}
+            onPress={() => {
+              // 이미 설정 화면인 경우 중복 push 방지
+              if (pathname === '/settings') return;
+              router.push('/settings' as any);
+            }}
             style={styles.iconButton}
           >
             <Settings color="#666" size={26} />

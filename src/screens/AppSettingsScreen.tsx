@@ -1,7 +1,7 @@
 import { Colors } from '@/constants/theme';
 import * as Linking from 'expo-linking';
-import { useNavigation, useRouter } from 'expo-router';
-import { Bell, ChevronLeft, FileText, Info, LogOut, MessageCircle, Shield } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Bell, FileText, Info, LogOut, MessageCircle, Shield } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { clearTokens } from '../store/authStore';
@@ -26,8 +26,6 @@ export default function AppSettingsScreen() {
     const [settings, setSettings] = useState<ApiNotificationSettings>(DEFAULT_SETTINGS);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
-    const navigation = useNavigation();
-
     const loadSettings = useCallback(async () => {
         setLoading(true);
         try {
@@ -42,18 +40,6 @@ export default function AppSettingsScreen() {
         loadSettings();
     }, [loadSettings]);
 
-    useEffect(() => {
-        navigation.setOptions({
-            headerLeft: () => (
-                <TouchableOpacity
-                    onPress={() => router.back()}
-                    style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
-                >
-                    <ChevronLeft size={28} color="#4F46E5" />
-                </TouchableOpacity>
-            ),
-        });
-    }, [navigation, router]);
 
     const handleToggle = async (
         key: keyof Omit<ApiNotificationSettings, 'instructorId'>,

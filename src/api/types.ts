@@ -390,3 +390,25 @@ export interface ApiDocument {
   } | null;
   createdAt: string;
 }
+
+// ---- Notification Center Types ----
+
+export type NotificationItemType =
+  | 'LESSON_REQUEST'
+  | 'CONTRACT_SENT'
+  | 'SETTLEMENT'
+  | 'FINISH_REMINDER'
+  | 'GPS_DEPARTURE'
+  | 'GPS_LATE_RISK'
+  | 'GPS_ARRIVAL_PROXIMITY'
+  | 'CHAT';
+
+export interface ApiNotificationItem {
+  id: string;
+  type: NotificationItemType | string;
+  title: string;
+  body?: string;
+  isRead: boolean;
+  createdAt: string; // ISO
+  target?: Record<string, unknown>;
+}
