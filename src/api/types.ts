@@ -105,6 +105,8 @@ export interface ApiLessonRequest {
   venueName?: string | null;
 }
 
+export type PdfGenerationStatus = 'PENDING' | 'GENERATING' | 'READY' | 'FAILED';
+
 export interface ApiContract {
   contractId: string;
   companyId: string;
@@ -120,6 +122,8 @@ export interface ApiContract {
   instructorName?: string;
   effectiveFrom?: string; // ISO date
   effectiveTo?: string;   // ISO date
+  /** 최종 PDF 생성 상태 (FULLY_SIGNED 계약에서만 의미 있음) */
+  pdfGenerationStatus?: PdfGenerationStatus;
 }
 
 /** 계약 서명자 역할 */

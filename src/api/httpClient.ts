@@ -26,7 +26,9 @@ import {
   AuthLoginResponse,
   LectureRecordView,
   NotificationSettingsUpdate,
+  PdfGenerationStatus,
 } from './types';
+import { File, Paths } from 'expo-file-system';
 import type { SubmitContractSignaturePayload } from './types';
 import {
   clearTokens,
@@ -107,6 +109,7 @@ interface BackendContractSignature {
 interface BackendContractDetailDto extends ApiContract {
   latestVersion?: BackendContractVersionSummary | null;
   signatures?: BackendContractSignature[];
+  pdfGenerationStatus?: PdfGenerationStatus;
 }
 
 interface RequestOptions extends RequestInit {
@@ -293,6 +296,7 @@ function toApiContractDetail(contract: BackendContractDetailDto): ApiContractDet
       instructorName: contract.instructorName,
       effectiveFrom: contract.effectiveFrom,
       effectiveTo: contract.effectiveTo,
+      pdfGenerationStatus: contract.pdfGenerationStatus,
     },
     currentVersion: contract.latestVersion
       ? {
@@ -587,6 +591,32 @@ export const httpClient = {
 
   async deregisterPushDevice(deviceId: string): Promise<void> {
     return deleteJson<void>(`/push/devices/${encodeURIComponent(deviceId)}`);
+  },
+
+  // ---- Contract Final PDF API ----
+
+  async downloadContractFinalPdf(contractId: string): Promise<string> {
+    const accessToken = await getAccessToken();
+    const response = await fetch(
+      `${BASE_URL}/contracts/${encodeURIComponent(contractId)}/final-pdf/file`,
+      { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} },
+    );
+    if (!response.ok) {
+      const err = await buildApiError(response, `/contracts/${contractId}/final-pdf/file`);
+      throw err;
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    const tempFile = new File(Paths.cache, `contract_${contractId}.pdf`);
+    tempFile.write(bytes);
+    return tempFile.uri;
+  },
+
+  async regenerateContractFinalPdf(contractId: string): Promise<ApiContractDetail> {
+    const contract = await postJson<BackendContractDetailDto>(
+      `/contracts/${encodeURIComponent(contractId)}/final-pdf/regenerate`,
+    );
+    return toApiContractDetail(contract);
   },
 
   // ---- Instructor Signature Asset API ----
