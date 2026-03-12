@@ -132,7 +132,7 @@ export default function RootLayout() {
 
   const stack = (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+      <Stack screenOptions={{ headerBackTitleVisible: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="docs/import" options={{ headerShown: false }} />
         <Stack.Screen name="docs/review" options={{ headerShown: false }} />

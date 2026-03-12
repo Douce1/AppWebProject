@@ -44,7 +44,6 @@ export default function AppSettingsScreen() {
 
     useEffect(() => {
         navigation.setOptions({
-            headerBackTitle: ' ',
             headerLeft: () => (
                 <TouchableOpacity
                     onPress={() => router.back()}
