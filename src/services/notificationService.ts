@@ -124,6 +124,9 @@ export function setupNotificationHandlers(): () => void {
             router.replace({ pathname: '/(tabs)/docs', params: { targetTab: '계약' } } as any);
         } else if (data?.type === 'SETTLEMENT') {
             router.replace('/(tabs)/income' as any);
+        } else if (data?.type === 'FINISH_REMINDER') {
+            // Navigate to home tab where the user can tap FINISH on the relevant lesson
+            router.replace('/(tabs)/' as any);
         }
     });
 

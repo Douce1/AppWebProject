@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { Alert, Linking } from 'react-native';
 import { apiClient } from '../api/apiClient';
 import { startBackgroundTracking, stopBackgroundTracking, selectNearestDepartedLesson } from '../services/backgroundLocationTask';
+import { buildCheckinResultUX } from '../utils/checkinResultUX';
 import {
     buildPhaseMap,
     extractIdSets,
@@ -308,10 +309,11 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (canEndClassIds.includes(id) && !endedClassIds.includes(id)) {
             const requestId = lessonRequestMap[id];
             let coords: Awaited<ReturnType<typeof getLocationForCheckin>> = null;
+            let finishResult: ApiAttendanceEvent | null = null;
             if (requestId) {
                 try {
                     coords = await getLocationForCheckin();
-                    await apiClient.checkinByAssignment(requestId, {
+                    finishResult = await apiClient.checkinByAssignment(requestId, {
                         eventType: 'FINISH',
                         idempotencyKey: `FINISH_${requestId}_${Date.now()}`,
                         lat: coords?.lat ?? 0,
@@ -325,9 +327,26 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 }
             }
 
+            // Show retry/guidance UX based on server response
+            if (finishResult) {
+                const ux = buildCheckinResultUX({
+                    isValid: finishResult.isValid,
+                    locationStatus: finishResult.locationStatus,
+                    distanceMeters: finishResult.distanceMeters,
+                    accuracyMeters: finishResult.accuracyMeters,
+                });
+                if (ux.canRetry) {
+                    Alert.alert(ux.title, ux.message);
+                    return;
+                }
+                if (ux.type === 'SUCCESS_WITH_WARNING') {
+                    Alert.alert(ux.title, ux.message);
+                }
+            }
+
             queryClient.setQueryData<ApiAttendanceEvent[]>(queryKeys.attendanceEvents, (prev = []) => [
                 ...prev,
-                {
+                finishResult ?? {
                     attendanceEventId: `optimistic-finish-${requestId ?? id}`,
                     companyId: '',
                     lessonId: id,
@@ -351,10 +370,11 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (canArriveIds.includes(id) && !arrivedIds.includes(id)) {
             const requestId = lessonRequestMap[id];
             let coords: Awaited<ReturnType<typeof getLocationForCheckin>> = null;
+            let arriveResult: ApiAttendanceEvent | null = null;
             if (requestId) {
                 try {
                     coords = await getLocationForCheckin();
-                    await apiClient.checkinByAssignment(requestId, {
+                    arriveResult = await apiClient.checkinByAssignment(requestId, {
                         eventType: 'ARRIVE',
                         idempotencyKey: `ARRIVE_${requestId}_${Date.now()}`,
                         lat: coords?.lat ?? 0,
@@ -368,9 +388,27 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 }
             }
 
+            // Show retry/guidance UX based on server response
+            if (arriveResult) {
+                const ux = buildCheckinResultUX({
+                    isValid: arriveResult.isValid,
+                    locationStatus: arriveResult.locationStatus,
+                    distanceMeters: arriveResult.distanceMeters,
+                    accuracyMeters: arriveResult.accuracyMeters,
+                });
+                if (ux.canRetry) {
+                    Alert.alert(ux.title, ux.message);
+                    return;
+                }
+                // Show warning even on success if suspicious
+                if (ux.type === 'SUCCESS_WITH_WARNING') {
+                    Alert.alert(ux.title, ux.message);
+                }
+            }
+
             queryClient.setQueryData<ApiAttendanceEvent[]>(queryKeys.attendanceEvents, (prev = []) => [
                 ...prev,
-                {
+                arriveResult ?? {
                     attendanceEventId: `optimistic-arrive-${requestId ?? id}`,
                     companyId: '',
                     lessonId: id,
@@ -387,7 +425,9 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 },
             ]);
             setLocalCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'DEPARTED', 'ARRIVE') }));
-            Alert.alert('도착 완료', '도착이 등록되었습니다. 강의를 진행해주세요.');
+            if (!arriveResult || arriveResult.locationStatus !== 'SUSPICIOUS') {
+                Alert.alert('도착 완료', '도착이 등록되었습니다. 강의를 진행해주세요.');
+            }
 
             // Stop background location tracking — ARRIVE completed
             stopBackgroundTracking().catch(() => {});
