@@ -284,7 +284,7 @@ export default function DocContractDetailScreen() {
 
           {contract.status === 'FULLY_SIGNED' ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>최종 PDF</Text>
+              <Text style={styles.sectionTitle}>계약서 PDF</Text>
               {contract.pdfGenerationStatus === 'READY' ? (
                 <TouchableOpacity
                   style={[styles.pdfButton, pdfLoading && styles.pdfButtonDisabled]}
@@ -294,7 +294,7 @@ export default function DocContractDetailScreen() {
                   {pdfLoading ? (
                     <ActivityIndicator size="small" color={Colors.brandInk} />
                   ) : (
-                    <Text style={styles.pdfButtonText}>PDF 열람</Text>
+                    <Text style={styles.pdfButtonText}>PDF로 저장</Text>
                   )}
                 </TouchableOpacity>
               ) : contract.pdfGenerationStatus === 'PENDING' || contract.pdfGenerationStatus === 'GENERATING' ? (
