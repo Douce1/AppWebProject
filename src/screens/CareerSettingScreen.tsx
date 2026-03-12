@@ -377,7 +377,7 @@ export default function CareerSettingScreen() {
               activeOpacity={0.8}
               onPress={() =>
                 router.push({
-                  pathname: '/(tabs)/profile/career-detail' as any,
+                  pathname: '/profile/career-detail' as any,
                   params: { lecture: JSON.stringify(item) },
                 })
               }
