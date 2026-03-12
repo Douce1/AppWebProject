@@ -81,11 +81,18 @@ export default function DocLessonRequestDetailScreen() {
 
   const handleRespond = async (action: 'ACCEPT' | 'REJECT') => {
     if (!request || submitting) return;
+
+    const trimmedReason = rejectReason.trim();
+    if (action === 'REJECT' && !trimmedReason) {
+      Alert.alert('거절 사유 필요', '거절 사유를 입력해주세요.');
+      return;
+    }
+
     try {
       await respondToRequestMutation.mutateAsync({
         requestId: request.requestId,
         action,
-        rejectionReason: action === 'REJECT' ? rejectReason.trim() || undefined : undefined,
+        rejectionReason: action === 'REJECT' ? trimmedReason : undefined,
       });
       setRejectMode(false);
       setRejectReason('');

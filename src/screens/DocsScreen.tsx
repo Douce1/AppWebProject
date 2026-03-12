@@ -131,11 +131,18 @@ export default function DocsScreen() {
 
     const handleRespond = async (requestId: string, action: 'ACCEPT' | 'REJECT', reason?: string) => {
         if (respondToRequestMutation.isPending) return;
+
+        const trimmedReason = reason?.trim() ?? '';
+        if (action === 'REJECT' && !trimmedReason) {
+            Alert.alert('거절 사유 필요', '거절 사유를 입력해주세요.');
+            return;
+        }
+
         try {
             await respondToRequestMutation.mutateAsync({
                 requestId,
                 action,
-                rejectionReason: reason?.trim() || undefined,
+                rejectionReason: action === 'REJECT' ? trimmedReason : undefined,
             });
 
             if (action === 'ACCEPT') {
