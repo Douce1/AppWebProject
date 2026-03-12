@@ -8,6 +8,7 @@ import { useSchedule } from '../context/ScheduleContext';
 import { apiClient } from '../api/apiClient';
 import { API_BASE_URL } from '../api/httpClient';
 import { getAccessToken } from '../store/authStore';
+import { useRespondToRequestMutation } from '../query/hooks';
 
 export default function ClassDetailScreen() {
     const params = useLocalSearchParams();
@@ -42,7 +43,8 @@ export default function ClassDetailScreen() {
     const [requestStatus, setRequestStatus] = useState<'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | null>(
         requestIdParam ? 'PENDING' : null,
     );
-    const [requestLoading, setRequestLoading] = useState(false);
+    const respondToRequestMutation = useRespondToRequestMutation();
+    const requestLoading = respondToRequestMutation.isPending;
 
     // Time logic for "강의 보고서 작성"
     const now = new Date();
@@ -104,11 +106,11 @@ export default function ClassDetailScreen() {
 
     const handleAcceptRequest = async () => {
         if (!requestIdParam || requestStatus && requestStatus !== 'PENDING') return;
-        setRequestLoading(true);
         try {
-            const updated = await apiClient.respondToRequest(requestIdParam, { action: 'ACCEPT' });
+            // 이슈 #149: useRespondToRequestMutation 사용 → onSuccess에서 contracts/lessonRequests/lessons 캐시 invalidate
+            const updated = await respondToRequestMutation.mutateAsync({ requestId: requestIdParam, action: 'ACCEPT' });
             setRequestStatus(updated.status);
-            Alert.alert('요청 수락 완료', '수업 요청을 수락했습니다.');
+            Alert.alert('요청 수락 완료', '초안 계약이 생성되었습니다. 계약 탭에서 확인하세요.');
         } catch (err: unknown) {
             const e = err as Error & { status?: number; message?: string };
             if (e.status === 409) {
@@ -116,8 +118,6 @@ export default function ClassDetailScreen() {
             } else {
                 Alert.alert('요청 처리 실패', e.message ?? '요청을 처리하는 중 오류가 발생했습니다.');
             }
-        } finally {
-            setRequestLoading(false);
         }
     };
 
@@ -128,9 +128,10 @@ export default function ClassDetailScreen() {
             Alert.alert('알림', '거절 사유를 입력해주세요.');
             return;
         }
-        setRequestLoading(true);
         try {
-            const updated = await apiClient.respondToRequest(requestIdParam, {
+            // 이슈 #149: useRespondToRequestMutation 사용 → onSuccess에서 캐시 invalidate
+            const updated = await respondToRequestMutation.mutateAsync({
+                requestId: requestIdParam,
                 action: 'REJECT',
                 rejectionReason: trimmed,
             });
@@ -145,8 +146,6 @@ export default function ClassDetailScreen() {
             } else {
                 Alert.alert('요청 처리 실패', e.message ?? '요청을 처리하는 중 오류가 발생했습니다.');
             }
-        } finally {
-            setRequestLoading(false);
         }
     };
 

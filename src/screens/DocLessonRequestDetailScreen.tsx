@@ -89,7 +89,7 @@ export default function DocLessonRequestDetailScreen() {
       if (action === 'ACCEPT') {
         Alert.alert(
           '수락 완료',
-          '요청을 수락하여 새로운 계약서가 발송되었습니다.',
+          '초안 계약이 생성되었습니다. 계약 탭에서 확인하세요.',
           [{
             text: '계약 확인하기',
             onPress: () => router.replace({

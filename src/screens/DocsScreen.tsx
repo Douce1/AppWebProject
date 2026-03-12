@@ -26,7 +26,8 @@ export default function DocsScreen() {
 
     const [selectedTabIndex, setSelectedTabIndex] = useState(0);
     const selectedTab = DOCS_TABS[selectedTabIndex];
-    const contractFilterStatuses: (ContractStatus | 'ALL')[] = ['ALL', 'SENT', 'INSTRUCTOR_SIGNED', 'FULLY_SIGNED'];
+    // 이슈 #149: DRAFT 추가 → 수락 직후 생성된 초안 계약을 필터로 확인 가능
+    const contractFilterStatuses: (ContractStatus | 'ALL')[] = ['ALL', 'DRAFT', 'SENT', 'INSTRUCTOR_SIGNED', 'FULLY_SIGNED'];
     const [contractStatusFilter, setContractStatusFilter] = useState<ContractStatus | 'ALL'>('ALL');
     const [rejectModalOpenFor, setRejectModalOpenFor] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState('');
@@ -137,7 +138,7 @@ export default function DocsScreen() {
             if (action === 'ACCEPT') {
                 Alert.alert(
                     '수락 완료',
-                    '요청을 수락하여 새로운 계약서가 발송되었습니다. 확인하시겠습니까?',
+                    '초안 계약이 생성되었습니다. 계약 탭에서 확인하세요.',
                     [
                         { text: '나중에', style: 'cancel' },
                         { 

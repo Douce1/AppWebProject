@@ -11,9 +11,11 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api/apiClient';
 import { getContractErrorMessage, SIGN_TOKEN_EXPIRED } from '../api/contractErrors';
 import type { ApiContractDetail } from '../api/types';
+import { queryKeys } from '../query/queryKeys';
 
 function parseContentJson(contentJson: string | undefined): { title: string; content: string }[] {
   if (!contentJson) return [];
@@ -30,6 +32,7 @@ export default function DocContractDetailScreen() {
   const router = useRouter();
   const contractId = typeof params.contractId === 'string' ? params.contractId : Array.isArray(params.contractId) ? params.contractId[0] : undefined;
 
+  const queryClient = useQueryClient();
   const [detail, setDetail] = useState<ApiContractDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -121,6 +124,8 @@ export default function DocContractDetailScreen() {
         signToken,
       });
       setDetail(updated);
+      // 이슈 #149: 서명 후 계약 목록 캐시 invalidate → 백엔드에서 최신 상태 재조회
+      await queryClient.invalidateQueries({ queryKey: queryKeys.contracts });
       setSignModalVisible(false);
       setSignToken(null);
       setSignTokenExpiresAt(null);
