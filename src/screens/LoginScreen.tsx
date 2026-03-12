@@ -93,22 +93,9 @@ export default function LoginScreen() {
       setIsSubmitting(true);
       setErrorMessage(null);
 
-      // eslint-disable-next-line no-console
-      console.log('[LoginScreen] demo login start', {
-        channel: 'app',
-        email: selectedInstructor.email,
-      });
-
       const data = await httpClient.loginWithDemoAccount({
         channel: 'app',
         email: selectedInstructor.email,
-      });
-
-      // eslint-disable-next-line no-console
-      console.log('[LoginScreen] demo login success', {
-        userId: data.user.userId,
-        email: data.user.email,
-        name: data.user.name,
       });
 
       await saveTokens(data.accessToken, data.refreshToken);
