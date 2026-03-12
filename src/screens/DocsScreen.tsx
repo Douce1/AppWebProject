@@ -9,17 +9,20 @@ import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
 import { NotificationTopBar } from '@/src/components/organisms/NotificationTopBar';
 import { useContractsQuery, useLessonRequestsQuery, useRespondToRequestMutation } from '../query/hooks';
 
-const DOCS_TABS = ['서류', '계약', '요청/제안'] as const;
+/** 이슈 #135: 순서 제안 → 계약 → 서류, '요청/제안' → '제안' 통일 */
+const DOCS_TABS = ['제안', '계약', '서류'] as const;
 
 export default function DocsScreen() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const params = useLocalSearchParams<{ targetTab?: string | string[] }>();
-    const targetTab = typeof params.targetTab === 'string'
+    const rawTargetTab = typeof params.targetTab === 'string'
         ? params.targetTab
         : Array.isArray(params.targetTab)
           ? params.targetTab[0]
           : undefined;
+    /** 딥링크 호환: 기존 '요청/제안' 파라미터를 '제안'으로 매핑 (이슈 #135) */
+    const targetTab = rawTargetTab === '요청/제안' ? '제안' : rawTargetTab;
 
     const [selectedTabIndex, setSelectedTabIndex] = useState(0);
     const selectedTab = DOCS_TABS[selectedTabIndex];
@@ -28,7 +31,7 @@ export default function DocsScreen() {
     const [rejectModalOpenFor, setRejectModalOpenFor] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState('');
     const contractsQuery = useContractsQuery({ enabled: selectedTab === '계약' });
-    const lessonRequestsQuery = useLessonRequestsQuery({ enabled: selectedTab === '요청/제안' });
+    const lessonRequestsQuery = useLessonRequestsQuery({ enabled: selectedTab === '제안' });
     const respondToRequestMutation = useRespondToRequestMutation();
     const contracts = contractsQuery.data ?? [];
     const lessonRequests = lessonRequestsQuery.data ?? [];
@@ -140,7 +143,7 @@ export default function DocsScreen() {
                         { 
                             text: '계약 확인하기', 
                             onPress: () => {
-                                // '계약' 탭 인덱스는 1
+                                // '계약' 탭 인덱스는 1 (순서: 제안=0, 계약=1, 서류=2)
                                 setSelectedTabIndex(1);
                             }
                         }
@@ -256,12 +259,12 @@ export default function DocsScreen() {
                     </>
                 )}
 
-                {selectedTab === '요청/제안' && (
+                {selectedTab === '제안' && (
                     <View style={styles.requestCard}>
                         <View style={styles.requestHeader}>
                             <View style={styles.requestBadgeRow}>
                                 <Bell color="#EF4444" size={16} />
-                                <Text style={styles.requestStatusText}>수업 요청 / 제안</Text>
+                                <Text style={styles.requestStatusText}>제안</Text>
                             </View>
                             <Text style={styles.requestMetaText}>
                                 대기 {pendingLessonRequests.length}건 · 전체 {lessonRequests.length}건

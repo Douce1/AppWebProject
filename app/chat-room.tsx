@@ -116,7 +116,7 @@ export default function ChatRoomScreen() {
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.proposalViewBtn}
-                                    onPress={() => router.push({ pathname: '/(tabs)/docs', params: { targetTab: '요청/제안' } } as any)}
+                                    onPress={() => router.push({ pathname: '/(tabs)/docs', params: { targetTab: '제안' } } as any)}
                                 >
                                     <Text style={styles.proposalViewText}>상세보기</Text>
                                 </TouchableOpacity>
