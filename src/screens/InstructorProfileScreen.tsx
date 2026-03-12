@@ -7,7 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useProfile } from '../context/ProfileContext';
 import { REGION_SIDO_GU } from '../data/regionData';
 import { apiClient } from '../api/apiClient';
-import { putJson } from '@/src/api/httpClient';
+import { useUpdateInstructorProfileMutation } from '@/src/query/hooks';
 
 const SIDO_LIST = REGION_SIDO_GU.map((r) => r.sido);
 
@@ -52,6 +52,7 @@ function parseEducationLine(text: string): { schoolName: string; major: string; 
 
 export default function InstructorProfileScreen() {
   const { education, setEducation, certifications, setCertifications } = useProfile();
+  const updateProfileMutation = useUpdateInstructorProfileMutation();
 
   const [photoUri, setPhotoUri] = useState<string>('');
   const [name, setName] = useState('');
@@ -234,8 +235,11 @@ export default function InstructorProfileScreen() {
       }));
     }
 
+    // 변경된 사진이 있을 때만 업로드 인자로 전달 (없으면 undefined)
+    const changedPhotoUri = photoUri !== savedProfile.photoUri ? photoUri : undefined;
+
     try {
-      await putJson('/instructors/me', payload);
+      await updateProfileMutation.mutateAsync({ payload, photoUri: changedPhotoUri });
 
       setSavedProfile(nextProfile);
       setSavedCertifications(certifications);

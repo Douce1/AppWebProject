@@ -204,3 +204,25 @@ export function useUnreadCountQuery(
     ...options,
   });
 }
+
+export function useUpdateInstructorProfileMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      payload,
+      photoUri,
+    }: {
+      payload: Parameters<typeof httpClient.updateInstructorProfile>[0];
+      photoUri?: string;
+    }) => {
+      const result = await httpClient.updateInstructorProfile(payload);
+      if (photoUri) {
+        await httpClient.uploadProfilePhoto(photoUri);
+      }
+      return result;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.instructorProfile });
+    },
+  });
+}

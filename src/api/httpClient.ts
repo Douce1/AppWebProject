@@ -637,6 +637,30 @@ export const httpClient = {
     return toApiContractDetail(contract);
   },
 
+  async updateInstructorProfile(payload: {
+    name: string;
+    email: string;
+    phone: string;
+    residenceArea: string;
+    education: { schoolName: string; major: string; graduationYear: string } | null;
+    certifications?: { id: string; name: string; year: string }[];
+  }): Promise<ApiInstructorProfile> {
+    return putJson<ApiInstructorProfile>('/instructors/me', payload);
+  },
+
+  async uploadProfilePhoto(fileUri: string): Promise<ApiInstructorProfile> {
+    const formData = new FormData();
+    formData.append('file', {
+      uri: fileUri,
+      name: 'profile.jpg',
+      type: 'image/jpeg',
+    } as any);
+    return requestJson<ApiInstructorProfile>('/instructors/me/profile-image', {
+      method: 'PUT',
+      body: formData,
+    });
+  },
+
   // ---- Instructor Signature Asset API ----
 
   async getSignatureAsset(): Promise<ApiSignatureAsset> {
