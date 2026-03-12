@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Alert, Linking } from 'react-native';
 import { apiClient } from '../api/apiClient';
+import { startBackgroundTracking, stopBackgroundTracking, selectNearestDepartedLesson } from '../services/backgroundLocationTask';
 import {
     buildPhaseMap,
     extractIdSets,
@@ -387,6 +388,10 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ]);
             setLocalCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'DEPARTED', 'ARRIVE') }));
             Alert.alert('도착 완료', '도착이 등록되었습니다. 강의를 진행해주세요.');
+
+            // Stop background location tracking — ARRIVE completed
+            stopBackgroundTracking().catch(() => {});
+
             return;
         }
 
@@ -440,6 +445,25 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 ]);
                 setLocalCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'IDLE', 'DEPART') }));
                 Alert.alert('출발 완료', '출발이 등록되었습니다. 안전하게 이동하세요.');
+
+                // Start background location tracking for DEPART → ARRIVE window
+                try {
+                    // Pick nearest departed lesson (including the just-departed one)
+                    const departedLessonsForTracking = classes
+                        .filter(c => c.id === id)
+                        .map(c => ({
+                            lessonId: c.id,
+                            startsAt: c.date + 'T' + (c.time.split(' - ')[0]?.trim() ?? '09:00') + ':00',
+                            venueLat: c.venueLat ?? null,
+                            venueLng: c.venueLng ?? null,
+                        }));
+                    const nearest = selectNearestDepartedLesson(departedLessonsForTracking);
+                    if (nearest) {
+                        await startBackgroundTracking();
+                    }
+                } catch {
+                    // Background tracking failure is non-fatal
+                }
 
             } catch {
                 Alert.alert('오류', '위치를 가져오는데 실패했습니다.');
