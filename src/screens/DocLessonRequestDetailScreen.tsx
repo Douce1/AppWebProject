@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { ApiLessonRequest } from '../api/types';
+import { formatLessonCardLocation } from '../utils/lessonCardLocation';
 import { useLessonRequestsQuery, useRespondToRequestMutation } from '../query/hooks';
 
 function formatLessonSchedule(req: ApiLessonRequest): string {
@@ -42,10 +43,12 @@ function formatLessonSchedule(req: ApiLessonRequest): string {
 }
 
 function formatLessonLocation(req: ApiLessonRequest): string {
-  const parts = [req.region, req.museum, req.venueName].filter(
-    (value): value is string => Boolean(value && value.trim()),
-  );
-  return parts.length > 0 ? parts.join(' · ') : '장소 정보 없음';
+  const loc = formatLessonCardLocation({
+    region: req.region ?? '',
+    museum: req.museum,
+    venueName: req.venueName,
+  });
+  return loc || '장소 정보 없음';
 }
 
 function lessonRequestStatusLabel(status: ApiLessonRequest['status']): string {
