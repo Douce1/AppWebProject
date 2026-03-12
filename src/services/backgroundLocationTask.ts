@@ -12,8 +12,11 @@
  * - App force-quit: tracking continuity is NOT guaranteed
  */
 
-import * as Location from 'expo-location';
-import * as TaskManager from 'expo-task-manager';
+// expo-location과 expo-task-manager는 네이티브 모듈이므로, 기존 빌드에 없을 경우를 대비해 동적으로 로드합니다.
+let Location: typeof import('expo-location') | null = null;
+let TaskManager: typeof import('expo-task-manager') | null = null;
+try { Location = require('expo-location'); } catch { console.warn('[backgroundLocationTask] expo-location 모듈 없음'); }
+try { TaskManager = require('expo-task-manager'); } catch { console.warn('[backgroundLocationTask] expo-task-manager 모듈 없음'); }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const BACKGROUND_LOCATION_TASK = 'BACKGROUND_LOCATION_TASK';
@@ -40,10 +43,11 @@ export function setBackgroundLocationCallback(cb: LocationUpdateCallback | null)
  * When the OS delivers a background location, the callback (if set) is invoked.
  */
 export function defineBackgroundLocationTask(): void {
+    if (!TaskManager) return;
     if (!TaskManager.isTaskDefined(BACKGROUND_LOCATION_TASK)) {
-        TaskManager.defineTask(BACKGROUND_LOCATION_TASK, ({ data, error }: any) => {
+        TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) => {
             if (error) return;
-            const locations: Location.LocationObject[] = data?.locations ?? [];
+            const locations: any[] = data?.locations ?? [];
             if (locations.length === 0) return;
             const latest = locations[locations.length - 1];
             if (!latest?.coords) return;
@@ -57,12 +61,8 @@ export function defineBackgroundLocationTask(): void {
 }
 
 // ─── Start / Stop ─────────────────────────────────────────────────────────────
-/**
- * Start background location tracking.
- * Requires background location permission to be granted beforehand.
- * Safe to call multiple times — no-ops if already running.
- */
 export async function startBackgroundTracking(): Promise<void> {
+    if (!Location) return;
     const isRunning = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => false);
     if (isRunning) return;
 
@@ -79,20 +79,15 @@ export async function startBackgroundTracking(): Promise<void> {
     });
 }
 
-/**
- * Stop background location tracking.
- * Safe to call when tracking is not running.
- */
 export async function stopBackgroundTracking(): Promise<void> {
+    if (!Location) return;
     const isRunning = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => false);
     if (!isRunning) return;
     await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => {});
 }
 
-/**
- * Returns whether background tracking is currently active.
- */
 export async function isBackgroundTrackingActive(): Promise<boolean> {
+    if (!Location) return false;
     return Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => false);
 }
 

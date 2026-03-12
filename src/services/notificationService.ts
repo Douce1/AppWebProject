@@ -3,12 +3,20 @@
  * Push 디바이스 등록/해제, 알림 핸들러 설정, 알림 설정 관리 서비스
  */
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { httpClient, type ApiError } from '../api/httpClient';
 import type { ApiNotificationSettings, NotificationSettingsUpdate } from '../api/types';
+
+// expo-notifications는 네이티브 모듈이 빌드에 포함된 경우에만 동작합니다.
+// 기존 dev-client 빌드에 모듈이 없을 경우 앱 크래시를 방지하기 위해 안전하게 로드합니다.
+let Notifications: typeof import('expo-notifications') | null = null;
+try {
+  Notifications = require('expo-notifications');
+} catch {
+  console.warn('[notificationService] expo-notifications 모듈을 찾을 수 없습니다.');
+}
 
 const DEVICE_ID_KEY = 'push_device_id';
 const NOTIFICATION_SETTINGS_KEY = 'notification_settings';
@@ -77,6 +85,7 @@ function getPlatform(): 'IOS' | 'ANDROID' {
 }
 
 async function getPushToken(): Promise<string | null> {
+    if (!Notifications) return null;
     try {
         const { status } = await Notifications.getPermissionsAsync();
         if (status !== 'granted') {
@@ -98,6 +107,8 @@ async function getPushToken(): Promise<string | null> {
  * 반환값: cleanup 함수 (useEffect return 용)
  */
 export function setupNotificationHandlers(): () => void {
+    if (!Notifications) return () => {};
+
     // 포그라운드 상태에서도 알림 배너/사운드 표시
     Notifications.setNotificationHandler({
         handleNotification: async () => ({

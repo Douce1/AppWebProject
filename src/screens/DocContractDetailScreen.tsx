@@ -10,6 +10,7 @@ import {
   Modal,
   Alert,
   Linking,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -78,7 +79,17 @@ export default function DocContractDetailScreen() {
     setPdfLoading(true);
     try {
       const fileUri = await apiClient.downloadContractFinalPdf(contractId);
-      await Linking.openURL(fileUri);
+
+      if (Platform.OS === 'android') {
+        // 기존 빌드 환경에서는 expo-sharing 등의 네이티브 모듈이 없어 크래시가 발생하므로,
+        // 안드로이드에서는 새 빌드가 필요하다는 안내 메시지를 표시합니다.
+        Alert.alert(
+          'PDF 열람 불가',
+          '안드로이드에서 PDF 열람 기능을 사용하려면 앱을 새로 빌드해야 합니다.\n(eas build --profile development --platform android)',
+        );
+      } else {
+        await Linking.openURL(fileUri);
+      }
     } catch (err: unknown) {
       const e = err as Error & { code?: string; status?: number };
       const code = e?.code;
