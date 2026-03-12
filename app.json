@@ -20,7 +20,14 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.douce40.instructorapp"
+      "package": "com.douce40.instructorapp",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ]
     },
     "web": {
       "output": "static",
@@ -68,9 +75,9 @@
       "googleClientId": "",
       "router": {},
       "eas": {
-        "projectId": "7f046d6b-6b79-43a6-a343-4ac9abe354cd"
+        "projectId": "8720899f-75e2-4d12-8be7-b017c6339af2"
       }
     },
-    "owner": "woong0322"
+    "owner": "douce40"
   }
 }

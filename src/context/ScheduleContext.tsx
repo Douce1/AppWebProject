@@ -156,11 +156,17 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             return;
         }
         // Step 2: Request background permission
-        const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
-        if (bgStatus !== 'granted') {
-            // Foreground is granted — partial permission OK for basic checkin
-            setLocationPermission('granted');
-        } else {
+        try {
+            const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+            if (bgStatus !== 'granted') {
+                // Foreground is granted — partial permission OK for basic checkin
+                setLocationPermission('granted');
+            } else {
+                setLocationPermission('granted');
+            }
+        } catch (error) {
+            console.warn('Background location permission error:', error);
+            // 권한 요청이 실패해도 Foreground 권한이 있으므로 넘어갑니다.
             setLocationPermission('granted');
         }
     }, []);
