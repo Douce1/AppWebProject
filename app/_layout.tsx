@@ -12,6 +12,7 @@ import { ProfileProvider } from '@/src/context/ProfileContext';
 import { ScheduleProvider } from '@/src/context/ScheduleContext';
 import { AppQueryProvider } from '@/src/query/AppQueryProvider';
 import { getAccessToken, subscribeAuthState } from '@/src/store/authStore';
+import { registerPushDeviceIfNeeded, setupNotificationHandlers } from '@/src/services/notificationService';
 
 // JS 번들 로딩 중에는 스플래시 유지 (빈 화면 대신 스플래시 표시)
 SplashScreen.preventAutoHideAsync();
@@ -106,6 +107,18 @@ export default function RootLayout() {
       router.replace('/(tabs)');
     }
   }, [isAuthReady, isAuthenticated, pathname, router]);
+
+  // 앱 마운트 시 1회: 포그라운드 알림 표시 + 탭 딥링크 핸들러 등록
+  useEffect(() => {
+    return setupNotificationHandlers();
+  }, []);
+
+  // 로그인 완료 시 push device 등록
+  useEffect(() => {
+    if (isAuthenticated) {
+      void registerPushDeviceIfNeeded();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isAuthReady) {

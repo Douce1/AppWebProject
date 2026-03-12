@@ -276,11 +276,19 @@ export interface ApiMonthSubmission {
 
 // ---- Push Notifications & Device Registration Types ----
 
+export interface RegisterPushDevicePayload {
+  platform: 'IOS' | 'ANDROID';
+  provider: 'EXPO';
+  deviceToken: string;
+  appVersion: string;
+  deviceName: string;
+}
+
 export interface ApiPushDevice {
   deviceId: string;
   instructorId: string;
   pushToken: string;
-  platform: 'ios' | 'android' | 'web';
+  platform: 'IOS' | 'ANDROID';
   isActive: boolean;
   registeredAt: string; // ISO
 }

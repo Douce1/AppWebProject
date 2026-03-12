@@ -1,7 +1,10 @@
 /**
  * notificationService.ts
- * Push 디바이스 등록/해제 및 알림 설정 관리 서비스 (MVP)
+ * Push 디바이스 등록/해제, 알림 핸들러 설정, 알림 설정 관리 서비스
  */
+import Constants from 'expo-constants';
+import * as Notifications from 'expo-notifications';
+import { router } from 'expo-router';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { httpClient, type ApiError } from '../api/httpClient';
@@ -10,24 +13,6 @@ import type { ApiNotificationSettings, NotificationSettingsUpdate } from '../api
 const DEVICE_ID_KEY = 'push_device_id';
 const NOTIFICATION_SETTINGS_KEY = 'notification_settings';
 
-/** 푸시 토큰을 가져옵니다. expo-notifications가 없는 환경에서는 null 반환 */
-async function getPushToken(): Promise<string | null> {
-    try {
-        // expo-notifications가 설치돼 있으면 동적으로 로드
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const Notifications = require('expo-notifications');
-        const { status } = await Notifications.getPermissionsAsync();
-        if (status !== 'granted') {
-            const { status: asked } = await Notifications.requestPermissionsAsync();
-            if (asked !== 'granted') return null;
-        }
-        const token = await Notifications.getExpoPushTokenAsync();
-        return token.data as string;
-    } catch {
-        return null;
-    }
-}
-
 const DEFAULT_SETTINGS: ApiNotificationSettings = {
     instructorId: '',
     pushEnabled: true,
@@ -35,6 +20,8 @@ const DEFAULT_SETTINGS: ApiNotificationSettings = {
     paymentNotification: true,
     chatNotification: true,
 };
+
+// ─── 내부 유틸 ────────────────────────────────────────────────────────────────
 
 function isApiUnavailableError(e: unknown): boolean {
     const err = e as ApiError | undefined;
@@ -55,24 +42,78 @@ async function setStoredSettings(settings: ApiNotificationSettings): Promise<voi
     await SecureStore.setItemAsync(NOTIFICATION_SETTINGS_KEY, JSON.stringify(settings));
 }
 
-function getPlatform(): 'ios' | 'android' | 'web' {
-    if (Platform.OS === 'ios') return 'ios';
-    if (Platform.OS === 'android') return 'android';
-    return 'web';
+function getPlatform(): 'IOS' | 'ANDROID' {
+    return Platform.OS === 'ios' ? 'IOS' : 'ANDROID';
 }
+
+async function getPushToken(): Promise<string | null> {
+    try {
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== 'granted') {
+            const { status: asked } = await Notifications.requestPermissionsAsync();
+            if (asked !== 'granted') return null;
+        }
+        const token = await Notifications.getExpoPushTokenAsync();
+        return token.data;
+    } catch {
+        return null;
+    }
+}
+
+// ─── 알림 핸들러 설정 ──────────────────────────────────────────────────────────
+
+/**
+ * 앱 마운트 시 1회 호출.
+ * 포그라운드 알림 표시 및 알림 탭 딥링크 처리를 등록합니다.
+ * 반환값: cleanup 함수 (useEffect return 용)
+ */
+export function setupNotificationHandlers(): () => void {
+    // 포그라운드 상태에서도 알림 배너/사운드 표시
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+        }),
+    });
+
+    // 알림 탭 시 타입별 화면 이동
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = response.notification.request.content.data as { type?: string };
+        if (data?.type === 'LESSON_REQUEST') {
+            router.replace({ pathname: '/(tabs)/docs', params: { targetTab: '제안' } } as any);
+        } else if (data?.type === 'CONTRACT_SENT') {
+            router.replace({ pathname: '/(tabs)/docs', params: { targetTab: '계약' } } as any);
+        } else if (data?.type === 'SETTLEMENT') {
+            router.replace('/(tabs)/income' as any);
+        }
+    });
+
+    return () => sub.remove();
+}
+
+// ─── 디바이스 등록/해제 ────────────────────────────────────────────────────────
 
 /**
  * 로그인 후 push device를 서버에 등록합니다.
- * 이미 등록된 deviceId가 있으면 재등록하지 않습니다.
+ * 권한 거부 시 조용히 null 반환 (앱 사용에는 영향 없음).
  */
 export async function registerPushDeviceIfNeeded(): Promise<string | null> {
     const pushToken = await getPushToken();
     if (!pushToken) return null;
 
+    const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+    const deviceName = Constants.deviceName ?? 'Unknown Device';
+
     try {
         const device = await httpClient.registerPushDevice({
-            pushToken,
             platform: getPlatform(),
+            provider: 'EXPO',
+            deviceToken: pushToken,
+            appVersion,
+            deviceName,
         });
         await SecureStore.setItemAsync(DEVICE_ID_KEY, device.deviceId);
         return device.deviceId;
@@ -95,9 +136,11 @@ export async function deregisterPushDevice(): Promise<void> {
     }
 }
 
+// ─── 알림 설정 ─────────────────────────────────────────────────────────────────
+
 /**
  * 서버에서 알림 설정을 불러옵니다.
- * API 미구현(404/501) 시 로컬 저장값 반환, 없으면 기본값(전체 활성) 반환.
+ * API 미구현(404/501) 시 로컬 저장값, 없으면 기본값 반환.
  */
 export async function fetchNotificationSettings(): Promise<ApiNotificationSettings> {
     try {
@@ -115,7 +158,7 @@ export async function fetchNotificationSettings(): Promise<ApiNotificationSettin
 
 /**
  * 서버에 알림 설정을 저장합니다.
- * API 미구현(404/501) 시 로컬에만 저장 후 병합된 설정 반환하여 "저장 실패" 미표시.
+ * API 미구현(404/501) 시 로컬에만 저장.
  */
 export async function saveNotificationSettings(
     update: NotificationSettingsUpdate,

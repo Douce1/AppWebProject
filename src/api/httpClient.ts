@@ -27,6 +27,7 @@ import {
   LectureRecordView,
   NotificationSettingsUpdate,
   PdfGenerationStatus,
+  RegisterPushDevicePayload,
 } from './types';
 import { File, Paths } from 'expo-file-system';
 import type { SubmitContractSignaturePayload } from './types';
@@ -582,10 +583,7 @@ export const httpClient = {
 
   // ---- Push Device Registration API ----
 
-  async registerPushDevice(body: {
-    pushToken: string;
-    platform: 'ios' | 'android' | 'web';
-  }): Promise<ApiPushDevice> {
+  async registerPushDevice(body: RegisterPushDevicePayload): Promise<ApiPushDevice> {
     return postJson<ApiPushDevice>('/push/devices', body);
   },
 
