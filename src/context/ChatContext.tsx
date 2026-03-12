@@ -86,12 +86,27 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         let mounted = true;
 
+        const handleConnect = () => {
+            if (mounted) setIsConnected(true);
+        };
+        const handleDisconnect = () => {
+            if (mounted) setIsConnected(false);
+        };
+        const handleReconnect = () => {
+            // 재연결 후 끊겨 있던 동안 놓친 메시지를 반영하기 위해 채팅방 목록·미읽음 수 재조회
+            queryClient.invalidateQueries({ queryKey: queryKeys.chatRooms });
+            queryClient.invalidateQueries({ queryKey: queryKeys.unreadCount });
+        };
+
+        chatSocket.onConnect(handleConnect);
+        chatSocket.onDisconnect(handleDisconnect);
+        chatSocket.onReconnect(handleReconnect);
+
         const connectSocket = async () => {
             try {
                 const accessToken = await getAccessToken();
                 if (!mounted) return;
                 chatSocket.connect(accessToken ?? undefined);
-                setIsConnected(true);
             } catch (error) {
                 console.error('[ChatContext] Failed to connect socket:', error);
             }
@@ -101,10 +116,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         return () => {
             mounted = false;
+            chatSocket.offConnect(handleConnect);
+            chatSocket.offDisconnect(handleDisconnect);
+            chatSocket.offReconnect(handleReconnect);
             chatSocket.disconnect();
             setIsConnected(false);
         };
-    }, []);
+    }, [queryClient]);
 
     useEffect(() => {
         const handleMessage = (payload: ChatMessagePayload) => {

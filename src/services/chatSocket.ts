@@ -98,7 +98,27 @@ class MockChatSocket {
         // Mock: no-op
     }
 
+    onConnect(_cb: VoidCallback) {
+        // Mock: no-op
+    }
+
+    offConnect(_cb?: VoidCallback) {
+        // Mock: no-op
+    }
+
+    onDisconnect(_cb: VoidCallback) {
+        // Mock: no-op
+    }
+
+    offDisconnect(_cb?: VoidCallback) {
+        // Mock: no-op
+    }
+
     onReconnect(_cb: VoidCallback) {
+        // Mock: no-op
+    }
+
+    offReconnect(_cb?: VoidCallback) {
         // Mock: no-op
     }
 
@@ -114,6 +134,13 @@ class RealChatSocket {
     private messageCallbacks: MessageCallback[] = [];
     private messageReadCallbacks: MessageReadCallback[] = [];
     private errorCallbacks: ErrorCallback[] = [];
+    private connectCallbacks: VoidCallback[] = [];
+    private disconnectCallbacks: VoidCallback[] = [];
+    private reconnectCallbacks: VoidCallback[] = [];
+    // 입장한 방 목록: 재연결 시 자동으로 재입장하기 위해 추적
+    private joinedRooms: Set<string> = new Set();
+    // 최초 연결 이후인지 추적: 재연결 시에만 reconnectCallbacks 실행
+    private wasConnected = false;
 
     connect(token?: string) {
         // 기존 연결 정리
@@ -132,10 +159,28 @@ class RealChatSocket {
 
         this.socket.on('connect', () => {
             console.log('[Socket] Connected to server');
+            const isReconnect = this.wasConnected;
+            this.wasConnected = true;
+
+            // 재연결 시: 이전에 입장했던 모든 방에 자동 재입장
+            if (isReconnect) {
+                this.joinedRooms.forEach((roomId) => {
+                    this.socket?.emit('join_room', { roomId });
+                });
+                console.log(`[Socket] Rejoined ${this.joinedRooms.size} room(s) after reconnect`);
+            }
+
+            this.connectCallbacks.forEach((cb) => cb());
+
+            // 재연결인 경우 reconnectCallbacks도 실행
+            if (isReconnect) {
+                this.reconnectCallbacks.forEach((cb) => cb());
+            }
         });
 
         this.socket.on('disconnect', (reason: string) => {
             console.log(`[Socket] Disconnected: ${reason}`);
+            this.disconnectCallbacks.forEach((cb) => cb());
         });
 
         this.socket.on('chat_message', (payload: ChatMessagePayload) => {
@@ -156,9 +201,13 @@ class RealChatSocket {
     disconnect() {
         this.socket?.disconnect();
         this.socket = null;
+        this.joinedRooms.clear();
+        this.wasConnected = false;
     }
 
     joinRoom(roomId: string) {
+        // 방 목록에 추가해 재연결 시 자동 재입장 보장
+        this.joinedRooms.add(roomId);
         this.socket?.emit('join_room', { roomId });
     }
 
@@ -190,8 +239,40 @@ class RealChatSocket {
         this.errorCallbacks.push(cb);
     }
 
+    onConnect(cb: VoidCallback) {
+        this.connectCallbacks.push(cb);
+    }
+
+    offConnect(cb?: VoidCallback) {
+        if (cb) {
+            this.connectCallbacks = this.connectCallbacks.filter((c) => c !== cb);
+        } else {
+            this.connectCallbacks = [];
+        }
+    }
+
+    onDisconnect(cb: VoidCallback) {
+        this.disconnectCallbacks.push(cb);
+    }
+
+    offDisconnect(cb?: VoidCallback) {
+        if (cb) {
+            this.disconnectCallbacks = this.disconnectCallbacks.filter((c) => c !== cb);
+        } else {
+            this.disconnectCallbacks = [];
+        }
+    }
+
     onReconnect(cb: VoidCallback) {
-        this.socket?.io.on('reconnect', cb);
+        this.reconnectCallbacks.push(cb);
+    }
+
+    offReconnect(cb?: VoidCallback) {
+        if (cb) {
+            this.reconnectCallbacks = this.reconnectCallbacks.filter((c) => c !== cb);
+        } else {
+            this.reconnectCallbacks = [];
+        }
     }
 
     get isConnected() {
