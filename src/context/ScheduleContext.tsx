@@ -1,7 +1,7 @@
 import * as Location from 'expo-location';
 import { useQueryClient } from '@tanstack/react-query';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Alert, Linking } from 'react-native';
+import { Alert, AppState, Linking } from 'react-native';
 import { apiClient } from '../api/apiClient';
 import { startBackgroundTracking, stopBackgroundTracking, selectNearestDepartedLesson } from '../services/backgroundLocationTask';
 import { buildCheckinResultUX } from '../utils/checkinResultUX';
@@ -131,14 +131,30 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Location permission gate
     const [locationPermission, setLocationPermission] = useState<LocationPermissionStatus>('undetermined');
 
-    useEffect(() => {
-        // Check current permission status on mount
-        Location.getForegroundPermissionsAsync().then(({ status }) => {
+    const checkAndSyncPermission = useCallback(async () => {
+        try {
+            const { status } = await Location.getForegroundPermissionsAsync();
             setLocationPermission(status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'undetermined');
-        }).catch(() => {
+        } catch {
             setLocationPermission('undetermined');
-        });
+        }
     }, []);
+
+    // 마운트 시 권한 상태 초기 조회
+    useEffect(() => {
+        void checkAndSyncPermission();
+    }, [checkAndSyncPermission]);
+
+    // 앱이 포그라운드로 복귀할 때마다 권한 재조회
+    // (설정 화면에서 허용/거부 후 돌아오는 경우 포함)
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextState) => {
+            if (nextState === 'active') {
+                void checkAndSyncPermission();
+            }
+        });
+        return () => subscription.remove();
+    }, [checkAndSyncPermission]);
 
     const requestLocationPermission = useCallback(async () => {
         // Step 1: Request foreground permission
