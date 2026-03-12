@@ -1,0 +1,77 @@
+module.exports = {
+  expo: {
+    name: "instructor-app",
+    slug: "instructor-app",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/images/icon.png",
+    scheme: "instructorapp",
+    userInterfaceStyle: "automatic",
+    newArchEnabled: true,
+    ios: {
+      supportsTablet: true,
+    },
+    android: {
+      adaptiveIcon: {
+        backgroundColor: "#E6F4FE",
+        foregroundImage: "./assets/images/android-icon-foreground.png",
+        backgroundImage: "./assets/images/android-icon-background.png",
+        monochromeImage: "./assets/images/android-icon-monochrome.png",
+      },
+      edgeToEdgeEnabled: true,
+      predictiveBackGestureEnabled: false,
+      package: "com.douce40.instructorapp",
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
+    },
+    web: {
+      output: "static",
+      favicon: "./assets/images/favicon.png",
+    },
+    plugins: [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          locationAlwaysAndWhenInUsePermission: "수업 출강 추적을 위해 위치 권한이 필요합니다.",
+          locationAlwaysPermission: "백그라운드에서 수업 출강 위치를 추적합니다.",
+          locationWhenInUsePermission: "수업 출강 확인을 위해 위치 권한이 필요합니다.",
+          isAndroidBackgroundLocationEnabled: true,
+        },
+      ],
+      [
+        "expo-splash-screen",
+        {
+          image: "./assets/images/splash-icon.png",
+          imageWidth: 200,
+          resizeMode: "contain",
+          backgroundColor: "#ffffff",
+          dark: {
+            backgroundColor: "#000000",
+          },
+        },
+      ],
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          icon: "./assets/images/icon.png",
+          color: "#E6F4FE",
+          sounds: [],
+        },
+      ],
+    ],
+    experiments: {
+      typedRoutes: true,
+      reactCompiler: true,
+    },
+    extra: {
+      apiUrl: "https://free-b-api-production.up.railway.app",
+      googleClientId: "",
+      router: {},
+      eas: {
+        projectId: "7f046d6b-6b79-43a6-a343-4ac9abe354cd",
+      },
+    },
+    owner: "woong0322",
+  },
+};
