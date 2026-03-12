@@ -61,6 +61,51 @@ const DEFAULT_SETTINGS: ApiNotificationSettings = {
 
 // ─── 내부 유틸 ────────────────────────────────────────────────────────────────
 
+/**
+ * backend에서 전달하는 data.type 문자열을 앱에서 사용하는 canonical 타입으로 매핑합니다.
+ *
+ * backend 예시:
+ * - lesson_request_created
+ * - contract_sent
+ * - settlement_paid
+ * - lesson_finish_reminder
+ * - smart_departure_alert
+ *
+ * app canonical 타입:
+ * - LESSON_REQUEST
+ * - CONTRACT_SENT
+ * - SETTLEMENT
+ * - FINISH_REMINDER
+ * - GPS_DEPARTURE
+ */
+function normalizeNotificationType(rawType?: string): string | undefined {
+    if (!rawType) return undefined;
+
+    const map: Record<string, string> = {
+        // Lesson request
+        LESSON_REQUEST: 'LESSON_REQUEST',
+        lesson_request_created: 'LESSON_REQUEST',
+
+        // Contract
+        CONTRACT_SENT: 'CONTRACT_SENT',
+        contract_sent: 'CONTRACT_SENT',
+
+        // Settlement
+        SETTLEMENT: 'SETTLEMENT',
+        settlement_paid: 'SETTLEMENT',
+
+        // Finish reminder
+        FINISH_REMINDER: 'FINISH_REMINDER',
+        lesson_finish_reminder: 'FINISH_REMINDER',
+
+        // Smart departure / GPS alerts
+        GPS_DEPARTURE: 'GPS_DEPARTURE',
+        smart_departure_alert: 'GPS_DEPARTURE',
+    };
+
+    return map[rawType] ?? rawType;
+}
+
 function isApiUnavailableError(e: unknown): boolean {
     const err = e as ApiError | undefined;
     return err?.status === 404 || err?.status === 501;
@@ -130,13 +175,15 @@ export function setupNotificationHandlers(): () => void {
             return;
         }
 
-        if (data?.type === 'LESSON_REQUEST') {
+        const normalizedType = normalizeNotificationType(data?.type);
+
+        if (normalizedType === 'LESSON_REQUEST') {
             router.replace({ pathname: '/(tabs)/docs', params: { targetTab: '제안' } } as any);
-        } else if (data?.type === 'CONTRACT_SENT') {
+        } else if (normalizedType === 'CONTRACT_SENT') {
             router.replace({ pathname: '/(tabs)/docs', params: { targetTab: '계약' } } as any);
-        } else if (data?.type === 'SETTLEMENT') {
+        } else if (normalizedType === 'SETTLEMENT') {
             router.replace('/(tabs)/income' as any);
-        } else if (data?.type === 'FINISH_REMINDER') {
+        } else if (normalizedType === 'FINISH_REMINDER') {
             // Navigate to home tab where the user can tap FINISH on the relevant lesson
             router.replace('/(tabs)/' as any);
         }

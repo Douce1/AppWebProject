@@ -61,3 +61,7 @@ __tests__/
 
 .claude
 PERFORMANCE_REPORT.md
+CLAUDE.md
+freeb-b6c6d-firebase-adminsdk-fbsvc-6ed05102a5.json
+google-services.json
+.gitignore
