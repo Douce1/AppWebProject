@@ -298,9 +298,6 @@ export default function DocsScreen() {
                                     <Text style={styles.requestSectionTitle}>대기 중인 요청</Text>
                                     <Text style={styles.requestSectionCount}>{pendingLessonRequests.length}건</Text>
                                 </View>
-                                <Text style={styles.requestSectionDescription}>
-                                    아래 요청에 응답하면 일정과 계약 진행 상태가 갱신됩니다.
-                                </Text>
                             </View>
                         )}
 
@@ -439,11 +436,6 @@ export default function DocsScreen() {
                                     <Text style={styles.requestItemMeta}>{lessonLocation}</Text>
                                     {req.rejectionReason && (
                                         <Text style={styles.requestItemMeta}>거절 사유: {req.rejectionReason}</Text>
-                                    )}
-                                    {isResponded && (
-                                        <Text style={styles.requestFooterNote}>
-                                            응답이 서버에 저장되었습니다. 다시 들어와도 동일하게 표시됩니다.
-                                        </Text>
                                     )}
                                 </Pressable>
                             );
