@@ -160,7 +160,7 @@ export default function HomeScreen({ navigation }: any) {
           </TouchableOpacity>
           <TouchableOpacity onPress={goToToday} style={styles.dateNavCenter}>
             <Text style={styles.sectionTitle}>
-              {dateStr === todayStr ? '오늘의 일정' : `${parseInt(m)}월 ${parseInt(d)}일 일정`} ({dayClasses.length})
+              {dateStr === todayStr ? '오늘의 일정' : `${parseInt(m)}월 ${parseInt(d)}일 일정`}
             </Text>
             {dateStr !== todayStr && <Text style={styles.goTodayHint}>오늘로 이동</Text>}
           </TouchableOpacity>
