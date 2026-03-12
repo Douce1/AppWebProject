@@ -163,6 +163,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const sendMessage = useCallback((roomId: string, text: string) => {
         if (!text.trim()) return;
         const roomTitle = chatRooms.find((room) => room.roomId === roomId)?.title ?? '채팅방';
+        // Issue #125: 전송 경로를 socket 단일 경로로 통일. HTTP sendChatMessage 호출 시 이중 전송되어 web에서 2건씩 표시되므로 socket만 사용.
         chatSocket.sendMessage(roomId, text, roomTitle);
     }, [chatRooms]);
 
