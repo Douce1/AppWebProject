@@ -602,7 +602,25 @@ export const httpClient = {
       { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} },
     );
     if (!response.ok) {
-      const err = await buildApiError(response, `/contracts/${contractId}/final-pdf/file`);
+      // 파일 엔드포인트는 에러 응답이 JSON이 아닐 수 있으므로 상태코드 기반으로 에러 코드 결정
+      const statusCodeMap: Record<number, string> = {
+        401: 'PDF_AUTH_EXPIRED',
+        403: 'PDF_ACCESS_DENIED',
+        404: 'CONTRACT_NOT_FOUND',
+        409: 'PDF_NOT_READY',
+      };
+      const mappedCode = statusCodeMap[response.status];
+      let err: ApiError;
+      try {
+        err = await buildApiError(response, `/contracts/${contractId}/final-pdf/file`);
+        if (!err.code && mappedCode) {
+          err.code = mappedCode;
+        }
+      } catch {
+        err = new Error(`HTTP error ${response.status}`) as ApiError;
+        err.code = mappedCode ?? 'PDF_DOWNLOAD_FAILED';
+        err.status = response.status;
+      }
       throw err;
     }
     const arrayBuffer = await response.arrayBuffer();

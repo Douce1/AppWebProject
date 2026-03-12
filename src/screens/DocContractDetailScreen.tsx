@@ -14,7 +14,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api/apiClient';
-import { getContractErrorMessage, SIGN_TOKEN_EXPIRED } from '../api/contractErrors';
+import { getContractErrorMessage, SIGN_TOKEN_EXPIRED, PDF_NOT_READY, PDF_AUTH_EXPIRED, PDF_ACCESS_DENIED } from '../api/contractErrors';
 import type { ApiContractDetail } from '../api/types';
 import { queryKeys } from '../query/queryKeys';
 
@@ -79,8 +79,26 @@ export default function DocContractDetailScreen() {
     try {
       const fileUri = await apiClient.downloadContractFinalPdf(contractId);
       await Linking.openURL(fileUri);
-    } catch {
-      Alert.alert('열람 실패', 'PDF를 불러오지 못했습니다. 다시 시도해주세요.');
+    } catch (err: unknown) {
+      const e = err as Error & { code?: string; status?: number };
+      const code = e?.code;
+      let title = 'PDF 열람 실패';
+      let message: string;
+      if (code === PDF_AUTH_EXPIRED || e?.status === 401) {
+        title = '인증 만료';
+        message = getContractErrorMessage(PDF_AUTH_EXPIRED);
+      } else if (code === PDF_ACCESS_DENIED || e?.status === 403) {
+        title = '접근 불가';
+        message = getContractErrorMessage(PDF_ACCESS_DENIED);
+      } else if (e?.status === 404) {
+        message = getContractErrorMessage('CONTRACT_NOT_FOUND');
+      } else if (code === PDF_NOT_READY || e?.status === 409) {
+        title = 'PDF 준비 중';
+        message = getContractErrorMessage(PDF_NOT_READY);
+      } else {
+        message = getContractErrorMessage(code);
+      }
+      Alert.alert(title, message);
     } finally {
       setPdfLoading(false);
     }
