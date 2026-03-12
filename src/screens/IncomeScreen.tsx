@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Radius, Shadows } from '@/constants/theme';
 import { Button } from '@/src/components/atoms/Button';
 import { httpClient } from '@/src/api/httpClient';
@@ -125,6 +126,7 @@ const pickerStyles = StyleSheet.create({
 
 export default function IncomeScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const [settlements, setSettlements] = useState<ApiSettlement[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -184,7 +186,7 @@ export default function IncomeScreen() {
     };
 
     return (
-        <ScrollView style={styles.container}>
+        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + 84 }}>
             <View style={styles.header}>
                 <NotificationTopBar title="정산" />
             </View>
@@ -453,7 +455,7 @@ const styles = StyleSheet.create({
     paymentText: { color: Colors.brandInk, fontSize: 14, opacity: 0.8 },
     detailButton: { paddingVertical: 5, paddingHorizontal: 10, backgroundColor: '#F3C742', borderRadius: 18 },
     detailButtonText: { color: '#FFF0C2', fontWeight: 'bold', fontSize: 12.5 },
-    historySection: { paddingHorizontal: 20, marginTop: 10, paddingBottom: 100 },
+    historySection: { paddingHorizontal: 20, marginTop: 10, paddingBottom: 20 },
     historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15 },
     historyHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.brandInk },

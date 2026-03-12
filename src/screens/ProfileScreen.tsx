@@ -48,13 +48,14 @@ export default function ProfileScreen() {
     }, []);
 
     return (
-        <ScrollView style={[styles.container, { paddingTop: Math.max(50, insets.top) }]}>
+        <ScrollView style={[styles.container, { paddingTop: Math.max(50, insets.top) }]} contentContainerStyle={{ paddingBottom: insets.bottom + 84 }}>
             <NotificationTopBar title="내 정보" />
 
             <TouchableOpacity activeOpacity={0.9} onPress={() => router.push('/profile/instructor')}>
                 <ProfileHero
                     name={instructor ? `${instructor.name} 강사님` : '강사님'}
                     role={company ? `${company.name} 소속` : '프리랜서'}
+                    imageUrl={instructor?.photoUrl ?? undefined}
                     hint="프로필 사진 및 이름 변경"
                 />
             </TouchableOpacity>

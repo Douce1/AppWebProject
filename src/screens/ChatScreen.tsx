@@ -3,12 +3,14 @@ import { useRouter } from 'expo-router';
 import { Flame } from 'lucide-react-native';
 import React, { useMemo, useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChat } from '../context/ChatContext';
 import { SegmentedTabs } from '@/src/components/molecules/SegmentedTabs';
 import { NotificationTopBar } from '@/src/components/organisms/NotificationTopBar';
 
 export default function ChatScreen({ navigation }: any) {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const { chatRooms } = useChat();
     const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
@@ -74,7 +76,7 @@ export default function ChatScreen({ navigation }: any) {
                     renderItem={renderRoom}
                     keyExtractor={keyExtractor}
                     ListEmptyComponent={emptyComponent}
-                    contentContainerStyle={filteredRooms.length === 0 ? { flex: 1 } : { paddingBottom: 20 }}
+                    contentContainerStyle={filteredRooms.length === 0 ? { flex: 1, paddingBottom: insets.bottom + 84 } : { paddingBottom: insets.bottom + 84 }}
                     removeClippedSubviews
                 />
             </View>
