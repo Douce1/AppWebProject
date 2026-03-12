@@ -132,6 +132,7 @@ export default function RootLayout() {
         <Stack.Screen name="profile/career-detail" options={{ title: '강의 이력 상세' }} />
         <Stack.Screen name="profile/region" options={{ title: '희망 지역' }} />
         <Stack.Screen name="profile/settings" options={{ title: '앱 설정' }} />
+        <Stack.Screen name="profile/signature" options={{ title: '서명 이미지 관리' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />

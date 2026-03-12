@@ -22,6 +22,7 @@ import {
   ApiNotificationSettings,
   ApiPushDevice,
   ApiSettlement,
+  ApiSignatureAsset,
   AuthLoginResponse,
   LectureRecordView,
   NotificationSettingsUpdate,
@@ -586,6 +587,25 @@ export const httpClient = {
 
   async deregisterPushDevice(deviceId: string): Promise<void> {
     return deleteJson<void>(`/push/devices/${encodeURIComponent(deviceId)}`);
+  },
+
+  // ---- Instructor Signature Asset API ----
+
+  async getSignatureAsset(): Promise<ApiSignatureAsset> {
+    return getJson<ApiSignatureAsset>('/instructors/me/signature-image');
+  },
+
+  async uploadSignatureAsset(fileUri: string): Promise<ApiSignatureAsset> {
+    const formData = new FormData();
+    formData.append('file', {
+      uri: fileUri,
+      name: 'signature.png',
+      type: 'image/png',
+    } as any);
+    return requestJson<ApiSignatureAsset>('/instructors/me/signature-image', {
+      method: 'PUT',
+      body: formData,
+    });
   },
 
   // ---- Notification Settings API ----

@@ -317,6 +317,20 @@ export interface ApiSettlementSummary {
   scheduledPayDate?: string | null;
 }
 
+// ---- Instructor Signature Asset Types ----
+
+export interface ApiSignatureAsset {
+  signatureAssetId: string;
+  instructorId: string;
+  fileUrl: string;
+  mimeType: string;
+  width: number;
+  height: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---- Document Import API Types ----
 
 export interface ApiDocumentDraft {
