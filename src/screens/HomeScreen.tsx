@@ -237,7 +237,7 @@ export default function HomeScreen({ navigation }: any) {
             } else if (isCanEndClass) {
               statusStr = 'confirmed'; badgeLabelStr = '강의 중'; statusLabelStr = '수업 진행';
               actionLabel = locationBlocked ? '위치 권한 필요' : '강의 종료';
-              if (locationBlocked) actionDisabled = true;
+              if (locationBlocked) actionDisabled = false;
             } else if (isArrived) {
               statusStr = 'confirmed'; badgeLabelStr = '도착 완료'; statusLabelStr = '강의 대기 중';
               actionLabel = '도착 완료 (강의 중)'; actionDisabled = true;
@@ -245,14 +245,14 @@ export default function HomeScreen({ navigation }: any) {
               statusStr = 'requested'; badgeLabelStr = '이동 중'; statusLabelStr = '도착 승인 대기';
               actionLabel = locationBlocked ? '위치 권한 필요' : '도착 확인';
               actionVariant = 'secondary';
-              if (locationBlocked) actionDisabled = true;
+              if (locationBlocked) actionDisabled = false;
             } else if (isDeparted) {
               statusStr = 'requested'; badgeLabelStr = '이동 중'; statusLabelStr = '이동 중';
               actionLabel = '이동 중...'; actionDisabled = true;
             } else {
               actionVariant = 'secondary';
               if (locationBlocked || !isDepartable) {
-                  actionDisabled = true;
+                  actionDisabled = locationBlocked ? false : true;
                   if (locationBlocked) actionLabel = '위치 권한 필요';
               }
             }
@@ -273,6 +273,10 @@ export default function HomeScreen({ navigation }: any) {
                 primaryActionVariant={actionVariant}
                 primaryActionDisabled={actionDisabled}
                 onPrimaryAction={() => {
+                  if (locationBlocked) {
+                    openLocationSettings();
+                    return;
+                  }
                   if (isReadyToReport && !isReported) {
                     setCurrentReportId(c.id);
                     setReportModalVisible(true);
