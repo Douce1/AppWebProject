@@ -18,6 +18,7 @@ import {
     useLessonsQuery,
 } from '../query/hooks';
 import type { ApiAttendanceEvent } from '../api/types';
+import { formatLessonCardLocation } from '../utils/lessonCardLocation';
 
 export interface ClassSession {
   id: string;
@@ -135,7 +136,11 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 const time = `${pad(start.getHours())}:${pad(start.getMinutes())} - ${pad(
                     end.getHours(),
                 )}:${pad(end.getMinutes())}`;
-                const location = `${lesson.region} ${lesson.museum}`;
+                const location = formatLessonCardLocation({
+                    region: lesson.region,
+                    museum: lesson.museum,
+                    venueName: lesson.venueName,
+                });
                 return {
                     id: lesson.lessonId,
                     title: lesson.lectureTitle,
