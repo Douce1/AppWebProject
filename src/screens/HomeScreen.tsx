@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { Bell, CalendarIcon as Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, MapPin, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useRef, useState } from 'react';
 import { Dimensions, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Pressable } from 'react-native';
@@ -33,6 +33,7 @@ const DATE_LIST = buildDateList();
 
 export default function HomeScreen({ navigation }: any) {
   const router = useRouter();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { classes, notifications, removeNotification,
     departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport,
@@ -329,7 +330,14 @@ export default function HomeScreen({ navigation }: any) {
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.iconButton}>
+          <TouchableOpacity
+            onPress={() => {
+              // 이미 설정 화면인 경우 중복 push 방지
+              if (pathname === '/settings') return;
+              router.push('/settings' as any);
+            }}
+            style={styles.iconButton}
+          >
             <Settings color="#666" size={26} />
           </TouchableOpacity>
         </View>

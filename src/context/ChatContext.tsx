@@ -37,8 +37,18 @@ const ChatContext = createContext<ChatContextType>({
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const queryClient = useQueryClient();
     const instructorProfileQuery = useInstructorProfileQuery();
-    const chatRoomsQuery = useChatRoomsQuery();
-    const unreadCountQuery = useUnreadCountQuery();
+    const chatRoomsQuery = useChatRoomsQuery({
+        staleTime: 0,
+        refetchOnMount: 'always',
+        refetchOnReconnect: true,
+        refetchOnWindowFocus: true,
+    });
+    const unreadCountQuery = useUnreadCountQuery({
+        staleTime: 0,
+        refetchOnMount: 'always',
+        refetchOnReconnect: true,
+        refetchOnWindowFocus: true,
+    });
     const [isConnected, setIsConnected] = useState(false);
     const myUserIdRef = useRef<string | null>(null);
 

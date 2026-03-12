@@ -110,9 +110,10 @@ export function setupNotificationHandlers(): () => void {
     if (!Notifications) return () => {};
 
     // 포그라운드 상태에서도 알림 배너/사운드 표시
+    // `shouldShowAlert`는 deprecated 되었으므로 사용하지 않고,
+    // shouldShowBanner/shouldShowList로 동작을 제어합니다.
     Notifications.setNotificationHandler({
         handleNotification: async () => ({
-            shouldShowAlert: true,
             shouldPlaySound: true,
             shouldSetBadge: true,
             shouldShowBanner: true,

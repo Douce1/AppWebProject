@@ -137,14 +137,19 @@ export default function RootLayout() {
         <Stack.Screen name="docs/import" options={{ headerShown: false }} />
         <Stack.Screen name="docs/review" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="settings" options={{ title: '앱 설정' }} />
+        <Stack.Screen
+          name="settings"
+          options={{
+            title: '앱 설정',
+            headerTitleAlign: 'center',
+          }}
+        />
         {/* 이슈 #137: 내 정보 하위 화면은 루트 스택에 등록 → bottom tab 숨김 */}
         <Stack.Screen name="profile/instructor" options={{ title: '강사 프로필 설정' }} />
         <Stack.Screen name="profile/availability" options={{ title: '가용시간 설정' }} />
         <Stack.Screen name="profile/career" options={{ title: '강의 이력' }} />
         <Stack.Screen name="profile/career-detail" options={{ title: '강의 이력 상세' }} />
         <Stack.Screen name="profile/region" options={{ title: '희망 지역' }} />
-        <Stack.Screen name="profile/settings" options={{ title: '앱 설정' }} />
         <Stack.Screen name="profile/signature" options={{ title: '서명 이미지 관리' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         <Stack.Screen name="lesson-report" options={{ headerShown: false }} />

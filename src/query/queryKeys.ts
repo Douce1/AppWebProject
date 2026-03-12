@@ -9,5 +9,7 @@ export const queryKeys = {
   attendanceEvents: ['attendance-events'] as const,
   lessonReports: ['lesson-reports'] as const,
   instructorProfile: ['instructor-profile'] as const,
+  /** 알림센터: 서버 기반 알림 목록 (읽음 상태 포함) */
+  notifications: ['notifications'] as const,
   signatureAsset: ['signature-asset'] as const,
 } as const;
