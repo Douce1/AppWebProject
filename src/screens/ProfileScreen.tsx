@@ -31,31 +31,13 @@ export default function ProfileScreen() {
             if (!mounted) return;
 
             if (instructorResult.status === 'fulfilled') {
-                const nextInstructor = instructorResult.value;
-                // eslint-disable-next-line no-console
-                console.log('[ProfileScreen] loaded instructor', {
-                    instructorId: nextInstructor.instructorId,
-                    userId: nextInstructor.userId,
-                });
-                setInstructor(nextInstructor);
-            } else {
-                // eslint-disable-next-line no-console
-                console.log('[ProfileScreen] failed to load instructor', instructorResult.reason);
+                setInstructor(instructorResult.value);
             }
 
             if (companyResult.status === 'fulfilled') {
-                const nextCompany = companyResult.value;
-                // eslint-disable-next-line no-console
-                console.log('[ProfileScreen] loaded company', {
-                    companyId: nextCompany.companyId,
-                    companyName: nextCompany.name,
-                });
-                setCompany(nextCompany);
-            } else {
-                // 회사가 없어도 나머지 정보는 보여줄 수 있도록 company만 null 처리
-                // eslint-disable-next-line no-console
-                console.log('[ProfileScreen] failed to load company', companyResult.reason);
+                setCompany(companyResult.value);
             }
+            // 회사가 없어도 나머지 정보는 보여줄 수 있도록 company만 null 처리
         };
 
         void load();
