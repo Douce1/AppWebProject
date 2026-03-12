@@ -63,7 +63,7 @@ interface ScheduleContextType {
     reportedIds: string[];
     classReports: Record<string, string>;
     getClassReport: (id: string) => string | null;
-    handleClassAction: (id: string) => Promise<void>;
+    handleClassAction: (id: string) => Promise<'FINISHED' | void>;
     submitClassReport: (id: string, text: string) => Promise<void>;
     fetchLessons: () => Promise<void>;
     checkSmartAlerts: (position: CurrentPosition | null) => void;
@@ -87,7 +87,7 @@ const ScheduleContext = createContext<ScheduleContextType>({
     reportedIds: [],
     classReports: {},
     getClassReport: () => null,
-    handleClassAction: async () => { },
+    handleClassAction: async () => { return undefined; },
     submitClassReport: async () => { },
     fetchLessons: async () => { },
     checkSmartAlerts: () => { },
@@ -214,7 +214,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ]);
     };
 
-    const handleClassAction = async (id: string) => {
+    const handleClassAction = async (id: string): Promise<'FINISHED' | void> => {
         // 1. If ready to report (handled by modal, so we skip it here but could alert)
         if (readyToReportIds.includes(id) && !reportedIds.includes(id)) {
             return;
@@ -279,8 +279,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 },
             ]);
             setLocalCheckinPhases(prev => ({ ...prev, [id]: transitionPhase(prev[id] ?? 'ARRIVED', 'FINISH') }));
-            Alert.alert('강의 종료', '강의가 종료되었습니다.');
-            return;
+            return 'FINISHED';
         }
 
         // 3. If can arrive, handle arrive

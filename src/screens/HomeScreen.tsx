@@ -8,6 +8,7 @@ import { CalendarStrip } from '../components/molecules/CalendarStrip';
 import { LessonCard } from '../components/organisms/LessonCard';
 import { Colors, Radius, Shadows } from '@/constants/theme';
 import { CheckinFlow } from '../components/organisms/CheckinFlow';
+import { canArriveByTime, canFinishByTime } from '../utils/checkinGating';
 
 const { width, height } = Dimensions.get('window');
 
@@ -118,10 +119,19 @@ export default function HomeScreen({ navigation }: any) {
     setCurrentReportId(null);
   };
 
-  const confirmCheckin = () => {
-    if (currentCheckinId) handleClassAction(currentCheckinId);
+  const confirmCheckin = async () => {
+    const id = currentCheckinId;
     setCheckinModalVisible(false);
     setCurrentCheckinId(null);
+    if (!id) return;
+    const result = await handleClassAction(id);
+    if (result === 'FINISHED') {
+      const lesson = classes.find(c => c.id === id);
+      router.push({
+        pathname: '/lesson-report' as any,
+        params: { lessonId: id, lessonTitle: lesson?.title ?? '' },
+      });
+    }
   };
 
   // Monthly calendar grid
@@ -162,9 +172,7 @@ export default function HomeScreen({ navigation }: any) {
           {dayClasses.map((c) => {
             const isReadyToReport = readyToReportIds.includes(c.id);
             const isEndedClass = endedClassIds.includes(c.id);
-            const isCanEndClass = canEndClassIds.includes(c.id);
             const isArrived = arrivedIds.includes(c.id);
-            const isCanArrive = canArriveIds.includes(c.id);
             const isDeparted = departedIds.includes(c.id);
             const isReported = reportedIds.includes(c.id);
 
@@ -172,24 +180,24 @@ export default function HomeScreen({ navigation }: any) {
             let isDepartable = false;
             const now = new Date();
             const timeParts = c.time.split('-');
-            
+
             if (timeParts.length === 2 && c.date) {
               const startStr = timeParts[0].trim();
               const endStr = timeParts[1].trim();
-              
+
               const [startH, startM] = startStr.split(':').map(Number);
               const [endH, endM] = endStr.split(':').map(Number);
-              
+
               const classStart = new Date(today);
               classStart.setHours(startH, startM, 0, 0);
-              
+
               const classEnd = new Date(today);
               classEnd.setHours(endH, endM, 0, 0);
               const classDate = c.date;
 
               if (classDate === todayStr) {
                   if (now > classEnd) hasEnded = true;
-                  
+
                   // Allow departing 2 hours before class until the class end
                   const validStart = new Date(classStart.getTime() - 2 * 60 * 60 * 1000);
                   if (now >= validStart && now <= classEnd) {
@@ -199,6 +207,11 @@ export default function HomeScreen({ navigation }: any) {
                   hasEnded = true;
               }
             }
+
+            // ARRIVE: phase must be DEPARTED + time within start -30min ~ +30min
+            const isCanArrive = canArriveIds.includes(c.id) && canArriveByTime(c.date, c.time, now);
+            // FINISH: phase must be ARRIVED + time within end -10min or later
+            const isCanEndClass = canEndClassIds.includes(c.id) && canFinishByTime(c.date, c.time, now);
 
             let statusStr: 'requested' | 'confirmed' | 'canceled' | 'completed' = 'confirmed';
             let badgeLabelStr = '확정됨';
