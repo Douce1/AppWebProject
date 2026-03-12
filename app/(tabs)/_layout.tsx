@@ -33,14 +33,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="docs"
         options={{
-          title: '서류/계약',
+          title: '계약',
           tabBarIcon: ({ color }) => <FileText size={28} color={color} />,
         }}
       />
       <Tabs.Screen
         name="income"
         options={{
-          title: '수입/정산',
+          title: '정산',
           tabBarIcon: ({ color }) => <DollarSign size={28} color={color} />,
         }}
       />

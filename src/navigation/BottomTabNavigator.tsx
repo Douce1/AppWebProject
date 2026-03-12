@@ -17,8 +17,8 @@ export default function BottomTabNavigator() {
                 tabBarIcon: ({ color, size }) => {
                     if (route.name === '홈') return <Home color={color} size={size} />;
                     if (route.name === '채팅') return <MessageCircle color={color} size={size} />;
-                    if (route.name === '서류/계약') return <FileText color={color} size={size} />;
-                    if (route.name === '수입/정산') return <DollarSign color={color} size={size} />;
+                    if (route.name === '계약') return <FileText color={color} size={size} />;
+                    if (route.name === '정산') return <DollarSign color={color} size={size} />;
                     if (route.name === '내 정보') return <User color={color} size={size} />;
                     return null;
                 },
@@ -29,8 +29,8 @@ export default function BottomTabNavigator() {
         >
             <Tab.Screen name="홈" component={HomeScreen} />
             <Tab.Screen name="채팅" component={ChatScreen} />
-            <Tab.Screen name="서류/계약" component={DocsScreen} />
-            <Tab.Screen name="수입/정산" component={IncomeScreen} />
+            <Tab.Screen name="계약" component={DocsScreen} />
+            <Tab.Screen name="정산" component={IncomeScreen} />
             <Tab.Screen name="내 정보" component={ProfileScreen} />
         </Tab.Navigator>
     );
