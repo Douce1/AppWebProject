@@ -17,6 +17,7 @@ const SIDO_LIST = REGION_SIDO_GU.map((r) => r.sido);
 export default function RegionSettingScreen() {
   const { selectedRegions, setSelectedRegions } = useProfile();
   const [selected, setSelected] = useState<Set<string>>(() => new Set(selectedRegions.map(toSidoOnly)));
+  const [savedList, setSavedList] = useState<string[]>(() => selectedRegions.map(toSidoOnly).sort());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -25,8 +26,10 @@ export default function RegionSettingScreen() {
       setLoading(true);
       const { items } = await apiClient.getPreferredRegions();
       const list = Array.isArray(items) ? items.map(toSidoOnly) : [];
+      const sorted = [...list].sort();
       setSelected(new Set(list));
       setSelectedRegions(list);
+      setSavedList(sorted);
     } catch (err) {
       const status = (err as { status?: number }).status;
       const message =
@@ -68,6 +71,7 @@ export default function RegionSettingScreen() {
       setSaving(true);
       await apiClient.updatePreferredRegions(list);
       setSelectedRegions(list);
+      setSavedList(list);
       Alert.alert('저장 완료', '희망 지역이 저장되었습니다.');
     } catch {
       Alert.alert('저장 실패', '희망 지역을 저장하지 못했습니다. 다시 시도해주세요.');
@@ -77,6 +81,10 @@ export default function RegionSettingScreen() {
   };
 
   const selectedList = useMemo(() => Array.from(selected).sort(), [selected]);
+  const hasChanges = useMemo(
+    () => JSON.stringify(selectedList) !== JSON.stringify(savedList),
+    [selectedList, savedList],
+  );
 
   if (loading) {
     return (
@@ -123,7 +131,11 @@ export default function RegionSettingScreen() {
             ))}
           </ScrollView>
         </View>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
+        <TouchableOpacity
+          style={[styles.saveButton, (!hasChanges || saving) && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={!hasChanges || saving}
+        >
           <Text style={styles.saveButtonText}>{saving ? '저장 중...' : '저장'}</Text>
         </TouchableOpacity>
       </View>
@@ -181,5 +193,6 @@ const styles = StyleSheet.create({
     ...Radius.button,
     alignItems: 'center',
   },
+  saveButtonDisabled: { backgroundColor: Colors.border, opacity: 0.6 },
   saveButtonText: { color: Colors.brandInk, fontSize: 16, fontWeight: 'bold' },
 });
