@@ -186,7 +186,7 @@ export default function IncomeScreen() {
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
-                <NotificationTopBar title="수입/정산" />
+                <NotificationTopBar title="정산" />
             </View>
 
             {/* 이번 달 카드 */}

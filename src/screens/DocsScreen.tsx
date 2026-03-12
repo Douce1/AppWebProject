@@ -169,7 +169,7 @@ export default function DocsScreen() {
 
     return (
         <View style={[styles.container, { paddingTop: Math.max(50, insets.top) }]}>
-            <NotificationTopBar title="서류/계약" />
+            <NotificationTopBar title="계약" />
 
             {/* Top Tabs (Segmented) */}
             <SegmentedTabs
