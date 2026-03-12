@@ -1,15 +1,12 @@
 import { Stack } from 'expo-router';
 
+// 이슈 #137: index(내 정보 메인)만 탭 내부 스택으로 유지.
+// 하위 화면(availability, instructor, career, career-detail, region, settings)은
+// 루트 스택(app/_layout.tsx)으로 이동하여 bottom tab이 숨겨지도록 함.
 export default function ProfileLayout() {
   return (
-    <Stack screenOptions={{ headerShown: true }}>
-      <Stack.Screen name="index" options={{ title: '내 정보', headerShown: false, headerShadowVisible: false }} />
-      <Stack.Screen name="availability" options={{ title: '가용시간 설정' }} />
-      <Stack.Screen name="instructor" options={{ title: '강사 프로필 설정' }} />
-      <Stack.Screen name="career" options={{ title: '강의 이력' }} />
-      <Stack.Screen name="career-detail" options={{ title: '강의 이력 상세' }} />
-      <Stack.Screen name="region" options={{ title: '희망 지역' }} />
-      <Stack.Screen name="settings" options={{ title: '앱 설정' }} />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
     </Stack>
   );
 }
