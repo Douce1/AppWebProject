@@ -15,6 +15,7 @@ import type {
   ApiLesson,
   ApiLessonReport,
   ApiLessonRequest,
+  ApiSignatureAsset,
   SubmitContractSignaturePayload,
 } from '../api/types';
 import { queryKeys } from './queryKeys';
@@ -164,6 +165,33 @@ export function useChatMessagesQuery(
     queryFn: () => httpClient.getChatMessages(roomId!),
     enabled: Boolean(roomId),
     ...options,
+  });
+}
+
+export function useSignatureAssetQuery(
+  options?: Omit<UseQueryOptions<ApiSignatureAsset | null>, 'queryKey' | 'queryFn'>,
+) {
+  return useQuery<ApiSignatureAsset | null>({
+    queryKey: queryKeys.signatureAsset,
+    queryFn: async () => {
+      try {
+        return await httpClient.getSignatureAsset();
+      } catch (e) {
+        if ((e as { status?: number }).status === 404) return null;
+        throw e;
+      }
+    },
+    ...options,
+  });
+}
+
+export function useUploadSignatureMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (fileUri: string) => httpClient.uploadSignatureAsset(fileUri),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.signatureAsset });
+    },
   });
 }
 

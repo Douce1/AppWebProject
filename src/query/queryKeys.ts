@@ -9,4 +9,5 @@ export const queryKeys = {
   attendanceEvents: ['attendance-events'] as const,
   lessonReports: ['lesson-reports'] as const,
   instructorProfile: ['instructor-profile'] as const,
+  signatureAsset: ['signature-asset'] as const,
 } as const;

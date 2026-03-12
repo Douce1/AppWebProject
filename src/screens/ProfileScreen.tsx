@@ -3,7 +3,7 @@ import { useProfile } from '@/src/context/ProfileContext';
 import { apiClient } from '@/src/api/apiClient';
 import type { ApiCompany, ApiInstructorProfile } from '@/src/api/types';
 import { useRouter } from 'expo-router';
-import { Briefcase, ChevronRight, Clock, MapPin, Settings, UserCircle } from 'lucide-react-native';
+import { Briefcase, ChevronRight, Clock, MapPin, PenLine, Settings, UserCircle } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -83,6 +83,14 @@ export default function ProfileScreen() {
                         <Briefcase color={Colors.brandInk} size={20} />
                     </View>
                     <Text style={styles.menuText}>강의 이력</Text>
+                    <ChevronRight color="#CBD5E1" size={20} />
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/signature')}>
+                    <View style={styles.menuIconContainer}>
+                        <PenLine color={Colors.brandInk} size={20} />
+                    </View>
+                    <Text style={styles.menuText}>서명 이미지 관리</Text>
                     <ChevronRight color="#CBD5E1" size={20} />
                 </TouchableOpacity>
 
