@@ -64,21 +64,17 @@ const DEFAULT_SETTINGS: ApiNotificationSettings = {
 /**
  * backend에서 전달하는 data.type 문자열을 앱에서 사용하는 canonical 타입으로 매핑합니다.
  *
- * backend 예시:
- * - lesson_request_created
- * - contract_sent
- * - settlement_paid
- * - lesson_finish_reminder
- * - smart_departure_alert
+ * backend data.type 목록:
+ * - lesson_request_created → LESSON_REQUEST
+ * - contract_sent         → CONTRACT_SENT
+ * - settlement_paid       → SETTLEMENT
+ * - lesson_reminder       → LESSON_REMINDER  (수업 시작 전 리마인더)
+ * - lesson_finish_reminder→ FINISH_REMINDER  (수업 종료 처리 리마인더)
+ * - smart_departure_alert → GPS_DEPARTURE
  *
- * app canonical 타입:
- * - LESSON_REQUEST
- * - CONTRACT_SENT
- * - SETTLEMENT
- * - FINISH_REMINDER
- * - GPS_DEPARTURE
+ * 이미 canonical 값이 들어오는 경우(app 내부 사용)도 그대로 통과시킵니다.
  */
-function normalizeNotificationType(rawType?: string): string | undefined {
+export function normalizeNotificationType(rawType?: string): string | undefined {
     if (!rawType) return undefined;
 
     const map: Record<string, string> = {
@@ -94,7 +90,11 @@ function normalizeNotificationType(rawType?: string): string | undefined {
         SETTLEMENT: 'SETTLEMENT',
         settlement_paid: 'SETTLEMENT',
 
-        // Finish reminder
+        // Lesson reminder (수업 시작 전)
+        LESSON_REMINDER: 'LESSON_REMINDER',
+        lesson_reminder: 'LESSON_REMINDER',
+
+        // Finish reminder (수업 종료 처리)
         FINISH_REMINDER: 'FINISH_REMINDER',
         lesson_finish_reminder: 'FINISH_REMINDER',
 
@@ -170,12 +170,16 @@ export function setupNotificationHandlers(): () => void {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
         const data = response.notification.request.content.data as { type?: string; eventId?: string };
 
+        // [DEBUG] 알림 탭 시 실제 수신 payload 로그 — backend 연동 확인용
+        console.log('[notificationService] notification tap data:', JSON.stringify(data));
+
         // WebSocket으로 이미 처리된 이벤트는 무시 (중복 알림 방지)
         if (data?.eventId && isWsEventSeen(data.eventId)) {
             return;
         }
 
         const normalizedType = normalizeNotificationType(data?.type);
+        console.log('[notificationService] normalizedType:', normalizedType);
 
         if (normalizedType === 'LESSON_REQUEST') {
             router.replace({ pathname: '/(tabs)/docs', params: { targetTab: '제안' } } as any);
@@ -183,8 +187,14 @@ export function setupNotificationHandlers(): () => void {
             router.replace({ pathname: '/(tabs)/docs', params: { targetTab: '계약' } } as any);
         } else if (normalizedType === 'SETTLEMENT') {
             router.replace('/(tabs)/income' as any);
+        } else if (normalizedType === 'LESSON_REMINDER') {
+            // 수업 시작 전 리마인더 → 홈 탭으로 이동
+            router.replace('/(tabs)/' as any);
         } else if (normalizedType === 'FINISH_REMINDER') {
-            // Navigate to home tab where the user can tap FINISH on the relevant lesson
+            // 수업 종료 처리 리마인더 → 홈 탭으로 이동
+            router.replace('/(tabs)/' as any);
+        } else if (normalizedType === 'GPS_DEPARTURE') {
+            // GPS 출발 알림 → 홈 탭으로 이동
             router.replace('/(tabs)/' as any);
         }
     });
@@ -200,22 +210,38 @@ export function setupNotificationHandlers(): () => void {
  */
 export async function registerPushDeviceIfNeeded(): Promise<string | null> {
     const pushToken = await getPushToken();
-    if (!pushToken) return null;
+    if (!pushToken) {
+        console.warn('[notificationService] getPushToken: 토큰 없음 (권한 거부 또는 미지원 환경)');
+        return null;
+    }
+
+    // [DEBUG] Expo push token 확인 — backend /push/devices 등록 토큰과 대조용
+    console.log('[notificationService] Expo push token:', pushToken);
 
     const appVersion = Constants.expoConfig?.version ?? '1.0.0';
     const deviceName = Constants.deviceName ?? 'Unknown Device';
 
+    const payload = {
+        platform: getPlatform(),
+        provider: 'EXPO' as const,
+        deviceToken: pushToken,
+        appVersion,
+        deviceName,
+    };
+
+    // [DEBUG] /push/devices 요청 body — backend 등록 토큰과 대조용
+    console.log('[notificationService] registerPushDevice request:', JSON.stringify(payload));
+
     try {
-        const device = await httpClient.registerPushDevice({
-            platform: getPlatform(),
-            provider: 'EXPO',
-            deviceToken: pushToken,
-            appVersion,
-            deviceName,
-        });
+        const device = await httpClient.registerPushDevice(payload);
+
+        // [DEBUG] /push/devices 응답 body — deviceId 및 타입 계약 확인용
+        console.log('[notificationService] registerPushDevice response:', JSON.stringify(device));
+
         await SecureStore.setItemAsync(DEVICE_ID_KEY, device.deviceId);
         return device.deviceId;
-    } catch {
+    } catch (err) {
+        console.error('[notificationService] registerPushDevice failed:', err);
         return null;
     }
 }

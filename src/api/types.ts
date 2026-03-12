@@ -286,11 +286,15 @@ export interface RegisterPushDevicePayload {
 
 export interface ApiPushDevice {
   deviceId: string;
-  instructorId: string;
-  pushToken: string;
-  platform: 'IOS' | 'ANDROID';
+  platform: 'IOS' | 'ANDROID' | 'WEB';
+  provider: 'EXPO' | 'FCM' | 'APNS';
+  deviceToken: string;
+  appVersion: string;
+  deviceName: string;
   isActive: boolean;
-  registeredAt: string; // ISO
+  lastSeenAt: string;  // ISO
+  createdAt: string;   // ISO
+  updatedAt: string;   // ISO
 }
 
 export interface ApiNotificationSettings {
