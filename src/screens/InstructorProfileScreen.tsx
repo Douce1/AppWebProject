@@ -249,9 +249,7 @@ export default function InstructorProfileScreen() {
         setEducation(null);
       }
       Alert.alert('저장 완료', '프로필이 저장되었습니다.');
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.log('[InstructorProfileScreen] failed to save profile', error);
+    } catch (_error) {
       Alert.alert('저장 실패', '프로필 저장 중 오류가 발생했습니다.');
     }
   };

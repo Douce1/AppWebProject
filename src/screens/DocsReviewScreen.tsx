@@ -61,7 +61,6 @@ export default function DocsReviewScreen() {
             setIsLoading(true);
             try {
                 const doc = await httpClient.getDocument(documentId);
-                console.log('[DEBUG DocsReviewScreen] getDocument response:', JSON.stringify(doc, null, 2));
                 if (mounted && doc.draft && doc.draft.parsedJson) {
                     const parsed = doc.draft.parsedJson as ApiDocumentDraft;
                     setDraft({
@@ -74,8 +73,7 @@ export default function DocsReviewScreen() {
                         payAmount: parsed.payAmount || null,
                     });
                 }
-            } catch (error) {
-                console.error('Failed to preload document:', error);
+            } catch (_error) {
             } finally {
                 if (mounted) setIsLoading(false);
             }
