@@ -55,5 +55,9 @@ app-example
 # temp (self-healing / 테스트 전용)
 temp/
 
+# 테스트 디렉터리 (로컬/CI 외 저장소에 올리지 않을 경우)
+__tests__/
+
+
 .claude
 PERFORMANCE_REPORT.md

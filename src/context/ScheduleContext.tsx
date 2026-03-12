@@ -1,7 +1,7 @@
 import * as Location from 'expo-location';
 import { useQueryClient } from '@tanstack/react-query';
-import React, { createContext, useContext, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Alert, Linking } from 'react-native';
 import { apiClient } from '../api/apiClient';
 import {
     buildPhaseMap,
@@ -45,6 +45,8 @@ export interface AppNotification {
 
 
 
+export type LocationPermissionStatus = 'granted' | 'denied' | 'undetermined';
+
 interface ScheduleContextType {
     classes: ClassSession[];
     addClass: (newClass: ClassSession) => void;
@@ -68,6 +70,11 @@ interface ScheduleContextType {
     fetchLessons: () => Promise<void>;
     checkSmartAlerts: (position: CurrentPosition | null) => void;
     checkinPhases: Record<string, CheckinPhase>;
+
+    // Location permission gate
+    locationPermission: LocationPermissionStatus;
+    requestLocationPermission: () => Promise<void>;
+    openLocationSettings: () => void;
 }
 
 const ScheduleContext = createContext<ScheduleContextType>({
@@ -92,6 +99,9 @@ const ScheduleContext = createContext<ScheduleContextType>({
     fetchLessons: async () => { },
     checkSmartAlerts: () => { },
     checkinPhases: {},
+    locationPermission: 'undetermined',
+    requestLocationPermission: async () => { },
+    openLocationSettings: () => { },
 });
 
 export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -103,6 +113,47 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [manualClasses, setManualClasses] = useState<ClassSession[]>([]);
 
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+    // Location permission gate
+    const [locationPermission, setLocationPermission] = useState<LocationPermissionStatus>('undetermined');
+
+    useEffect(() => {
+        // Check current permission status on mount
+        Location.getForegroundPermissionsAsync().then(({ status }) => {
+            setLocationPermission(status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'undetermined');
+        }).catch(() => {
+            setLocationPermission('undetermined');
+        });
+    }, []);
+
+    const requestLocationPermission = useCallback(async () => {
+        // Step 1: Request foreground permission
+        const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+        if (fgStatus !== 'granted') {
+            setLocationPermission('denied');
+            Alert.alert(
+                '위치 권한 필요',
+                '출강 기능을 사용하려면 위치 권한이 필요합니다. 설정에서 권한을 허용해주세요.',
+                [
+                    { text: '취소', style: 'cancel' },
+                    { text: '설정으로 이동', onPress: () => Linking.openSettings() },
+                ],
+            );
+            return;
+        }
+        // Step 2: Request background permission
+        const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+        if (bgStatus !== 'granted') {
+            // Foreground is granted — partial permission OK for basic checkin
+            setLocationPermission('granted');
+        } else {
+            setLocationPermission('granted');
+        }
+    }, []);
+
+    const openLocationSettings = useCallback(() => {
+        Linking.openSettings();
+    }, []);
 
     const [proposalStatus, setProposalStatus] = useState<'미응답' | '수락' | '거절'>('미응답');
     const isProposalResolved = proposalStatus !== '미응답';
@@ -217,6 +268,19 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const handleClassAction = async (id: string): Promise<'FINISHED' | void> => {
         // 1. If ready to report (handled by modal, so we skip it here but could alert)
         if (readyToReportIds.includes(id) && !reportedIds.includes(id)) {
+            return;
+        }
+
+        // Guard: ensure location permission is granted before any GPS-based action
+        if (locationPermission !== 'granted') {
+            Alert.alert(
+                '위치 권한 필요',
+                '출발/도착/종료 기능을 사용하려면 위치 권한이 필요합니다.',
+                [
+                    { text: '취소', style: 'cancel' },
+                    { text: '설정으로 이동', onPress: () => Linking.openSettings() },
+                ],
+            );
             return;
         }
 
@@ -469,6 +533,7 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds,
             classReports, getClassReport, handleClassAction, submitClassReport, fetchLessons,
             checkSmartAlerts, checkinPhases,
+            locationPermission, requestLocationPermission, openLocationSettings,
         }}>
             {children}
         </ScheduleContext.Provider>

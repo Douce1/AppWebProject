@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Bell, CalendarIcon as Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, MapPin, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useRef, useState } from 'react';
-import { Dimensions, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Pressable } from 'react-native';
 import { useChat } from '../context/ChatContext';
 import { useSchedule } from '../context/ScheduleContext';
 import { CalendarStrip } from '../components/molecules/CalendarStrip';
@@ -33,7 +33,8 @@ const DATE_LIST = buildDateList();
 export default function HomeScreen({ navigation }: any) {
   const router = useRouter();
   const { classes, notifications, removeNotification,
-    departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport
+    departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport,
+    locationPermission, requestLocationPermission, openLocationSettings,
   } = useSchedule();
   const { unreadCount, unreadMessages, markAsRead } = useChat();
 
@@ -221,6 +222,9 @@ export default function HomeScreen({ navigation }: any) {
 
             let actionVariant: 'primary' | 'secondary' = 'primary';
 
+            // When location permission is not granted, GPS actions are disabled
+            const locationBlocked = locationPermission !== 'granted';
+
             if (isReported) {
               statusStr = 'completed'; badgeLabelStr = '제출됨'; statusLabelStr = '수업 완료';
               actionLabel = '수고하셨습니다'; actionDisabled = true;
@@ -232,20 +236,24 @@ export default function HomeScreen({ navigation }: any) {
               actionLabel = '종료 처리 중...'; actionDisabled = true;
             } else if (isCanEndClass) {
               statusStr = 'confirmed'; badgeLabelStr = '강의 중'; statusLabelStr = '수업 진행';
-              actionLabel = '강의 종료';
+              actionLabel = locationBlocked ? '위치 권한 필요' : '강의 종료';
+              if (locationBlocked) actionDisabled = true;
             } else if (isArrived) {
               statusStr = 'confirmed'; badgeLabelStr = '도착 완료'; statusLabelStr = '강의 대기 중';
               actionLabel = '도착 완료 (강의 중)'; actionDisabled = true;
             } else if (isCanArrive) {
               statusStr = 'requested'; badgeLabelStr = '이동 중'; statusLabelStr = '도착 승인 대기';
-              actionLabel = '도착 확인'; actionVariant = 'secondary';
+              actionLabel = locationBlocked ? '위치 권한 필요' : '도착 확인';
+              actionVariant = 'secondary';
+              if (locationBlocked) actionDisabled = true;
             } else if (isDeparted) {
               statusStr = 'requested'; badgeLabelStr = '이동 중'; statusLabelStr = '이동 중';
               actionLabel = '이동 중...'; actionDisabled = true;
             } else {
               actionVariant = 'secondary';
-              if (!isDepartable) {
+              if (locationBlocked || !isDepartable) {
                   actionDisabled = true;
+                  if (locationBlocked) actionLabel = '위치 권한 필요';
               }
             }
 
@@ -329,6 +337,21 @@ export default function HomeScreen({ navigation }: any) {
         classesForDates={classesForDates}
         onViewAll={() => { setCalendarModalVisible(true); setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1)); }}
       />
+
+      {/* Location Permission Banner */}
+      {locationPermission !== 'granted' && (
+        <Pressable
+          style={styles.permissionBanner}
+          onPress={locationPermission === 'undetermined' ? requestLocationPermission : openLocationSettings}
+        >
+          <MapPin size={16} color="#fff" style={{ marginRight: 6 }} />
+          <Text style={styles.permissionBannerText}>
+            {locationPermission === 'undetermined'
+              ? '위치 권한을 허용하면 출발/도착/종료 기능을 사용할 수 있습니다. 탭하여 허용'
+              : '위치 권한이 거부되었습니다. 탭하여 설정에서 허용하세요'}
+          </Text>
+        </Pressable>
+      )}
 
       {/* Schedule Carousel -> FlatList with pagingEnabled */}
       <FlatList
@@ -563,6 +586,10 @@ const styles = StyleSheet.create({
   calMiniCard: { backgroundColor: '#f9fafb', padding: 12, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: '#f0f0f0' },
   calMiniTitle: { fontSize: 14, fontWeight: '600', color: '#111827' },
   calMiniTime: { fontSize: 12, color: '#666', marginTop: 4 },
+
+  // Location Permission Banner
+  permissionBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E53E3E', paddingVertical: 10, paddingHorizontal: 15, marginHorizontal: 15, marginBottom: 8, borderRadius: 10 },
+  permissionBannerText: { color: 'white', fontSize: 13, flex: 1, flexWrap: 'wrap' },
 
   // Report Modal Styles
   reportModalContent: { backgroundColor: 'white', width: '90%', borderRadius: 16, padding: 20 },
