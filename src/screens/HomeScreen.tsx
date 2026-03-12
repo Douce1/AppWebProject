@@ -319,7 +319,7 @@ export default function HomeScreen({ navigation }: any) {
       <View style={styles.topBar}>
         <Text style={styles.topBarTitle}>대시보드</Text>
         <View style={styles.topBarIcons}>
-          <TouchableOpacity onPress={() => setSidePanelVisible(true)} style={styles.settingsIconContainer}>
+          <TouchableOpacity onPress={() => setSidePanelVisible(true)} style={styles.iconButton}>
             <Bell color="#666" size={26} />
             {nonChatNotifications.length + unreadMessages.length > 0 && (
               <View style={styles.bellBadge}>
@@ -327,7 +327,7 @@ export default function HomeScreen({ navigation }: any) {
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.settingsIconContainer}>
+          <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.iconButton}>
             <Settings color="#666" size={26} />
           </TouchableOpacity>
         </View>
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
   doneButtonStyles: { backgroundColor: '#9CA3AF' },
   checkInText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
   emptyText: { textAlign: 'center', color: '#999', marginTop: 20 },
-  settingsIconContainer: { padding: 8 },
+  iconButton: { padding: 8, marginLeft: 4, justifyContent: 'center', alignItems: 'center' },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   viewCalendarBtn: { flexDirection: 'row', alignItems: 'center' },
   viewAllText: { fontSize: 13, color: '#333', fontWeight: '500' },
