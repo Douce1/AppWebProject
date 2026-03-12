@@ -55,6 +55,7 @@ export default function ProfileScreen() {
                 <ProfileHero
                     name={instructor ? `${instructor.name} 강사님` : '강사님'}
                     role={company ? `${company.name} 소속` : '프리랜서'}
+                    imageUrl={instructor?.photoUrl ?? undefined}
                     hint="프로필 사진 및 이름 변경"
                 />
             </TouchableOpacity>
