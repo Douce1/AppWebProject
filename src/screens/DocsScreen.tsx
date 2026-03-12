@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
     requestSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     requestSectionTitle: { fontSize: 15, fontWeight: '700', color: '#111827' },
     requestSectionCount: { fontSize: 12, fontWeight: '700', color: '#DC2626' },
-    requestSectionDescription: { fontSize: 12, color: '#6B7280', marginTop: 4 },
+
     requestTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 10 },
     requestBody: { backgroundColor: Colors.brandMint, borderRadius: 12, padding: 12, marginBottom: 12 },
     requestBullet: { fontSize: 13, color: Colors.brandInk, marginBottom: 4 },
@@ -525,5 +525,4 @@ const styles = StyleSheet.create({
     pendingRequestItemStatus: { color: '#B45309' },
     requestItemPrimaryMeta: { fontSize: 13, color: '#374151', marginTop: 2, fontWeight: '600' },
     requestItemMeta: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-    requestFooterNote: { fontSize: 11, color: '#9CA3AF', marginTop: 6 },
 });
