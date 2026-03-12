@@ -178,7 +178,7 @@ export default function DocsScreen() {
                 onChange={setSelectedTabIndex}
             />
 
-            <ScrollView style={styles.contentContainer}>
+            <ScrollView style={styles.contentContainer} contentContainerStyle={{ paddingBottom: insets.bottom + 84 }}>
                 {selectedTab === '서류' && (
                     <Text style={styles.emptyText}>표시할 서류가 없습니다.</Text>
                 )}

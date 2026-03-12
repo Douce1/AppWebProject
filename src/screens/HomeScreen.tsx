@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { Bell, CalendarIcon as Calendar, CheckCircle2, ChevronLeft, ChevronRight, Clock, MapPin, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useRef, useState } from 'react';
 import { Dimensions, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChat } from '../context/ChatContext';
 import { useSchedule } from '../context/ScheduleContext';
 import { CalendarStrip } from '../components/molecules/CalendarStrip';
@@ -32,6 +33,7 @@ const DATE_LIST = buildDateList();
 
 export default function HomeScreen({ navigation }: any) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { classes, notifications, removeNotification,
     departedIds, canArriveIds, arrivedIds, canEndClassIds, endedClassIds, readyToReportIds, reportedIds, handleClassAction, submitClassReport,
     locationPermission, requestLocationPermission, openLocationSettings,
@@ -169,7 +171,7 @@ export default function HomeScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={{ flex: 1 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: insets.bottom + 84 }}>
           {dayClasses.map((c) => {
             const isReadyToReport = readyToReportIds.includes(c.id);
             const isEndedClass = endedClassIds.includes(c.id);
