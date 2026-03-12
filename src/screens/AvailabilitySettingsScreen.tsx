@@ -15,7 +15,8 @@ import { Calendar } from 'react-native-calendars';
 import { AlertTriangle, Plus } from 'lucide-react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { apiClient } from '../api/apiClient';
-import type { ApiMonthSubmission } from '../api/types';
+import type { ApiLesson, ApiMonthSubmission } from '../api/types';
+import { useLessonsQuery } from '../query/hooks';
 
 export type TimeSlot = { start: string; end: string };
 type AvailabilityMap = Record<string, TimeSlot[]>; // key: YYYY-MM-DD
@@ -40,6 +41,32 @@ export function formatDate(date: Date): string {
 
 export function toYearMonth(dateString: string): string {
   return dateString.slice(0, 7); // "YYYY-MM-DD" → "YYYY-MM"
+}
+
+/** 확정 수업 상태 (이슈 #134: 이 상태면 해당 월 출강 불가 전환 불가) */
+const CONFIRMED_LESSON_STATUSES: ApiLesson['status'][] = [
+  'ACCEPTED',
+  'CONTRACT_SIGNED',
+  'IN_PROGRESS',
+];
+
+/** 수업이 해당 월에 포함되는지 (startsAt/endsAt 기준) */
+function lessonFallsInMonth(lesson: ApiLesson, yearMonth: string): boolean {
+  const startMonth = lesson.startsAt?.slice(0, 7);
+  const endMonth = lesson.endsAt?.slice(0, 7);
+  return yearMonth === startMonth || yearMonth === endMonth;
+}
+
+/** 해당 월에 확정 수업이 하나라도 있으면 true (이슈 #134) */
+export function hasConfirmedLessonInMonth(
+  lessons: ApiLesson[],
+  yearMonth: string,
+): boolean {
+  return lessons.some(
+    (l) =>
+      CONFIRMED_LESSON_STATUSES.includes(l.status) &&
+      lessonFallsInMonth(l, yearMonth),
+  );
 }
 
 export function formatMonthLabel(month: string): string {
@@ -87,6 +114,15 @@ export default function AvailabilitySettingsScreen() {
   const [monthSubmission, setMonthSubmission] = useState<ApiMonthSubmission | null>(null);
   const [monthSubmissionLoading, setMonthSubmissionLoading] = useState(false);
   const [monthSubmissionUpdating, setMonthSubmissionUpdating] = useState(false);
+
+  const lessonsQuery = useLessonsQuery();
+  const lessons = lessonsQuery.data ?? [];
+  const hasConfirmedLessonInCurrentMonth = useMemo(
+    () => hasConfirmedLessonInMonth(lessons, viewMonth),
+    [lessons, viewMonth],
+  );
+  const cannotSwitchToUnavailable =
+    hasConfirmedLessonInCurrentMonth && !(monthSubmission?.isUnavailable ?? false);
 
   // 월별 제출 상태 조회
   const loadMonthSubmission = useCallback(async (month: string) => {
@@ -219,11 +255,16 @@ export default function AvailabilitySettingsScreen() {
                 ? `${formatMonthLabel(viewMonth)}이 출강 불가로 제출되었습니다.`
                 : `${formatMonthLabel(viewMonth)} 출강 불가가 해제되었습니다.`,
             );
-          } catch {
+          } catch (error) {
             // 롤백
             setMonthSubmission(prev);
             if (next) setAvailability(prevAvailability);
-            Alert.alert('저장 실패', '월별 출강 상태 변경에 실패했습니다. 다시 시도해주세요.');
+            const status = (error as { status?: number }).status;
+            const message =
+              status === 409
+                ? '이 달에는 이미 확정된 수업이 있어 출강 불가로 변경할 수 없습니다.'
+                : '월별 출강 상태 변경에 실패했습니다. 다시 시도해주세요.';
+            Alert.alert('저장 실패', message);
           } finally {
             setMonthSubmissionUpdating(false);
           }
@@ -411,11 +452,11 @@ export default function AvailabilitySettingsScreen() {
               style={[
                 styles.unavailableChip,
                 isUnavailable && styles.unavailableChipActive,
-                (monthSubmissionUpdating || monthSubmissionLoading) &&
+                (monthSubmissionUpdating || monthSubmissionLoading || cannotSwitchToUnavailable) &&
                   styles.unavailableChipDisabled,
               ]}
               onPress={handleMonthUnavailableToggle}
-              disabled={monthSubmissionUpdating || monthSubmissionLoading}
+              disabled={monthSubmissionUpdating || monthSubmissionLoading || cannotSwitchToUnavailable}
             >
               {monthSubmissionUpdating ? (
                 <ActivityIndicator
@@ -441,6 +482,14 @@ export default function AvailabilitySettingsScreen() {
               <AlertTriangle size={14} color="#92400E" style={{ marginRight: 6 }} />
               <Text style={styles.calendarWarningText}>
                 출강 불가 상태입니다. 해제 후 slot을 등록해주세요.
+              </Text>
+            </View>
+          )}
+          {cannotSwitchToUnavailable && (
+            <View style={styles.calendarWarningBanner}>
+              <AlertTriangle size={14} color="#92400E" style={{ marginRight: 6 }} />
+              <Text style={styles.calendarWarningText}>
+                이 달에는 이미 확정된 수업이 있어 출강 불가로 변경할 수 없습니다.
               </Text>
             </View>
           )}
