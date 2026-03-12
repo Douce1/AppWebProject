@@ -147,6 +147,7 @@ export default function RootLayout() {
         <Stack.Screen name="profile/settings" options={{ title: '앱 설정' }} />
         <Stack.Screen name="profile/signature" options={{ title: '서명 이미지 관리' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen name="lesson-report" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
