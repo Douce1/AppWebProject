@@ -321,7 +321,7 @@ export default function IncomeScreen() {
                 testID="filter-modal"
             >
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <View style={[styles.modalContent, { paddingBottom: insets.bottom + 16 }]}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>기간 설정</Text>
                             <TouchableOpacity onPress={() => setShowFilterModal(false)}>
@@ -503,6 +503,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: Colors.border,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     cancelButtonText: { fontSize: 15, fontWeight: '600', color: Colors.mutedForeground },
     applyButton: {
@@ -511,6 +512,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         backgroundColor: Colors.brandHoney,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     applyButtonText: { fontSize: 15, fontWeight: '700', color: Colors.brandInk },
     receiptBox: { backgroundColor: Colors.surfaceSoft, padding: 20, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, marginBottom: 25 },
