@@ -9,12 +9,12 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
-  Linking,
+  SafeAreaView,
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import * as FileSystem from 'expo-file-system';
+import { WebView } from 'react-native-webview';
 import { apiClient } from '../api/apiClient';
 import { getContractErrorMessage, SIGN_TOKEN_EXPIRED, PDF_NOT_READY, PDF_AUTH_EXPIRED, PDF_ACCESS_DENIED } from '../api/contractErrors';
 import type { ApiContractDetail } from '../api/types';
@@ -50,6 +50,7 @@ export default function DocContractDetailScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [pdfViewerHtml, setPdfViewerHtml] = useState<string | null>(null);
 
   const loadContract = useCallback(async () => {
     if (!contractId) {
@@ -79,12 +80,46 @@ export default function DocContractDetailScreen() {
     if (!contractId) return;
     setPdfLoading(true);
     try {
-      const fileUri = await apiClient.downloadContractFinalPdf(contractId);
-      if (Platform.OS === 'android') {
-        const contentUri = await FileSystem.getContentUriAsync(fileUri);
-        await Linking.openURL(contentUri);
+      const base64 = await apiClient.downloadContractFinalPdf(contractId);
+      if (Platform.OS === 'ios') {
+        setPdfViewerHtml(`data:application/pdf;base64,${base64}`);
       } else {
-        await Linking.openURL(fileUri);
+      setPdfViewerHtml(`<!DOCTYPE html><html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5">
+<style>*{margin:0;padding:0;box-sizing:border-box}html,body{height:100%;background:#f0f0f0;overflow-x:hidden}
+#loading{display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;color:#555;font-size:14px}
+canvas{display:block;margin:8px auto;max-width:100%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2)}</style>
+</head><body>
+<div id="loading">계약서 불러오는 중...</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+(function(){
+  var b='${base64}';
+  var bin=atob(b);var bytes=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  var loading=document.getElementById('loading');
+  pdfjsLib.getDocument({data:bytes}).promise.then(function(pdf){
+    loading.style.display='none';
+    function renderPage(n){
+      pdf.getPage(n).then(function(page){
+        var dpr=window.devicePixelRatio||1;
+        var scale=(window.innerWidth-16)/page.getViewport({scale:1}).width;
+        var vp=page.getViewport({scale:scale*dpr});
+        var canvas=document.createElement('canvas');
+        canvas.height=vp.height;canvas.width=vp.width;
+        canvas.style.width=(vp.width/dpr)+'px';
+        canvas.style.height=(vp.height/dpr)+'px';
+        document.body.appendChild(canvas);
+        page.render({canvasContext:canvas.getContext('2d'),viewport:vp});
+        if(n<pdf.numPages)renderPage(n+1);
+      });
+    }
+    renderPage(1);
+  }).catch(function(e){loading.textContent='PDF 로딩 실패: '+e.message;});
+})();
+</script></body></html>`.replace('${base64}', base64));
       }
     } catch (err: unknown) {
       const e = err as Error & { code?: string; status?: number };
@@ -372,6 +407,29 @@ export default function DocContractDetailScreen() {
         )}
       </ScrollView>
 
+      {/* ── PDF 뷰어 모달 ── */}
+      <Modal visible={!!pdfViewerHtml} animationType="slide" onRequestClose={() => setPdfViewerHtml(null)}>
+        <SafeAreaView style={styles.pdfViewerContainer}>
+          <View style={styles.pdfViewerHeader}>
+            <Text style={styles.pdfViewerTitle}>계약서</Text>
+            <TouchableOpacity onPress={() => setPdfViewerHtml(null)} style={styles.pdfViewerClose}>
+              <Text style={styles.pdfViewerCloseText}>닫기</Text>
+            </TouchableOpacity>
+          </View>
+          {pdfViewerHtml && (
+            <WebView
+              source={
+                Platform.OS === 'ios'
+                  ? { uri: pdfViewerHtml }
+                  : { html: pdfViewerHtml, baseUrl: 'https://cdnjs.cloudflare.com' }
+              }
+              style={styles.pdfWebView}
+              originWhitelist={['*']}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
+
       <Modal visible={signModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
@@ -516,6 +574,13 @@ const styles = StyleSheet.create({
   },
   evidenceLabel: { fontSize: 11, fontWeight: '600', color: Colors.mutedForeground, marginBottom: 6, letterSpacing: 0.5, textTransform: 'uppercase' },
   evidenceText: { fontSize: 11, color: '#9CA3AF', lineHeight: 16 },
+
+  pdfViewerContainer: { flex: 1, backgroundColor: '#fff' },
+  pdfViewerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  pdfViewerTitle: { fontSize: 16, fontWeight: '700', color: Colors.brandInk },
+  pdfViewerClose: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: Colors.surfaceSoft },
+  pdfViewerCloseText: { fontSize: 14, fontWeight: '600', color: Colors.brandInk },
+  pdfWebView: { flex: 1 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(37,27,16,0.5)', justifyContent: 'center', padding: 24 },
   modalBox: { backgroundColor: 'white', borderRadius: 16, padding: 24, ...Shadows.card },
