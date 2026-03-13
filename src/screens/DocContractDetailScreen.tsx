@@ -247,90 +247,101 @@ export default function DocContractDetailScreen() {
             ? '취소'
             : contract.status;
 
+  const statusBadgeColor =
+    contract.status === 'FULLY_SIGNED' ? '#10B981'
+      : contract.status === 'SENT' ? '#F59E0B'
+        : contract.status === 'INSTRUCTOR_SIGNED' ? '#3B82F6'
+          : contract.status === 'VOID' ? '#9CA3AF'
+            : Colors.mutedForeground;
+
   const period =
     contract.effectiveFrom && contract.effectiveTo
       ? `${contract.effectiveFrom.slice(0, 10)} ~ ${contract.effectiveTo.slice(0, 10)}`
       : '';
 
+  const hasEvidenceInfo = currentVersion && (currentVersion.documentHashSha256 || currentVersion.documentFileKey);
+
   return (
     <>
       <ScrollView style={styles.container}>
-        <View style={styles.card}>
+        {/* ── 헤더 카드: 제목·상태·기간 ── */}
+        <View style={styles.headerCard}>
+          <View style={styles.statusBadgeRow}>
+            <View style={[styles.statusBadge, { backgroundColor: statusBadgeColor }]}>
+              <Text style={styles.statusBadgeText}>{statusLabel}</Text>
+            </View>
+          </View>
           <Text style={styles.title}>{contract.title?.trim() || '제목 없음'}</Text>
-          <Text style={styles.subTitle}>
-            {period ? `계약기간: ${period}` : ''}
-            {period ? ' · ' : ''}
-            {statusLabel}
-          </Text>
-
-          {sections.map((sec, i) => (
-            <View key={i} style={styles.section}>
-              <Text style={styles.sectionTitle}>{sec.title}</Text>
-              <Text style={styles.paragraph}>{sec.content}</Text>
-            </View>
-          ))}
-
-          {currentVersion && (currentVersion.documentHashSha256 || currentVersion.documentFileKey) && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>증빙 정보</Text>
-              {currentVersion.documentHashSha256 ? (
-                <Text style={styles.paragraph}>문서 해시: {currentVersion.documentHashSha256}</Text>
-              ) : null}
-              {currentVersion.documentFileKey ? (
-                <Text style={styles.paragraph}>문서 파일: {currentVersion.documentFileKey}</Text>
-              ) : null}
-            </View>
-          )}
-
-          {signatures.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>서명 현황</Text>
-              {signatures.map((sig, i) => (
-                <Text key={i} style={styles.paragraph}>
-                  {sig.signerRole === 'INSTRUCTOR' ? '강사' : '관리자'}: {sig.signedAt.slice(0, 10)} 서명 완료
-                </Text>
-              ))}
-            </View>
-          )}
-
-          {contract.status === 'FULLY_SIGNED' ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>계약서 PDF</Text>
-              {contract.pdfGenerationStatus === 'READY' ? (
-                <TouchableOpacity
-                  style={[styles.pdfButton, pdfLoading && styles.pdfButtonDisabled]}
-                  onPress={handleOpenPdf}
-                  disabled={pdfLoading}
-                >
-                  {pdfLoading ? (
-                    <ActivityIndicator size="small" color={Colors.brandInk} />
-                  ) : (
-                    <Text style={styles.pdfButtonText}>PDF로 저장</Text>
-                  )}
-                </TouchableOpacity>
-              ) : contract.pdfGenerationStatus === 'PENDING' || contract.pdfGenerationStatus === 'GENERATING' ? (
-                <View style={styles.pdfStatusRow}>
-                  <ActivityIndicator size="small" color={Colors.brandHoney} />
-                  <Text style={styles.pdfStatusText}>PDF 생성 중...</Text>
-                </View>
-              ) : contract.pdfGenerationStatus === 'FAILED' ? (
-                <View>
-                  <Text style={styles.pdfErrorText}>PDF 생성에 실패했습니다.</Text>
-                  <TouchableOpacity
-                    style={[styles.pdfRegenerateButton, regenerating && styles.pdfButtonDisabled]}
-                    onPress={handleRegeneratePdf}
-                    disabled={regenerating}
-                  >
-                    <Text style={styles.pdfRegenerateText}>
-                      {regenerating ? '재생성 중...' : '다시 생성하기'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <Text style={styles.pdfStatusText}>PDF가 아직 생성되지 않았습니다.</Text>
-              )}
-            </View>
+          {period ? (
+            <Text style={styles.periodText}>📅 계약기간: {period}</Text>
           ) : null}
+        </View>
+
+        {/* ── 계약 본문 섹션 (contentJson.sections) ── */}
+        {sections.length > 0 && (
+          <View style={styles.contentCard}>
+            {sections.map((sec, i) => (
+              <View key={i} style={[styles.section, i < sections.length - 1 && styles.sectionDivider]}>
+                <Text style={styles.sectionTitle}>{sec.title}</Text>
+                <Text style={styles.paragraph}>{sec.content}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* ── 서명 현황 ── */}
+        {signatures.length > 0 && (
+          <View style={styles.contentCard}>
+            <Text style={styles.cardLabel}>서명 현황</Text>
+            {signatures.map((sig, i) => (
+              <View key={i} style={styles.signatureRow}>
+                <View style={styles.signatureIconDot} />
+                <Text style={styles.signatureText}>
+                  {sig.signerRole === 'INSTRUCTOR' ? '강사' : '관리자'} 서명 완료
+                </Text>
+                <Text style={styles.signatureDate}>{sig.signedAt.slice(0, 10)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* ── PDF / 서명 버튼 ── */}
+        <View style={styles.actionCard}>
+          {contract.status === 'FULLY_SIGNED' && (
+            contract.pdfGenerationStatus === 'READY' ? (
+              <TouchableOpacity
+                style={[styles.pdfButton, pdfLoading && styles.pdfButtonDisabled]}
+                onPress={handleOpenPdf}
+                disabled={pdfLoading}
+              >
+                {pdfLoading ? (
+                  <ActivityIndicator size="small" color={Colors.brandInk} />
+                ) : (
+                  <Text style={styles.pdfButtonText}>계약서 보기</Text>
+                )}
+              </TouchableOpacity>
+            ) : contract.pdfGenerationStatus === 'PENDING' || contract.pdfGenerationStatus === 'GENERATING' ? (
+              <View style={styles.pdfStatusRow}>
+                <ActivityIndicator size="small" color={Colors.brandHoney} />
+                <Text style={styles.pdfStatusText}>PDF 생성 중...</Text>
+              </View>
+            ) : contract.pdfGenerationStatus === 'FAILED' ? (
+              <View>
+                <Text style={styles.pdfErrorText}>PDF 생성에 실패했습니다.</Text>
+                <TouchableOpacity
+                  style={[styles.pdfRegenerateButton, regenerating && styles.pdfButtonDisabled]}
+                  onPress={handleRegeneratePdf}
+                  disabled={regenerating}
+                >
+                  <Text style={styles.pdfRegenerateText}>
+                    {regenerating ? '재생성 중...' : '다시 생성하기'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={styles.pdfStatusText}>PDF가 아직 생성되지 않았습니다.</Text>
+            )
+          )}
 
           {canSign && (
             <TouchableOpacity
@@ -346,6 +357,23 @@ export default function DocContractDetailScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* ── 증빙 정보 (보조 / 하단) ── */}
+        {hasEvidenceInfo && (
+          <View style={styles.evidenceCard}>
+            <Text style={styles.evidenceLabel}>증빙 정보</Text>
+            {currentVersion!.documentHashSha256 ? (
+              <Text style={styles.evidenceText} numberOfLines={1} ellipsizeMode="middle">
+                해시: {currentVersion!.documentHashSha256}
+              </Text>
+            ) : null}
+            {currentVersion!.documentFileKey ? (
+              <Text style={styles.evidenceText} numberOfLines={1} ellipsizeMode="middle">
+                파일: {currentVersion!.documentFileKey}
+              </Text>
+            ) : null}
+          </View>
+        )}
       </ScrollView>
 
       <Modal visible={signModalVisible} transparent animationType="fade">
@@ -411,46 +439,87 @@ export default function DocContractDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background, paddingVertical: 24 },
+  container: { flex: 1, backgroundColor: Colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background, padding: 20 },
   loadingText: { marginTop: 8, fontSize: 13, color: Colors.mutedForeground },
   errorText: { fontSize: 15, color: Colors.colorError, textAlign: 'center' },
   backButton: { marginTop: 16, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12, backgroundColor: Colors.surfaceSoft, alignSelf: 'center' },
   backButtonText: { fontSize: 15, fontWeight: '600', color: Colors.brandInk },
-  card: {
+
+  // 헤더 카드 (제목·상태·기간)
+  headerCard: {
     marginHorizontal: 16,
-    marginBottom: 48,
+    marginTop: 20,
+    marginBottom: 12,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 32,
+    padding: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.09,
-    shadowRadius: 16,
-    elevation: 3,
-    gap: 24,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  title: { fontSize: 24, fontWeight: 'bold', color: Colors.brandInk, marginBottom: 4 },
-  subTitle: { fontSize: 14, color: Colors.mutedForeground, marginBottom: 16 },
-  section: {
-    backgroundColor: Colors.surfaceSoft,
-    borderRadius: 8,
-    padding: 16,
-    justifyContent: 'center',
-    marginBottom: 8,
+  statusBadgeRow: { flexDirection: 'row', marginBottom: 12 },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
+  statusBadgeText: { fontSize: 12, fontWeight: '700', color: '#fff', letterSpacing: 0.4 },
+  title: { fontSize: 22, fontWeight: 'bold', color: Colors.brandInk, marginBottom: 6, lineHeight: 30 },
+  periodText: { fontSize: 13, color: Colors.mutedForeground },
+
+  // 계약 본문 카드
+  contentCard: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '600', color: Colors.brandInk, marginBottom: 8 },
-  paragraph: { fontSize: 13, color: Colors.mutedForeground, lineHeight: 20, marginBottom: 4 },
-  signButton: { marginTop: 20, backgroundColor: Colors.brandInk, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  cardLabel: { fontSize: 13, fontWeight: '700', color: Colors.brandInk, marginBottom: 12, letterSpacing: 0.3 },
+  section: { paddingVertical: 12 },
+  sectionDivider: { borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: Colors.brandInk, marginBottom: 6 },
+  paragraph: { fontSize: 13, color: '#4B5563', lineHeight: 21 },
+
+  // 서명 현황
+  signatureRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+  signatureIconDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981', marginRight: 10 },
+  signatureText: { flex: 1, fontSize: 13, color: '#374151' },
+  signatureDate: { fontSize: 12, color: Colors.mutedForeground },
+
+  // 액션 카드 (PDF / 서명)
+  actionCard: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    gap: 10,
+  },
+  signButton: { backgroundColor: Colors.brandInk, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   signButtonText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
-  pdfButton: { backgroundColor: Colors.brandHoney, paddingVertical: 12, borderRadius: 10, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  pdfButton: { backgroundColor: Colors.brandHoney, paddingVertical: 13, borderRadius: 12, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
   pdfButtonDisabled: { opacity: 0.6 },
   pdfButtonText: { color: Colors.brandInk, fontWeight: '700', fontSize: 14 },
-  pdfStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  pdfStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4 },
   pdfStatusText: { fontSize: 13, color: Colors.mutedForeground },
   pdfErrorText: { fontSize: 13, color: Colors.colorError, marginBottom: 8 },
   pdfRegenerateButton: { backgroundColor: Colors.surfaceSoft, paddingVertical: 10, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: Colors.brandInk },
   pdfRegenerateText: { fontSize: 13, color: Colors.brandInk, fontWeight: '600' },
+
+  // 증빙 정보 (보조 / 하단 축소)
+  evidenceCard: {
+    marginHorizontal: 16,
+    marginBottom: 40,
+    backgroundColor: Colors.surfaceSoft,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  evidenceLabel: { fontSize: 11, fontWeight: '600', color: Colors.mutedForeground, marginBottom: 6, letterSpacing: 0.5, textTransform: 'uppercase' },
+  evidenceText: { fontSize: 11, color: '#9CA3AF', lineHeight: 16 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(37,27,16,0.5)', justifyContent: 'center', padding: 24 },
   modalBox: { backgroundColor: 'white', borderRadius: 16, padding: 24, ...Shadows.card },
