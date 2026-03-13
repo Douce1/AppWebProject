@@ -376,7 +376,7 @@ export default function IncomeScreen() {
                 onRequestClose={() => setSelectedDetail(null)}
             >
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <View style={[styles.modalContent, { paddingBottom: insets.bottom + 16 }]}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>
                                 {selectedDetail ? formatMonth(selectedDetail.month) : ''} 정산 상세 내역
@@ -426,7 +426,12 @@ export default function IncomeScreen() {
                             title="닫기"
                             variant="primary"
                             onPress={() => setSelectedDetail(null)}
-                            style={{ paddingVertical: 15 }}
+                            style={{
+                                marginHorizontal: 16,
+                                paddingVertical: 15,
+                                borderRadius: 14,
+                                justifyContent: 'center',
+                            }}
                         />
                     </View>
                 </View>
