@@ -71,6 +71,7 @@ const DEFAULT_SETTINGS: ApiNotificationSettings = {
  * - lesson_reminder       → LESSON_REMINDER  (수업 시작 전 리마인더)
  * - lesson_finish_reminder→ FINISH_REMINDER  (수업 종료 처리 리마인더)
  * - smart_departure_alert → GPS_DEPARTURE
+ * - chat                  → CHAT             (채팅 메시지)
  *
  * 이미 canonical 값이 들어오는 경우(app 내부 사용)도 그대로 통과시킵니다.
  */
@@ -101,6 +102,12 @@ export function normalizeNotificationType(rawType?: string): string | undefined 
         // Smart departure / GPS alerts
         GPS_DEPARTURE: 'GPS_DEPARTURE',
         smart_departure_alert: 'GPS_DEPARTURE',
+
+        // Chat message
+        CHAT: 'CHAT',
+        chat: 'CHAT',
+        chat_message: 'CHAT',
+        new_message: 'CHAT',
     };
 
     return map[rawType] ?? rawType;
@@ -168,7 +175,7 @@ export function setupNotificationHandlers(): () => void {
 
     // 알림 탭 시 타입별 화면 이동
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data as { type?: string; eventId?: string };
+        const data = response.notification.request.content.data as { type?: string; eventId?: string; roomId?: string };
 
         // [DEBUG] 알림 탭 시 실제 수신 payload 로그 — backend 연동 확인용
         console.log('[notificationService] notification tap data:', JSON.stringify(data));
@@ -196,6 +203,13 @@ export function setupNotificationHandlers(): () => void {
         } else if (normalizedType === 'GPS_DEPARTURE') {
             // GPS 출발 알림 → 홈 탭으로 이동
             router.replace('/(tabs)/' as any);
+        } else if (normalizedType === 'CHAT') {
+            // 채팅 알림 → roomId 있으면 해당 채팅방, 없으면 채팅 탭으로 이동
+            if (data?.roomId) {
+                router.replace({ pathname: '/chat-room', params: { roomId: data.roomId } } as any);
+            } else {
+                router.replace('/(tabs)/chat' as any);
+            }
         }
     });
 
