@@ -9,10 +9,12 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  Linking,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import { apiClient } from '../api/apiClient';
 import { getContractErrorMessage, SIGN_TOKEN_EXPIRED, PDF_NOT_READY, PDF_AUTH_EXPIRED, PDF_ACCESS_DENIED } from '../api/contractErrors';
 import type { ApiContractDetail } from '../api/types';
@@ -78,7 +80,12 @@ export default function DocContractDetailScreen() {
     setPdfLoading(true);
     try {
       const fileUri = await apiClient.downloadContractFinalPdf(contractId);
-      await Sharing.shareAsync(fileUri, { mimeType: 'application/pdf', dialogTitle: '계약서 열기' });
+      if (Platform.OS === 'android') {
+        const contentUri = await FileSystem.getContentUriAsync(fileUri);
+        await Linking.openURL(contentUri);
+      } else {
+        await Linking.openURL(fileUri);
+      }
     } catch (err: unknown) {
       const e = err as Error & { code?: string; status?: number };
       const code = e?.code;
