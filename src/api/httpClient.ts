@@ -31,7 +31,6 @@ import {
   PdfGenerationStatus,
   RegisterPushDevicePayload,
 } from './types';
-import { File, Paths } from 'expo-file-system';
 import type { SubmitContractSignaturePayload } from './types';
 import {
   clearTokens,
@@ -625,9 +624,12 @@ export const httpClient = {
     }
     const arrayBuffer = await response.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
-    const tempFile = new File(Paths.cache, `contract_${contractId}.pdf`);
-    tempFile.write(bytes);
-    return tempFile.uri;
+    const CHUNK = 8192;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)));
+    }
+    return btoa(binary);
   },
 
   async regenerateContractFinalPdf(contractId: string): Promise<ApiContractDetail> {
