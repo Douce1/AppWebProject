@@ -281,7 +281,7 @@ export default function IncomeScreen() {
                 {!isLoading &&
                     filteredSettlements.map((item) => (
                         <TouchableOpacity
-                            key={item.settlementId}
+                            key={item.settlementId ?? `${item.lessonId}-${item.month}`}
                             style={styles.historyItem}
                             onPress={() => setSelectedDetail(item)}
                         >
